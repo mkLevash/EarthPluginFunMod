@@ -1,0 +1,99 @@
+name: Earth
+version: '1.0-SNAPSHOT'
+main: earthrp.Earth
+api-version: '1.20'
+authors: [ levash ]
+description: Plugin for Earth RP
+softdepend: ["PlaceholderAPI","dynmap","SkinsRestorer"]
+commands:
+  mset:
+    description: shows the amount of player's treasury
+    usage: "/mget <statistic for set> <player> <new value>"
+    permission: permissions.admin
+  eget:
+    description: change the amount of player's treasury
+    usage: "/mget <statistic for check> <player>"
+    permission: permissions.admin
+  mora:
+    description: change the amount of player's treasury
+    usage: "Usage: /<command> [test|stop]"
+    permission: permissions.player
+  income:
+    description: change the amount of player's treasury
+    usage: "Usage: /<command> [test|stop]"
+    permission: permissions.player
+  expense:
+    description: change the amount of player's treasury
+    usage: "Usage: /<command> [test|stop]"
+    permission: permissions.player
+#  oi:
+#    description: change the amount of player's treasury
+#    usage: "Usage: /<command> [test|stop]"
+#    permission: permissions.player
+#  polit:
+#    description: change the amount of player's treasury
+#    usage: "Usage: /<command> [test|stop]"
+#    permission: permissions.player
+#  tax_mod:
+#    description: change the amount of player's treasury
+#    usage: "Usage: /<command> [test|stop]"
+#    permission: permissions.player
+  roll:
+    description: change the amount of player's treasury
+    usage: "Usage: /<command> [test|stop]"
+    permission: permissions.player
+#  army:
+#    permission: permissions.player
+  war:
+    permission: permissions.player
+  peace:
+    permission: permissions.player
+  villager:
+    description: change the amount of player's treasury
+    usage: "Usage: /<command> [test|stop]"
+    permission: permissions.player
+  trade:
+    permission: permissions.player
+#  manpower:
+#    permission: permissions.player
+  menu:
+    permission: permissions.player
+  town:
+    permission: permissions.player
+  createBot:
+    description: shows the amount of player's treasury
+    permission: permissions.player
+  battle:
+    description: shows the amount of player's treasury
+    permission: permissions.player
+  leader:
+    description: Нанять генерала
+    usage: "Использование: /leader <количество полит власти> <имя генерала>"
+    permission: permissions.player
+#  chunk:
+#    description: shows the amount of player's treasury
+#    permission: permissions.player
+  tradeway:
+    description: shows the amount of player's treasury
+    permission: permissions.player
+  colonial:
+    description: shows the amount of player's treasury
+    permission: permissions.player
+  diff:
+    description: shows the amount of player's treasury
+    permission: permissions.player
+  earth:
+    description: change the amount of player's treasury
+    usage: "Usage: /<command> [test|stop]"
+    permission: permissions.admin
+  cache:
+    permission: permissions.admin
+
+permissions:
+  permissions.admin:
+    default: op
+  permissions.player:
+    default: true
+
+
+

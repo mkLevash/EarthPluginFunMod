@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="maven-antrun-" default="main">
+  <target name="main">
+    <copy file="target/EarthPlugin-1.1.jar" tofile="C:\Users\user\Documents\Minecraft\minecraft_1.21\plugins\EarthPlugin.jar" />
+  </target>
+</project>

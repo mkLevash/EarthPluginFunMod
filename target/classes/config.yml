@@ -1,0 +1,80 @@
+#Статус сервера
+status:
+  mora: 'off'
+  day: '1'
+  month: '1'
+#токен для подключения к боту дискорд
+token: 'MTA0MjExMjYwNzAxMzg0Mjk4NA.GpJMxc.0fYIOqBUh1T-BorOZfmPfiln492g3TbBQXFhgY'
+#Увеличение стоимости идей за каждый закрытый шалкер(плоское)
+ideaIncMod: 10
+ideaCostBase: 25
+
+#Базовая тактика для всех()
+tacBase: 1
+#Сколько тактики получает игрок за 1 исследование
+tacGain: 0.1
+#Базовая стоимость тактики
+tacCostBase: 20
+#Увеличение стоимости тактики за каждое исследование (1.0 + не увеличивается, 1.1 - +10% каждый раз)
+tacIncMod: 1.0
+
+#Бзовая цена на товары
+tradeItems:
+  GOLD_INGOT: 10
+  RAW_IRON: 6
+  IRON_INGOT: 8
+  RAW_COPPER: 7
+  COPPER_INGOT: 9
+  COAL: 6
+  DIAMOND: 10
+  AMETHYST_SHARD: 10
+  IRON_SWORD: 7 #Оружие
+  GUNPOWDER: 10
+  FIRE_CHARGE: 8
+  BOOK: 12
+  PAPER: 8
+  SUGAR_CANE: 9
+  COCOA_BEANS: 12
+  MELON: 8
+  PUMPKIN: 5
+  GLOWSTONE_DUST: 8 #Специи
+  GREEN_DYE: 6 #Чай
+  WOOD: 4
+  LEATHER: 4
+  FEATHER: 4
+  WHITE_WOOL: 4
+  COBBLESTONE: 4
+  BEETROOT: 4
+  POTATO: 4
+  CARROT: 4
+  OAK_LOG: 4
+  OAK_WOOD: 4
+  DARK_OAK_LOG: 4
+  DARK_OAK_WOOD: 4
+  BIRCH_LOG: 4
+  BIRCH_WOOD: 4
+  SPRUCE_LOG: 4
+  SPRUCE_WOOD: 4
+  JUNGLE_LOG: 4
+  JUNGLE_WOOD: 4
+  CHERRY_LOG: 4
+  CHERRY_WOOD: 4
+  ACACIA_LOG: 4
+  ACACIA_WOOD: 4
+  MANGROVE_LOG: 4
+  MANGROVE_WOOD: 4
+  PALE_OAK_LOG: 4
+  PALE_OAK_WOOD: 4
+  WHEAT: 3
+  STUFF: 3
+
+
+townSize: 5 #Радиус и городов (в чанках) больше 15 не ставить
+townDistanceMod: 2 #Модификатор минимального расстояния между городами(townDistance = townSize * townDistanceMod), МИНИМУМ - 2
+#Прирост ОИ от зданий
+universityIncome: 3
+schoolIncome: 1
+ministryOiIncome: 5
+
+#set false, чтобы выключить сообщение при загрузке плагина
+debug: true
