@@ -10,6 +10,7 @@ import earthrp.menusystem.Menu;
 import earthrp.menusystem.MenuUtility;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
+import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -22,17 +23,12 @@ import java.util.List;
 import static earthrp.tools.PDCKeys.*;
 
 public class EconomicMenu extends Menu {
-    private final Earth earthPlugin;
-    private final ServerDatabase db;
-    public EconomicMenu(MenuUtility menuUtility, Earth earthPlugin) {
-        super(menuUtility);
-        this.earthPlugin = earthPlugin;
-        db = Earth.getInstance().getServerDatabase();
-        if (player == null){
-            player = db.getPlayer(menuUtility.getOwner().getUniqueId());
-        }
-    }
+
+    public EconomicMenu(MenuUtility menuUtility) {super(menuUtility);}
     EPlayer player = menuUtility.getPlayer();
+    Player p = menuUtility.getOwner();
+
+
     @Override
     public String getMenuName() {
         return "Главное меню";
@@ -47,31 +43,29 @@ public class EconomicMenu extends Menu {
     public void handleMenu(InventoryClickEvent e)  {
         ItemStack item = e.getCurrentItem();
         if (item!=null && item.getItemMeta().getPersistentDataContainer().has(statIdKey)){
-            e.getWhoClicked().closeInventory();
             String statId = item.getItemMeta().getPersistentDataContainer().get(statIdKey, PersistentDataType.STRING);
-            boolean oldMenu = true;
             switch (statId){
 
                 case "debt" ->{
                     ItemStack mora = Tools.createMora(player.getOneDebt());
                     String path = "debt."+player.getDisplayName() + ".lvl"+player.getDebtLvl();
                     CustomConfig.set(path,CustomConfig.get().getInt(path)+1);
-                    e.getWhoClicked().getInventory().addItem(mora);
+                    p.getInventory().addItem(mora);
+                    p.closeInventory();
+                    new EconomicMenu(menuUtility).open();
                 }
 
                 case "unDebt" -> {
-                    oldMenu = false;
-                    new DebtsMenu(menuUtility,earthPlugin).open();
-
+                    p.closeInventory();
+                    new DebtsMenu(menuUtility).open();
                 }
 
 
             }
-            if(oldMenu) new EconomicMenu(menuUtility,earthPlugin).open();
 
         }else if(item!=null && item.getType().equals(Material.BARRIER)){
             e.getWhoClicked().closeInventory();
-            new CountryMenu(menuUtility, this.earthPlugin).open();
+            new CountryMenu(menuUtility).open();
         }
 
 
@@ -121,12 +115,8 @@ public class EconomicMenu extends Menu {
             }
         }
 
-        ItemStack close = new ItemStack(Material.BARRIER, 1);
-        ItemMeta closeMeta = close.getItemMeta();
-        closeMeta.setDisplayName(ChatColor.RED + "Закрыть");
-        close.setItemMeta(closeMeta);
 
-        inventory.setItem(26,close);
+        inventory.setItem(26,createBackItem());
 
 //        inventory.setItem(0, tech);
 //

@@ -1,12 +1,11 @@
 package earthrp.menusystem.menu;
 
-import earthrp.Earth;
 import earthrp.menusystem.Menu;
 import earthrp.menusystem.MenuUtility;
 import earthrp.menusystem.menu.ideas.*;
+import earthrp.tools.Tools;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
-import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -15,12 +14,10 @@ import org.bukkit.persistence.PersistentDataType;
 import static earthrp.tools.PDCKeys.*;
 
 public class IdeasMenu extends Menu {
-    private final Earth earthPlugin;
-    public IdeasMenu(MenuUtility menuUtility, Earth earthPlugin) {
+    public IdeasMenu(MenuUtility menuUtility) {
         super(menuUtility);
-        this.earthPlugin = earthPlugin;
     }
-    Player p = this.menuUtility.getOwner();
+
 
     @Override
     public String getMenuName() {
@@ -38,7 +35,7 @@ public class IdeasMenu extends Menu {
         if(e.getCurrentItem()!=null){
             if(e.getCurrentItem().getType().equals(Material.BARRIER)){
                 e.getWhoClicked().closeInventory();
-                new MainMenu(menuUtility, this.earthPlugin).open();
+                new Main(menuUtility).open();
             }else{
                 String type = e.getCurrentItem().getItemMeta().getPersistentDataContainer().get(ideaTypeKey,PersistentDataType.STRING);
                 String material = e.getCurrentItem().getItemMeta().getPersistentDataContainer().get(ideaMaterialKey,PersistentDataType.STRING);
@@ -48,7 +45,7 @@ public class IdeasMenu extends Menu {
                 menuUtility.setIdeaMaterial(material);
                 menuUtility.setIdeaColor(color);
                 menuUtility.setIdeaName(name);
-                new AdminIdeaMenu(menuUtility,earthPlugin).open();
+                new IdeaMenu(menuUtility).open();
             }
         }
 
@@ -215,10 +212,6 @@ public class IdeasMenu extends Menu {
         meta.getPersistentDataContainer().set(ideaNameKey, PersistentDataType.STRING,"Изоляционные");
         isolation.setItemMeta(meta);
 
-        ItemStack next = new ItemStack(Material.BARRIER, 1);
-        meta = next.getItemMeta();
-        meta.setDisplayName(ChatColor.RED + "BACK");
-        next.setItemMeta(meta);
 
 
         inventory.setItem(2, economy);
@@ -237,7 +230,7 @@ public class IdeasMenu extends Menu {
 //
 //        inventory.setItem(7, tech8);
 
-        inventory.setItem(17, next);
+        inventory.setItem(17, createBackItem());
 
     }
 }

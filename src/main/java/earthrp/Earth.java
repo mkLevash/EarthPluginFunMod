@@ -24,11 +24,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
-import org.dynmap.DynmapAPI;
-import org.dynmap.markers.AreaMarker;
-import org.dynmap.markers.Marker;
-import org.dynmap.markers.MarkerAPI;
-import org.dynmap.markers.MarkerSet;
+
 
 import java.sql.SQLException;
 import java.util.*;
@@ -77,25 +73,6 @@ public class Earth extends JavaPlugin {
 
 
 
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                for (Player player : getServer().getOnlinePlayers()) {
-                    Block block = player.getLocation().getBlock();
-
-                    if (block.getType() == Material.DIRT_PATH) {
-                        new BukkitRunnable(){
-                            @Override
-                            public void run(){
-                                player.addPotionEffect(new PotionEffect(
-                                        PotionEffectType.SPEED, 40, 3, false, false, false
-                                ));
-                            }
-                        }.runTask(Earth.getInstance());
-                    }
-                }
-            }
-        }.runTaskTimerAsynchronously(this, 0L, 5L);
 
 
 

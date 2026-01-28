@@ -5,8 +5,8 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>earthrp</groupId>
-    <artifactId>EarthPluginFunMod_beta</artifactId>
-    <version>0.1</version>
+    <artifactId>EarthPluginFunMod</artifactId>
+    <version>beta 0.1</version>
     <packaging>jar</packaging>
 
     <name>Earth RP Plugin</name>
@@ -68,7 +68,7 @@
                         <configuration>
                             <target>
                                 <copy file="target/${project.build.finalName}.jar"
-                                      tofile="C:\Users\user\Documents\Minecraft\minecraft_1.21\plugins\EarthPlugin.jar"/>
+                                      tofile="C:\Users\user\Documents\Minecraft\minecraft_1.21\plugins\EarthPluginLegacyMod.jar"/>
                             </target>
                         </configuration>
                     </execution>
@@ -135,36 +135,24 @@
             <version>3.47.1.0</version>
         </dependency>
         <!-- https://mvnrepository.com/artifact/net.skinsrestorer/skinsrestorer-api -->
-        <dependency>
-            <groupId>net.skinsrestorer</groupId>
-            <artifactId>skinsrestorer-api</artifactId>
-            <version>15.5.2</version>
-            <scope>provided</scope>
-        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>net.skinsrestorer</groupId>-->
+<!--            <artifactId>skinsrestorer-api</artifactId>-->
+<!--            <version>15.5.2</version>-->
+<!--            <scope>provided</scope>-->
+<!--        </dependency>-->
         <dependency>
             <groupId>me.clip</groupId>
             <artifactId>placeholderapi</artifactId>
             <version>2.11.6</version>
             <scope>provided</scope>
         </dependency>
-        <dependency>
-            <groupId>com.google.code.gson</groupId>
-            <artifactId>gson</artifactId>
-            <version>2.11.0</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>us.dynmap</groupId>
-            <artifactId>dynmap-api</artifactId>
-            <version>3.4-beta-3</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.mojang</groupId>
-            <artifactId>authlib</artifactId>
-            <version>1.5.21</version>
-            <scope>provided</scope>
-        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>us.dynmap</groupId>-->
+<!--            <artifactId>dynmap-api</artifactId>-->
+<!--            <version>3.4-beta-3</version>-->
+<!--            <scope>provided</scope>-->
+<!--        </dependency>-->
 
         <!-- https://mvnrepository.com/artifact/org.projectlombok/lombok -->
         <dependency>

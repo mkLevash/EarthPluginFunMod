@@ -2,8 +2,6 @@ package earthrp.menusystem.menu.ideas;
 
 import earthrp.Earth;
 import earthrp.tools.Tools;
-import earthrp.customObjects.EPlayer;
-import earthrp.customEnums.EPlayerAttribute;
 import earthrp.files.CustomConfig;
 import earthrp.menusystem.Menu;
 import earthrp.menusystem.MenuUtility;
@@ -22,13 +20,10 @@ import org.bukkit.inventory.meta.components.CustomModelDataComponent;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
-public class AdminIdeaMenu extends Menu {
-    private final Earth earthPlugin;
-    public AdminIdeaMenu(MenuUtility menuUtility, Earth earthPlugin) {
+public class IdeaMenu extends Menu {
+    public IdeaMenu(MenuUtility menuUtility) {
         super(menuUtility);
-        this.earthPlugin = earthPlugin;
 
         for(int j = 0; j < 5; j++){
             ideaNames.add(menuUtility.getIdeaColor() + CustomConfig.get().getString(path+j+".name"));
@@ -69,7 +64,7 @@ public class AdminIdeaMenu extends Menu {
             }
             case BARRIER -> {
                 e.getWhoClicked().closeInventory();
-                new IdeasMenu(menuUtility, this.earthPlugin).open();
+                new IdeasMenu(menuUtility).open();
 
             }
 
@@ -105,10 +100,6 @@ public class AdminIdeaMenu extends Menu {
         }
 
 
-        ItemStack back = new ItemStack(Material.BARRIER, 1);
-        ItemMeta backMeta = back.getItemMeta();
-        backMeta.setDisplayName(ChatColor.RED + "BACK");
-        back.setItemMeta(backMeta);
 
 
 
@@ -132,7 +123,7 @@ public class AdminIdeaMenu extends Menu {
         light.setItemMeta(meta);
         shulker.getInventory().setItem(9,light);
         inventory.setItem(18,yes);
-        inventory.setItem(26, back);
+        inventory.setItem(26, createBackItem());
 
         bsm.setBlockState(shulker);
         shulker.update();

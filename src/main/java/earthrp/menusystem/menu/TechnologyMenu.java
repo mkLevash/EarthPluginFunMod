@@ -1,6 +1,5 @@
 package earthrp.menusystem.menu;
 
-import earthrp.Earth;
 import earthrp.tools.Tools;
 import earthrp.menusystem.Menu;
 import earthrp.menusystem.MenuUtility;
@@ -16,10 +15,8 @@ import org.bukkit.persistence.PersistentDataType;
 import static earthrp.tools.PDCKeys.*;
 
 public class TechnologyMenu extends Menu {
-    private final Earth earthPlugin;
-    public TechnologyMenu(MenuUtility menuUtility, Earth earthPlugin) {
+    public TechnologyMenu(MenuUtility menuUtility) {
         super(menuUtility);
-        this.earthPlugin = earthPlugin;
     }
 
     @Override
@@ -40,45 +37,45 @@ public class TechnologyMenu extends Menu {
 
                 case GOLD_INGOT -> {
                     e.getWhoClicked().closeInventory();
-                    new EcoTechMenu(menuUtility, this.earthPlugin).open();
+                    new EcoTechMenu(menuUtility).open();
 
                 }
                 case BONE_MEAL -> {
                     e.getWhoClicked().closeInventory();
-                    new ReusTechMenu(menuUtility,this.earthPlugin).open();
+                    new ReusTechMenu(menuUtility).open();
 
                 }
                 case BOOK -> {
                     e.getWhoClicked().closeInventory();
-                    new SocTechMenu(menuUtility, this.earthPlugin).open();
+                    new SocTechMenu(menuUtility).open();
 
                 }
                 case CRAFTING_TABLE -> {
                     e.getWhoClicked().closeInventory();
-                    new CraftTechMenu(menuUtility, this.earthPlugin).open();
+                    new CraftTechMenu(menuUtility).open();
 
                 }
                 case FIRE_CHARGE -> {
 
                     e.getWhoClicked().closeInventory();
-                    new WarTechMenu(menuUtility, this.earthPlugin).open();
+                    new WarTechMenu(menuUtility).open();
 
                 }
                 case BARRIER -> {
                     e.getWhoClicked().closeInventory();
-                    new MainMenu(menuUtility, this.earthPlugin).open();
+                    new Main(menuUtility).open();
 
                 }
             }
             PersistentDataContainerView data = item.getPersistentDataContainer();
-            if(data.has(mainMenuIdKey)){
+            if(data.has(menuIdKey)){
                 e.getWhoClicked().closeInventory();
-                switch (data.get(mainMenuIdKey, PersistentDataType.STRING)){
+                switch (data.get(menuIdKey, PersistentDataType.STRING)){
                     case "war" ->{
-                        new WarTechMenu(menuUtility, this.earthPlugin).open();
+                        new WarTechMenu(menuUtility).open();
                     }
                     case "reus" ->{
-                        new ReusTechMenu(menuUtility, this.earthPlugin).open();
+                        new ReusTechMenu(menuUtility).open();
                     }
                 }
             }
@@ -97,19 +94,16 @@ public class TechnologyMenu extends Menu {
         economyMeta.setDisplayName(ChatColor.YELLOW + "Экономические");
         economy.setItemMeta(economyMeta);
 
-        ItemStack reusable = Tools.createMainMenuItem("Многоразовые","techReus","reus");
+        ItemStack reusable = makeItem("Многоразовые","techReus","reus");
 
         ItemStack social = new ItemStack(Material.BOOK, 1);
         ItemMeta socialMeta = social.getItemMeta();
         socialMeta.setDisplayName(ChatColor.BLUE + "Социальные");
         social.setItemMeta(socialMeta);
 
-        ItemStack craft = new ItemStack(Material.CRAFTING_TABLE, 1);
-        ItemMeta craftMeta = craft.getItemMeta();
-        craftMeta.setDisplayName(ChatColor.LIGHT_PURPLE + "Ремесленные");
-        craft.setItemMeta(craftMeta);
+        ItemStack craft = makeItem(Material.CRAFTING_TABLE,ChatColor.LIGHT_PURPLE + "Ремесленные");
 
-        ItemStack war = Tools.createMainMenuItem("Военные","menuArmyStat","war");
+        ItemStack war = makeItem("Военные","menuArmyStat","war");
 
         ItemStack next = new ItemStack(Material.BARRIER, 1);
         ItemMeta nextMeta = next.getItemMeta();

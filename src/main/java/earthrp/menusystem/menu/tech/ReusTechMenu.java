@@ -23,24 +23,15 @@ import java.util.UUID;
 
 public class ReusTechMenu extends Menu {
 
-    public ReusTechMenu(MenuUtility menuUtility, Earth earthPlugin)  {
+    public ReusTechMenu(MenuUtility menuUtility)  {
         super(menuUtility);
-        this.earthPlugin = earthPlugin;
         if(t2){
             revCost *= 2;
         }
-        db = Earth.getInstance().getServerDatabase();
-        player = db.getPlayer(uuid);
     }
 
-    public String CostCheck(){
-        return "";
-    }
-    private final Earth earthPlugin;
-    private final ServerDatabase db;
     Player p = this.menuUtility.getOwner();
-    UUID uuid = p.getUniqueId();
-    EPlayer player;
+    EPlayer player = menuUtility.getPlayer();
 
 
     double techMod = player.getAttribute(EPlayerAttribute.TECH_COST);
@@ -113,8 +104,8 @@ public class ReusTechMenu extends Menu {
                     }
                 }
             }
-            if(item.getType().equals(Material.BARRIER)) new TechnologyMenu(new MenuUtility(p), this.earthPlugin).open();
-            else new ReusTechMenu(new MenuUtility(p), this.earthPlugin).open();
+            if(item.getType().equals(Material.BARRIER)) new TechnologyMenu(menuUtility, this.earthPlugin).open();
+            else new ReusTechMenu(menuUtility, this.earthPlugin).open();
 
         }
 

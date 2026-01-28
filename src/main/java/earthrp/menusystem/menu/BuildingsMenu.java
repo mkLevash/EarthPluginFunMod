@@ -13,14 +13,11 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
-import java.sql.SQLException;
 import java.util.List;
 
 public class BuildingsMenu extends Menu {
-    private final Earth earthPlugin;
-    public BuildingsMenu(MenuUtility menuUtility, Earth earthPlugin) {
+    public BuildingsMenu(MenuUtility menuUtility) {
         super(menuUtility);
-        this.earthPlugin = earthPlugin;
     }
 
     @Override
@@ -38,21 +35,18 @@ public class BuildingsMenu extends Menu {
         switch (e.getCurrentItem().getType()){
 
             case CRAFTING_TABLE -> {
-                Player p = (Player) e.getWhoClicked();
                 e.getWhoClicked().closeInventory();
-                new StandartBuildingsMenu(new MenuUtility(p), this.earthPlugin).open();
+                new StandartBuildingsMenu(menuUtility).open();
 
             }
             case ICE -> {
-                Player p = (Player) e.getWhoClicked();
                 e.getWhoClicked().closeInventory();
-                new WarBuildingsMenu(new MenuUtility(p),this.earthPlugin).open();
+                new WarBuildingsMenu(menuUtility).open();
 
             }
             case BARRIER -> {
-                Player p = (Player) e.getWhoClicked();
                 e.getWhoClicked().closeInventory();
-                new MainMenu(new MenuUtility(p), this.earthPlugin).open();
+                new Main(menuUtility).open();
 
             }
 
@@ -70,10 +64,6 @@ public class BuildingsMenu extends Menu {
 
         ItemStack war = Tools.createItem(Material.ICE,ChatColor.RED + "Военные", List.of(),"art");
 
-        ItemStack next = new ItemStack(Material.BARRIER, 1);
-        ItemMeta nextMeta = next.getItemMeta();
-        nextMeta.setDisplayName(ChatColor.RED + "BACK");
-        next.setItemMeta(nextMeta);
 
 
         inventory.setItem(3, economy);
@@ -84,7 +74,7 @@ public class BuildingsMenu extends Menu {
 //
 //        inventory.setItem(7, tech8);
 
-        inventory.setItem(8, next);
+        inventory.setItem(8, createBackItem());
 
     }
 }

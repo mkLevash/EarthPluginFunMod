@@ -95,7 +95,7 @@ public class TroopsMenu extends Menu {
 
         ));
         troops.setItemMeta(troopsMeta);
-        inventory.setItem(26,Tools.createBackItem());
+        inventory.setItem(26, createBackItem());
 
 
         

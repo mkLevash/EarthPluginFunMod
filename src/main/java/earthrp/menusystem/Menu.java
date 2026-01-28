@@ -1,15 +1,20 @@
 package earthrp.menusystem;
 
+import earthrp.tools.Tools;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.persistence.PersistentDataType;
 
-import java.sql.SQLException;
 import java.util.Arrays;
+import java.util.List;
+
+import static earthrp.tools.PDCKeys.menuIdKey;
 
 /*
     Defines the behavior and attributes of all menus in our plugin
@@ -71,6 +76,24 @@ public abstract class Menu implements InventoryHolder {
         }
     }
 
+
+
+    public static ItemStack makeItem(String displayName, String menuId, String customModel, String... lore){
+        ItemStack item = Tools.createItem(Material.EGG,displayName,Arrays.asList(lore),customModel);
+        ItemMeta meta = item.getItemMeta();
+        meta.getPersistentDataContainer().set(menuIdKey, PersistentDataType.STRING, menuId);
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    public static ItemStack makeItem(Material material, String displayName, String menuId, String... lore){
+        ItemStack item = Tools.createItem(material,displayName,Arrays.asList(lore),null);
+        ItemMeta meta = item.getItemMeta();
+        meta.getPersistentDataContainer().set(menuIdKey, PersistentDataType.STRING, menuId);
+        item.setItemMeta(meta);
+        return item;
+    }
+
     public ItemStack makeItem(Material material, String displayName, String... lore) {
 
         ItemStack item = new ItemStack(material);
@@ -79,10 +102,19 @@ public abstract class Menu implements InventoryHolder {
 
         itemMeta.setLore(Arrays.asList(lore));
         item.setItemMeta(itemMeta);
-
-
-
         return item;
+    }
+
+    public void fillIfEmpty(int slot) {
+        if (inventory.getItem(slot) == null) inventory.setItem(slot, FILLER_GLASS);
+    }
+
+    public static ItemStack createBackItem(){
+        ItemStack close = new ItemStack(Material.BARRIER);
+        ItemMeta closeMeta = close.getItemMeta();
+        closeMeta.setDisplayName(ChatColor.RED + "Назад");
+        close.setItemMeta(closeMeta);
+        return close;
     }
 
 }

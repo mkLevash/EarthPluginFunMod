@@ -1,6 +1,7 @@
 package earthrp.commands;
 
 import earthrp.Earth;
+import earthrp.menusystem.menu.Main;
 import earthrp.tools.Tools;
 import earthrp.menusystem.MenuUtility;
 import org.bukkit.ChatColor;
@@ -16,10 +17,10 @@ import org.jetbrains.annotations.NotNull;
 import java.util.Collections;
 
 public class MainMenu implements CommandExecutor {
-    private final Earth earthPlugin;
+    private final Earth instance;
 
-    public MainMenu(Earth earthPlugin) {
-        this.earthPlugin = earthPlugin;
+    public MainMenu(Earth instance) {
+        this.instance = instance;
     }
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String s, @NotNull String[] args) {
@@ -36,7 +37,7 @@ public class MainMenu implements CommandExecutor {
             }
             MenuUtility mu = new MenuUtility(p);
             mu.setPlayer(Earth.getInstance().getServerDatabase().getPlayer(p.getUniqueId()));
-            earthrp.menusystem.menu.MainMenu menu = new earthrp.menusystem.menu.MainMenu(mu, this.earthPlugin);
+            Main menu = new Main(mu);
             menu.open();
             return true;
         }

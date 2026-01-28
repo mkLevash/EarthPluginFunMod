@@ -5,7 +5,7 @@ import earthrp.Earth;
 import earthrp.customObjects.Town;
 import earthrp.database.ServerDatabase;
 import earthrp.menusystem.MenuUtility;
-import earthrp.menusystem.menu.MainMenu;
+import earthrp.menusystem.menu.Main;
 import earthrp.menusystem.menu.buildings.BuildMenu;
 import earthrp.tools.Tools;
 import org.bukkit.*;
@@ -87,7 +87,7 @@ public class BuildingsHandler implements Listener {
             Player p = e.getPlayer();
             MenuUtility mu = new MenuUtility(p);
             mu.setPlayer(db.getPlayer(p.getUniqueId()));
-            MainMenu menu = new MainMenu(mu, Earth.getInstance());
+            Main menu = new Main(mu);
             menu.open();
         }
     }

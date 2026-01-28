@@ -8,9 +8,10 @@ import earthrp.customObjects.Unit;
 import earthrp.database.ServerDatabase;
 import earthrp.menusystem.Menu;
 import earthrp.menusystem.MenuUtility;
-import earthrp.menusystem.menu.MainMenu;
+import earthrp.menusystem.menu.Main;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
+import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -22,18 +23,14 @@ import java.util.List;
 
 import static earthrp.tools.PDCKeys.*;
 
-public class ArmyStatsMenu extends Menu {
-    private final Earth earthPlugin;
-    private final ServerDatabase db;
-    public ArmyStatsMenu(MenuUtility menuUtility, Earth earthPlugin) {
+public class ArmyMenu extends Menu {
+
+    public ArmyMenu(MenuUtility menuUtility) {
         super(menuUtility);
-        this.earthPlugin = earthPlugin;
-        db = Earth.getInstance().getServerDatabase();
-        if (player == null){
-            player = db.getPlayer(menuUtility.getOwner().getUniqueId());
-        }
     }
+    
     EPlayer player = menuUtility.getPlayer();
+    Player p = menuUtility.getOwner();
 
     List<String> leviesList = new ArrayList<>(Arrays.asList(
             Tools.colorText("&fМоральᠩ&22.5"),
@@ -58,37 +55,34 @@ public class ArmyStatsMenu extends Menu {
         if (item!=null && item.getItemMeta().getPersistentDataContainer().has(statIdKey)){
 
             String statId = item.getItemMeta().getPersistentDataContainer().get(statIdKey, PersistentDataType.STRING);
+            p.closeInventory();
             switch (statId){
                 case "leviesStats" ->{
                     if(!player.isLevies() && !player.isWar()){
-                        e.getWhoClicked().sendMessage(Tools.colorText( "&fДоступно только вовремя&c войны"));
+                        p.sendMessage(Tools.colorText( "&fДоступно только вовремя&c войны"));
                     }
                     if(player.isLevies() && !player.isWar()){
+                        ServerDatabase db = Earth.getInstance().getServerDatabase();
                         for(Unit u:player.getUnits()){
                             if(u.getLvl()==0) db.deleteUnit(u);
                         }
                         player.setAttribute(EPlayerAttribute.LEVIES_STATUS,0.0);
-                        e.getWhoClicked().closeInventory();
-                        new ArmyStatsMenu(menuUtility,earthPlugin).open();
 
                     }
                     if(!player.isLevies() && player.isWar()){
                         ItemStack inf0 = Tools.createArmyCraftItem("&fОполчение",leviesList,"inf",0,-0.05,0.15,0.15);
                         inf0.setAmount(player.getManpowerLimit());
-                        e.getWhoClicked().getInventory().addItem(inf0);
+                        p.getInventory().addItem(inf0);
                         player.setAttribute(EPlayerAttribute.LEVIES_STATUS,1.0);
-                        e.getWhoClicked().closeInventory();
-                        new ArmyStatsMenu(menuUtility,earthPlugin).open();
 
                     }
                 }
-
-
             }
+            new ArmyMenu(menuUtility).open();
 
         }else if(item!=null && item.getType().equals(Material.BARRIER)){
-            e.getWhoClicked().closeInventory();
-            new MainMenu(menuUtility, this.earthPlugin).open();
+            p.closeInventory();
+            new Main(menuUtility).open();
         }
 
 
@@ -186,12 +180,8 @@ public class ArmyStatsMenu extends Menu {
         inventory.setItem(17, super.FILLER_GLASS);
         inventory.setItem(18, super.FILLER_GLASS);
 
-        ItemStack close = new ItemStack(Material.BARRIER, 1);
-        ItemMeta closeMeta = close.getItemMeta();
-        closeMeta.setDisplayName(ChatColor.RED + "Закрыть");
-        close.setItemMeta(closeMeta);
 
-        inventory.setItem(35,close);
+        inventory.setItem(35,createBackItem());
 
 //        inventory.setItem(0, tech);
 //

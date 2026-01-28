@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/EarthPlugin.iml" filepath="$PROJECT_DIR$/EarthPlugin.iml" />
+      <module fileurl="file://$PROJECT_DIR$/EarthPluginLegacyMod.iml" filepath="$PROJECT_DIR$/EarthPluginLegacyMod.iml" />
     </modules>
   </component>
 </project>

@@ -26,11 +26,9 @@ import java.util.UUID;
 import static earthrp.tools.PDCKeys.*;
 
 public class StandartBuildingsMenu extends Menu {
-    private final Earth earthPlugin;
-    private final ServerDatabase db;
-    Player p = this.menuUtility.getOwner();
-    UUID uuid = this.menuUtility.getOwner().getUniqueId();
-    EPlayer player;
+    Player p = menuUtility.getOwner();
+    EPlayer player = menuUtility.getPlayer();
+
     double costMod = player.getAttribute(EPlayerAttribute.BUILDING_COST);
     double scienceCostMod = player.getScienceBuildingCost();
     int pastureCost = (int) Math.ceil(48 * costMod);
@@ -61,11 +59,9 @@ public class StandartBuildingsMenu extends Menu {
     boolean tMarket= player.getTech(EPlayerTech.TRADE);
     int portCost = marketCost;
     boolean tPort= player.getTech(EPlayerTech.SHIPPING);
-    public StandartBuildingsMenu(MenuUtility menuUtility, Earth earthPlugin){
+
+    public StandartBuildingsMenu(MenuUtility menuUtility){
         super(menuUtility);
-        this.earthPlugin = earthPlugin;
-        db = Earth.getInstance().getServerDatabase();
-        player = db.getPlayer(uuid);
     }
 
 
@@ -83,12 +79,12 @@ public class StandartBuildingsMenu extends Menu {
     public void handleMenu(InventoryClickEvent e) {
 
 
-        double treasury = db.getPlayer(uuid).getAttribute(EPlayerAttribute.TREASURY);
+        double treasury = player.getAttribute(EPlayerAttribute.TREASURY);
         ItemStack item = e.getCurrentItem();
         if(item != null){
             if(item.getType().equals(Material.BARRIER)){
                 e.getWhoClicked().closeInventory();
-                new BuildingsMenu(menuUtility, this.earthPlugin).open();
+                new BuildingsMenu(menuUtility).open();
             }
             PersistentDataContainer data = item.getItemMeta().getPersistentDataContainer();
 
@@ -100,7 +96,7 @@ public class StandartBuildingsMenu extends Menu {
                 String type = data.get(buildingTypeKey, PersistentDataType.STRING);
                 if(techCheck && treasury >= cost){
                     e.getWhoClicked().closeInventory();
-                    new StandartBuildingsMenu(menuUtility,this.earthPlugin).open();
+                    new StandartBuildingsMenu(menuUtility).open();
                     Tools.buyBuilding(player,cost);
                     ItemStack building = Tools.createBuilding(item.getType(),name,type);
                     p.getInventory().addItem(building);
@@ -255,10 +251,7 @@ public class StandartBuildingsMenu extends Menu {
         ItemStack port = Tools.createBuildingBuy(Material.BARREL,"Порт","port",portLore,portCost,tPort);
 
 
-        ItemStack back = new ItemStack(Material.BARRIER, 1);
-        ItemMeta backMeta = back.getItemMeta();
-        backMeta.setDisplayName(ChatColor.RED + "BACK");
-        back.setItemMeta(backMeta);
+
 
         inventory.setItem(0, lumber);
         inventory.setItem(9, pasture);
@@ -279,7 +272,7 @@ public class StandartBuildingsMenu extends Menu {
         inventory.setItem(26, market);
         inventory.setItem(35, port);
 
-        inventory.setItem(44, back);
+        inventory.setItem(44, createBackItem());
 
     }
 }

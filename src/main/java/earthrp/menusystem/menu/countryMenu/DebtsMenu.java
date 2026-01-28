@@ -23,14 +23,12 @@ import static earthrp.tools.Tools.*;
 import static earthrp.tools.PDCKeys.*;
 
 public class DebtsMenu extends PaginatedMenu {
-    private final Earth earthPlugin;
-    Building building = menuUtility.getBuilding();
+
     Player p = menuUtility.getOwner();
     EPlayer player = menuUtility.getPlayer();
 
-    public DebtsMenu(MenuUtility menuUtility, Earth earthPlugin) {
+    public DebtsMenu(MenuUtility menuUtility) {
         super(menuUtility);
-        this.earthPlugin = earthPlugin;
         int[] debtAmount = player.getDebts();
         for (int i=0; i<3;i++) {
             for (int j = 0; j < debtAmount[i]; j++) {
@@ -60,7 +58,7 @@ public class DebtsMenu extends PaginatedMenu {
         if (item != null ) {
             switch (item.getType()){
                 case BARRIER -> {
-                    new EconomicMenu(menuUtility,this.earthPlugin).open();
+                    new EconomicMenu(menuUtility).open();
                 }
                 case DARK_OAK_BUTTON -> {
                     if (ChatColor.stripColor(e.getCurrentItem().getItemMeta().getDisplayName()).equalsIgnoreCase("Left")){
@@ -80,7 +78,7 @@ public class DebtsMenu extends PaginatedMenu {
                     }
                 }
                 case PAPER -> {
-                    e.getWhoClicked().closeInventory();
+                    p.closeInventory();
                     PersistentDataContainer data = item.getItemMeta().getPersistentDataContainer();
                     int debtSize = data.get(debtSizeKey,PersistentDataType.INTEGER);
                     if(debtSize<=player.getAttribute(EPlayerAttribute.TREASURY)){
@@ -89,21 +87,21 @@ public class DebtsMenu extends PaginatedMenu {
                         CustomConfig.set(path,CustomConfig.get().getInt(path)-1);
                         player.addAttribute(EPlayerAttribute.TREASURY, -debtSize);
                     }
-                    new DebtsMenu(menuUtility,Earth.getInstance()).open();
+                    new DebtsMenu(menuUtility).open();
 
 
                 }
                 case MAP ->{
-                    e.getWhoClicked().closeInventory();
+                    p.closeInventory();
                     if(player.getAttribute(EPlayerAttribute.TREASURY)>=player.getDebt()){
                         player.addAttribute(EPlayerAttribute.TREASURY, -player.getDebt());
                         String path = "debt."+player.getDisplayName()+".lvl";
                         for (int i = 0; i < 3; i++) {
                             CustomConfig.set(path+i,0);
                         }
-                        new CountryMenu(menuUtility,Earth.getInstance()).open();
+                        new CountryMenu(menuUtility).open();
                     }else{
-                        new DebtsMenu(menuUtility,Earth.getInstance()).open();
+                        new DebtsMenu(menuUtility).open();
                     }
 
                 }

@@ -511,13 +511,7 @@ public class Tools {
         return item;
     }
 
-    public static ItemStack createBackItem(){
-        ItemStack close = new ItemStack(Material.BARRIER);
-        ItemMeta closeMeta = close.getItemMeta();
-        closeMeta.setDisplayName(ChatColor.RED + "Закрыть");
-        close.setItemMeta(closeMeta);
-        return close;
-    }
+
 
     public static ItemStack createTroopItem(Material material,String displayName, String type, int lvl, Army army, String customModel){
         int[] troops = army.getLvlTroops(type,lvl);
@@ -645,7 +639,7 @@ public class Tools {
     public static ItemStack createMainMenuItem(String name, String customModel, String mainMenuId){
         ItemStack item = createItem(Material.EGG,name,null,customModel);
         ItemMeta meta = item.getItemMeta();
-        meta.getPersistentDataContainer().set(mainMenuIdKey,PersistentDataType.STRING, mainMenuId);
+        meta.getPersistentDataContainer().set(menuIdKey,PersistentDataType.STRING, mainMenuId);
         item.setItemMeta(meta);
         return item;
     }

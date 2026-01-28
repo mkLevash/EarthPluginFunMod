@@ -27,11 +27,10 @@ import static earthrp.tools.Tools.*;
 import static earthrp.tools.PDCKeys.*;
 
 public class WarBuildingsMenu extends Menu {
-    private final Earth earthPlugin;
-    private final ServerDatabase db;
-    Player p = this.menuUtility.getOwner();
-    UUID uuid = p.getUniqueId();
-    EPlayer player;
+
+    Player p = menuUtility.getOwner();
+    EPlayer player = menuUtility.getPlayer();
+
     double costMod = player.getWarBuildingCost();
     double traditionMod = 1.0;
     boolean tBarack = player.getTech(EPlayerTech.INF2);
@@ -48,11 +47,8 @@ public class WarBuildingsMenu extends Menu {
     int shipyardCost = (int) Math.ceil(32*costMod);
 
 
-    public WarBuildingsMenu(MenuUtility menuUtility, Earth earthPlugin) {
+    public WarBuildingsMenu(MenuUtility menuUtility) {
         super(menuUtility);
-        this.earthPlugin = earthPlugin;
-        db = Earth.getInstance().getServerDatabase();
-        player = db.getPlayer(uuid);
         if(player.getAttribute(EPlayerAttribute.TRADITION)>=20){
             traditionMod = 0.25;
         }
@@ -76,12 +72,12 @@ public class WarBuildingsMenu extends Menu {
 
     @Override
     public void handleMenu(InventoryClickEvent e) {
-        double treasury = db.getPlayer(uuid).getAttribute(EPlayerAttribute.TREASURY);
+        double treasury = player.getAttribute(EPlayerAttribute.TREASURY);
         ItemStack item = e.getCurrentItem();
         if(item != null){
             if(item.getType().equals(Material.BARRIER)){
                 e.getWhoClicked().closeInventory();
-                new BuildingsMenu(menuUtility, this.earthPlugin).open();
+                new BuildingsMenu(menuUtility).open();
             }
             PersistentDataContainer data = item.getItemMeta().getPersistentDataContainer();
 
@@ -93,7 +89,7 @@ public class WarBuildingsMenu extends Menu {
                 String type = data.get(buildingTypeKey, PersistentDataType.STRING);
                 if(techCheck && treasury >= cost){
                     e.getWhoClicked().closeInventory();
-                    new StandartBuildingsMenu(menuUtility,this.earthPlugin).open();
+                    new WarBuildingsMenu(menuUtility).open();
                     Tools.buyBuilding(player,cost);
                     ItemStack building = Tools.createBuilding(item.getType(),name,type);
                     p.getInventory().addItem(building);
@@ -169,11 +165,6 @@ public class WarBuildingsMenu extends Menu {
         ItemStack shipyard = Tools.createBuildingBuy(Material.ICE,"Верфь","shipyard",shipyardLore,shipyardCost,tShipyard,"ship");
 
 
-        ItemStack next = new ItemStack(Material.BARRIER, 1);
-        ItemMeta nextMeta = next.getItemMeta();
-        nextMeta.setDisplayName(ChatColor.RED + "BACK");
-        next.setItemMeta(nextMeta);
-
 
         inventory.setItem(3, barrack);
         inventory.setItem(4, stable);
@@ -187,7 +178,7 @@ public class WarBuildingsMenu extends Menu {
 //
 //        inventory.setItem(7, tech8);
 
-        inventory.setItem(17, next);
+        inventory.setItem(17, createBackItem());
 
     }
 }
