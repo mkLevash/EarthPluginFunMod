@@ -34,11 +34,11 @@ public abstract class PaginatedMenu extends Menu {
 
     //Set the border and menu buttons for the menu
     public void addMenuBorder(){
-        inventory.setItem(48, makeItem(Material.DARK_OAK_BUTTON, ChatColor.GREEN + "Left"));
+        inventory.setItem(48, makeItem(Material.DARK_OAK_BUTTON, "<green>Left"));
 
-        inventory.setItem(49, makeItem(Material.BARRIER, ChatColor.DARK_RED + "Close"));
+        inventory.setItem(49, makeItem(Material.BARRIER, "<red>Close"));
 
-        inventory.setItem(50, makeItem(Material.DARK_OAK_BUTTON, ChatColor.GREEN + "Right"));
+        inventory.setItem(50, makeItem(Material.DARK_OAK_BUTTON, "<green>Right"));
 
         for (int i = 0; i < 10; i++) {
             if (inventory.getItem(i) == null) {

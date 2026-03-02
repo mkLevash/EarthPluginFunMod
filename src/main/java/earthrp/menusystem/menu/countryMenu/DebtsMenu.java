@@ -118,7 +118,7 @@ public class DebtsMenu extends PaginatedMenu {
         inventory.setItem(0,border);
         //The thing you will be looping through to place items
         List<String> allDebtsLore = List.of(
-                colorText("&fОбщий долг: &c" + player.getDebt()));
+                Tools.colorText("&fОбщий долг: &c" + player.getDebt()));
         ItemStack allDebts = Tools.createItem(Material.MAP,"Выплатить все долги",allDebtsLore);
         inventory.setItem(4,allDebts);
 

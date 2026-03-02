@@ -102,23 +102,39 @@ public class MoraExpansion extends PlaceholderExpansion {
         if (params.equalsIgnoreCase("treasury")){
             long treasury = (long) p.getAttribute(EPlayerAttribute.TREASURY);
             String sTreasury = String.valueOf(treasury);
-            if(treasury>999) sTreasury = treasury / 1000 + "K";
+            if(treasury>9999) sTreasury = treasury / 10000 + "K";
             if(treasury>999999) sTreasury = treasury / 1000000 + "M";
             value = "Ѡ&6" + sTreasury;
+//            value += "&fऄ" + (int) p.getAttribute(EPlayerAttribute.STABILITY);
+//            value += "&fस" + (int) p.getAttribute(EPlayerAttribute.WAR_SUPPORT);
 
-            String balance = String.valueOf(Tools.getBalance(p));
-            if(Math.abs(Tools.getBalance(p)) > 999) balance = Tools.CustomRound ( ((double) Tools.getBalance(p)) / 1000.0,1) + "K";
-            if(Math.abs(Tools.getBalance(p)) > 999999) balance = Tools.getBalance(p) / 1000000 + "M";
 
-            if(Tools.getBalance(p) > 0){
-                value += " &fव" + "&a" + balance;
-            }
-            else if(Tools.getBalance(p) < 0){
-                value += " &fश" + "&c" + balance;
-            }
-            else {
-                value += " &fष" + balance;
-            }
+
+
+            int oiBalance = (int) p.getAttribute(EPlayerAttribute.OI_BALANCE);
+            String oi = String.valueOf(oiBalance);
+            if(oiBalance>999) oi = oiBalance / 1000 + "K";
+            value += "&fૹ&b" + oi;
+
+            value += "&f£" + (int) p.getAttribute(EPlayerAttribute.POLIT_BALANCE);
+
+            value += "&fऴ" + (int) p.getAttribute(EPlayerAttribute.MANPOWER);
+
+
+
+//            String balance = String.valueOf(Tools.getBalance(p));
+//            if(Math.abs(Tools.getBalance(p)) > 999) balance = Tools.CustomRound ( ((double) Tools.getBalance(p)) / 1000.0,1) + "K";
+//            if(Math.abs(Tools.getBalance(p)) > 999999) balance = Tools.getBalance(p) / 1000000 + "M";
+//
+//            if(Tools.getBalance(p) > 0){
+//                value += " &fव" + "&a" + balance;
+//            }
+//            else if(Tools.getBalance(p) < 0){
+//                value += " &fश" + "&c" + balance;
+//            }
+//            else {
+//                value += " &fष" + balance;
+//            }
 
             //if (c.getInflation() != 0) value += " &fi&e" + c.getInflation() + "&f%";
         }
@@ -244,11 +260,7 @@ public class MoraExpansion extends PlaceholderExpansion {
             return "";
         }
         if (params.equalsIgnoreCase("pp_bal")){
-            int oiBalance = (int) p.getAttribute(EPlayerAttribute.OI_BALANCE);
-            String oi = String.valueOf(oiBalance);
-            if(oiBalance>999) oi = oiBalance / 1000 + "K";
-            value = "ૹ&b" + oi + "&fस" + (int) p.getAttribute(EPlayerAttribute.WAR_SUPPORT) + "&fऴ" + (int) p.getAttribute(EPlayerAttribute.MANPOWER);
-            value += "£" + (int) p.getAttribute(EPlayerAttribute.POLIT_BALANCE);
+
 
 //            int corr = (int) p.getAttribute(EPlayerAttribute.CORRUPTION);
 //            if (corr > 0) value += "&fখ&c" + corr;

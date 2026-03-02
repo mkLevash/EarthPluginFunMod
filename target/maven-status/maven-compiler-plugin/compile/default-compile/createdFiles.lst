@@ -1,8 +1,9 @@
-earthrp\menusystem\menu\MainMenu$1.class
 earthrp\menusystem\menu\buildings\MiningBuildingMenu.class
 earthrp\menusystem\menu\OccupationConfirmMenu.class
 earthrp\menusystem\menu\countryMenu\CountryMenu.class
 earthrp\menusystem\menu\OccupationConfirmMenu$1.class
+earthrp\menusystem\menu\tech\RenaissanceTechMenu.class
+earthrp\menusystem\menu\Main$1.class
 earthrp\tools\Tools.class
 earthrp\database\dbTools.class
 earthrp\files\CustomConfig.class
@@ -12,7 +13,6 @@ earthrp\Earth.class
 earthrp\menusystem\MenuUtility.class
 earthrp\commands\CreateBot.class
 earthrp\listeners\VillagerSpawnHandler.class
-earthrp\menusystem\menu\ideas\AdminIdeaMenu.class
 earthrp\commands\Roll.class
 earthrp\menusystem\menu\buildings\buy\StandartBuildingsMenu.class
 earthrp\listeners\BuildingsClickHandler.class
@@ -27,7 +27,6 @@ earthrp\commands\ReloadCash.class
 earthrp\menusystem\menu\buildings\BuildMenu$1.class
 earthrp\listeners\TownCheck.class
 earthrp\runnable\SpeedGive.class
-earthrp\menusystem\menu\TechnologyMenu$1.class
 earthrp\commands\GiveTown.class
 earthrp\menusystem\menu\BuildingsMenu.class
 earthrp\listeners\BuildingsHandler.class
@@ -43,6 +42,7 @@ earthrp\commands\TaxModifier.class
 earthrp\commands\GiveMora.class
 earthrp\menusystem\menu\AnnexConfirmMenu.class
 earthrp\events\NewDayEvent.class
+earthrp\menusystem\menu\ideas\IdeaMenu$1.class
 earthrp\menusystem\menu\TechnologyMenu.class
 earthrp\menusystem\menu\buildings\MiningBuildingMenu$1.class
 earthrp\customObjects\EPlayer.class
@@ -55,6 +55,7 @@ earthrp\customObjects\Town.class
 earthrp\menusystem\menu\army\ArmyMenu$1.class
 earthrp\menusystem\menu\countryMenu\DebtsMenu$1.class
 earthrp\commands\Battle.class
+earthrp\menusystem\menu\tech\ManufactureTechMenu.class
 earthrp\battle\Battle.class
 earthrp\menusystem\menu\army\BattleMenu.class
 earthrp\battle\BattleUnit.class
@@ -64,6 +65,7 @@ earthrp\events\TownCheckEvent.class
 earthrp\listeners\ReceiptHandler.class
 earthrp\runnable\SpeedGive$1.class
 earthrp\menusystem\menu\army\ArmyMenu.class
+earthrp\menusystem\menu\tech\FeudalTechMenu.class
 earthrp\listeners\TownsHandler.class
 earthrp\menusystem\Menu.class
 earthrp\commands\EGet.class
@@ -73,10 +75,10 @@ earthrp\commands\GiveMenu.class
 earthrp\menusystem\menu\buildings\PaginatedItemMenu.class
 earthrp\runnable\Meteor.class
 earthrp\menusystem\menu\tech\SocTechMenu.class
-earthrp\Earth$1.class
 earthrp\menusystem\menu\tech\CraftTechMenu.class
 earthrp\commands\Mset.class
 earthrp\menusystem\menu\TownsMenu$1.class
+earthrp\menusystem\menu\Main.class
 earthrp\menusystem\menu\AnnexConfirmMenu$1.class
 earthrp\commands\PaperCommand.class
 earthrp\menusystem\PaginatedMenu.class
@@ -86,6 +88,7 @@ earthrp\customEnums\EPlayerTech.class
 earthrp\tools\PDCKeys.class
 earthrp\commands\OiCommand.class
 earthrp\commands\Leader.class
+earthrp\menusystem\menu\countryMenu\ArmyMenu.class
 earthrp\commands\EarthCommand.class
 earthrp\tools\LoadingManager.class
 earthrp\commands\Colonial.class
@@ -93,8 +96,6 @@ earthrp\battle\BattlePhaseEvent.class
 earthrp\database\ServerDatabase.class
 earthrp\menusystem\menu\markets\MarketSelectMenu$1.class
 earthrp\runnable\CheckDay.class
-earthrp\menusystem\menu\countryMenu\ArmyStatsMenu.class
-earthrp\menusystem\menu\tech\WarTechMenu.class
 earthrp\commands\TradeWay.class
 earthrp\commands\Income.class
 earthrp\menusystem\menu\army\BattleJoinMenu.class
@@ -102,6 +103,7 @@ earthrp\menusystem\menu\buildings\landHubMenu$1.class
 earthrp\menusystem\menu\buildings\ScienceBuildingMenu.class
 earthrp\listeners\MenuListener.class
 earthrp\menusystem\menu\BuildingsMenu$1.class
+earthrp\menusystem\menu\tech\TribalTechMenu.class
 earthrp\menusystem\menu\markets\MarketSelectMenu.class
 earthrp\menusystem\menu\TownsMenu.class
 earthrp\commands\Difficulty.class
@@ -112,9 +114,8 @@ earthrp\runnable\CheckTowns.class
 earthrp\listeners\ArmyHandler.class
 earthrp\menusystem\menu\markets\LandHubMenu$1.class
 earthrp\Items.class
-earthrp\menusystem\menu\MainMenu.class
+earthrp\menusystem\menu\ideas\IdeaMenu.class
 earthrp\commands\Expense.class
-earthrp\Earth$1$1.class
 earthrp\menusystem\menu\buildings\landHubMenu.class
 earthrp\customObjects\Unit.class
 earthrp\menusystem\menu\markets\PaginatedMarketSelectMenu.class
@@ -123,5 +124,4 @@ earthrp\commands\Polit.class
 earthrp\battle\BattleHandler.class
 earthrp\menusystem\menu\markets\LandHubMenu.class
 earthrp\customObjects\Building.class
-earthrp\menusystem\menu\ideas\AdminIdeaMenu$1.class
 earthrp\menusystem\menu\tech\ReusTechMenu.class

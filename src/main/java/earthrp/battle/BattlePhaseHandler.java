@@ -313,6 +313,7 @@ public class BattlePhaseHandler implements Listener {
             }
         }
         double troops = inf+cav;
+        if (troops == 0) return 0.0;
         if( Tools.round(cav / troops) > cavRatio){
             return Tools.round((cav/troops - cavRatio) / 2);
         }else return 0.0;
@@ -332,17 +333,17 @@ public class BattlePhaseHandler implements Listener {
 
         Tools.editHologram(battleLoc,"battleDice","&3"+battle.getADice()+ter+"&f |Бросок &3кубика&f| &3"+battle.getDDice());
 
-        Tools.editHologram(battleLoc,"battleCas","&c"+battle.getRoundACas()+"&f |Урон| &c"+battle.getRoundDCas());
+        //Tools.editHologram(battleLoc,"battleCas","&c"+battle.getRoundACas()+"&f |Урон| &c"+battle.getRoundDCas());
 
         Tools.editHologram(battleLoc,"battleTroops","(&d"+getInBattleRgt(battle.getAttUnits())+"&f)&a"+getInBattleTroops(battle.getAttUnits())+" &f|В бою| &a"+getInBattleTroops(battle.getDefUnits()) + "&f(&d"+getInBattleRgt(battle.getDefUnits())+"&f)" );
 
-        Tools.editHologram(battleLoc,"battleRetreat","(&d"+getRetreatRgt(battle.getAttUnits())+"&f)&4"+getRetreatTroops(battle.getAttUnits())+"&f|Отступили|&4"+getRetreatTroops(battle.getDefUnits()) + "&f(&d"+getRetreatRgt(battle.getDefUnits())+"&f)" );
+        //Tools.editHologram(battleLoc,"battleRetreat","(&d"+getRetreatRgt(battle.getAttUnits())+"&f)&4"+getRetreatTroops(battle.getAttUnits())+"&f|Отступили|&4"+getRetreatTroops(battle.getDefUnits()) + "&f(&d"+getRetreatRgt(battle.getDefUnits())+"&f)" );
 
-        Tools.editHologram(battleLoc,"battleReserve",getReserves(battle.getAttUnits())+" |Резервы| "+getReserves(battle.getDefUnits()));
+        //Tools.editHologram(battleLoc,"battleReserve",getReserves(battle.getAttUnits())+" |Резервы| "+getReserves(battle.getDefUnits()));
 
         Tools.editHologram(battleLoc,"battleMorale", "&2"+battle.getAMorale()+"&f |ᠩ| &2"+battle.getDMorale());
 
-        Tools.editHologram(battleLoc,"battleTac", "&b"+battle.getAttacker().getTactic()*(1-battle.getACavDebuff())+"&f |ᠨ| &b"+battle.getDefender().getTactic()*(1-battle.getDCavDebuff()));
+       //Tools.editHologram(battleLoc,"battleTac", "&b"+battle.getAttacker().getTactic()*(1-battle.getACavDebuff())+"&f |ᠨ| &b"+battle.getDefender().getTactic()*(1-battle.getDCavDebuff()));
 
 
 

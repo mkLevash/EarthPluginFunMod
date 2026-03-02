@@ -46,14 +46,7 @@ public class TownsMenu extends Menu {
     public void handleMenu(InventoryClickEvent e)  {
         Player p = (Player) e.getWhoClicked();
         switch (Objects.requireNonNull(e.getCurrentItem()).getType()){
-
-            case HEART_OF_THE_SEA -> {
-
-                e.getWhoClicked().closeInventory();
-
-                new TechnologyMenu(new MenuUtility(p), this.earthPlugin).open();
-
-            }
+            
             case BELL -> {
 
                 e.getWhoClicked().closeInventory();

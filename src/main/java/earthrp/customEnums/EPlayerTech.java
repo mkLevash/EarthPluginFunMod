@@ -8,84 +8,107 @@ import java.util.Set;
 @Getter
 public enum EPlayerTech {
 
-    BANK_BASE(),
-    BANK_UP(Set.of(BANK_BASE)),
-    TRADE(),
-    SHIPPING(),
-    RAILROAD(),
-    DIPLOMACY(),
-    OFFICE_BASE(),
-    OFFICE_UP(Set.of(OFFICE_BASE)),
-    SCHOOL(),
-    UNIVERSITY(Set.of(SCHOOL)),
-    MINISTRY(Set.of(OFFICE_UP)),
-    ADMIN_EFFICIENCY(Set.of(OFFICE_UP),Map.of(EPlayerAttribute.ADMIN_EFFICIENCY,4.0)),
-
-    PASTURE(),
-    LUMBER(),
+    // ==================== ЭПОХА 0: ПЛЕМЯ ====================
+    TRIBAL(-1, true),
+    MINING(0),
+    BUILDING(0),
+    IRRIGATION(0),
+    LIVESTOCK(0),
+    WRITING(0),
+    SHIPPING(0),
 
 
-    FORGE(),
-    SHIPYARD(Set.of(SHIPPING)),
-    MANUFACTURE(),
-    FACTORY(Set.of(MANUFACTURE)),
-    OFFICE_MIL(Set.of(OFFICE_BASE)),
-    FORT(),
-    LEVIES(Map.of(EPlayerAttribute.MANPOWER_REC_MOD,0.1)),
-    SIEGE(Map.of(EPlayerAttribute.SIEGE_ABILITY,0.1)),
-    METAL_PCG(Map.of(EPlayerAttribute.SHOCK_RESIST,0.15)),
-    STANDARD(Map.of(EPlayerAttribute.FIRE_DAMAGE,0.10)),
-    HEAVY_CAV(Map.of(EPlayerAttribute.CAV_COMBAT_ABILITY,0.25)),
-    GUNPOWDER(),
+    // ==================== ЭПОХА 1: ФЕОДАЛИЗМ ====================
+    FEUDALISM(-1, Set.of(TRIBAL)),
 
-    MINE(),
-    PIT(Set.of(MINE)),
-    QUARRY(Set.of(PIT,GUNPOWDER)),
+    BANK_BASE(1),
+    BANNER(1),
+    MOTTE(1),
+    HORSE_RIDDING(1),
+    TRADE(1),
+    COPPER(1),
+    ENGINEERING(1),
+    LOWER_MEDIEVAL_MILITARY(1),
+    SHIPBUILDING(1),
+    IRON(1),
+    EARLY_CARRACK(1),
+    WORKSHOP(1),
+    HIGH_MEDIEVAL_MILITARY(1),
+    MEDIEVAL_ADMINISTRATION(1),
+    CASTLE(1),
 
-    INF1(true),
-    INF2(),
-    INF3(Set.of(GUNPOWDER,INF2)),
-    INF4(Set.of(INF3)),
-    CAV1(true),
-    CAV2(),
-    CAV3(Set.of(GUNPOWDER,CAV2)),
-    CAV4(Set.of(CAV3)),
-    ART1(Set.of(GUNPOWDER)),
-    ART2(Set.of(ART1));
+    // ==================== ЭПОХА 2: РЕНЕССАНС ====================
+    RENAISSANCE(-1, Set.of(FEUDALISM)),
+
+    UNIVERSITY(2, Set.of(WRITING)),
+    BASTION(2),
+    BANK_UP(2, Set.of(BANK_BASE)),
+    GUNPOWDER(2),
+    INF3(2, Set.of(GUNPOWDER)),
+    CAV3(2, Set.of(GUNPOWDER)),
+    PROFESSIONAL_ARMY(2),
+    DOCK(2),
+    EARLY_MODERN_ADMINISTRATION(2),
+    PRINTING_PRESS(2),
+    STAR_FORT(2),
+    SPAIN_SQUARE(2),
+    ART1(2),
+    CAV4(2, Set.of(CAV3)),
+    CHARTER_COMPANY(2),
+    SEPARATION_POWER(2),
+    BUREAUCRACY_BASE(2),
+
+    // ==================== ЭПОХА 3: МАНУФАКТУРЫ ====================
+    MANUFACTURE(-1, Set.of(RENAISSANCE)),
+
+    FORTRESS(3),
+    ENLIGHTENMENT(3),
+    CONSTITUTION(3),
+    BUREAUCRACY_UP(3),
+    LINE_INFANTRY(3),
+    CARTRIDGES(3),
+    CAV5(3),
+
+    INDUSTRIAL(-1, Set.of(MANUFACTURE));
 
 
     private final boolean researched;
     private final Set<EPlayerTech> dependence;
     private final Map<EPlayerAttribute, Double> effect;
+    private final int lvl;
 
 
 
-    EPlayerTech(boolean researched) {
+    EPlayerTech(int lvl, boolean researched) {
         this.researched = researched;
+        this.lvl = lvl;
         dependence = Set.of();
         effect = Map.of();
     }
 
-    EPlayerTech(Set<EPlayerTech> dependence, Map<EPlayerAttribute, Double> effect) {
+    EPlayerTech(int lvl, Set<EPlayerTech> dependence, Map<EPlayerAttribute, Double> effect) {
         researched = false;
+        this.lvl = lvl;
         this.dependence = dependence;
         this.effect = effect;
     }
 
-    EPlayerTech(Map<EPlayerAttribute, Double> effect) {
+    EPlayerTech(int lvl, Map<EPlayerAttribute, Double> effect) {
         researched = false;
+        this.lvl = lvl;
         this.dependence = Set.of();
         this.effect = effect;
     }
 
-    EPlayerTech(Set<EPlayerTech> dependence) {
+    EPlayerTech(int lvl, Set<EPlayerTech> dependence) {
         researched = false;
+        this.lvl = lvl;
         this.dependence = dependence;
         effect = Map.of();
     }
 
-    EPlayerTech() {
-        this(false);
+    EPlayerTech(int lvl) {
+        this(lvl, false);
     }
 
 

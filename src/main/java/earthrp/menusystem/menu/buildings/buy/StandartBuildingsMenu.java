@@ -31,32 +31,41 @@ public class StandartBuildingsMenu extends Menu {
 
     double costMod = player.getAttribute(EPlayerAttribute.BUILDING_COST);
     double scienceCostMod = player.getScienceBuildingCost();
-    int pastureCost = (int) Math.ceil(48 * costMod);
-    boolean tPasture = player.getTech(EPlayerTech.PASTURE);
+    
+    // Здания с прямыми зависимостями от базовых технологий
     int farmCost = (int) Math.ceil(48 * costMod);
-    boolean tFarm = true;
+    boolean tFarm = player.getTech(EPlayerTech.IRRIGATION);
+    
+    int pastureCost = (int) Math.ceil(48 * costMod);
+    boolean tPasture = player.getTech(EPlayerTech.LIVESTOCK);
+    
     int lumberCost = (int) Math.ceil(64 * costMod);
-    boolean tLumber = player.getTech(EPlayerTech.LUMBER);
-    int careerCost = (int) Math.ceil(128 * costMod);
-    boolean tCareer = player.getTech(EPlayerTech.QUARRY);
-    int mineV2Cost = (int) Math.ceil(96 * costMod);
-    boolean tMineV2 = player.getTech(EPlayerTech.PIT);
+    boolean tLumber = player.getTech(EPlayerTech.BUILDING);
+    
     int mineV1Cost = (int) Math.ceil(64 * costMod);
-    boolean tMineV1 = player.getTech(EPlayerTech.MINE);
+    boolean tMineV1 = player.getTech(EPlayerTech.MINING);
+    
+    int mineV2Cost = (int) Math.ceil(96 * costMod);
+    boolean tMineV2 = player.getTech(EPlayerTech.GUNPOWDER);
+    
+    int careerCost = (int) Math.ceil(128 * costMod);
+    boolean tCareer = player.getTech(EPlayerTech.MANUFACTURE);
+    
     int factoryCost = (int) Math.ceil(320 * costMod);
-    boolean tFactory = player.getTech(EPlayerTech.FACTORY);
+    boolean tFactory = player.getTech(EPlayerTech.MANUFACTURE);
+    
     int plantCost = (int) Math.ceil(160 * costMod);
     boolean tPlant = player.getTech(EPlayerTech.MANUFACTURE);
+    
     int universityCost = (int) Math.ceil(240 * scienceCostMod);
     boolean tUniversity  = player.getTech(EPlayerTech.UNIVERSITY);
-    int schoolCost = (int) Math.ceil(64 * scienceCostMod);
-    boolean tSchool= player.getTech(EPlayerTech.SCHOOL);
-    int diplomacyCost = (int) Math.ceil(32 * costMod);
-    boolean tDiplomacy= player.getTech(EPlayerTech.DIPLOMACY);
+    
     int bankCost = (int) Math.ceil(128 * costMod);
     boolean tBank = player.getTech(EPlayerTech.BANK_BASE);
+    
     int marketCost= (int) Math.ceil(64 * costMod);
     boolean tMarket= player.getTech(EPlayerTech.TRADE);
+    
     int portCost = marketCost;
     boolean tPort= player.getTech(EPlayerTech.SHIPPING);
 
@@ -204,27 +213,6 @@ public class StandartBuildingsMenu extends Menu {
         ));
         ItemStack university = Tools.createBuildingBuy(Material.ENCHANTED_BOOK,"Университет","university",universityLore,universityCost,tUniversity);
 
-        List<String> schoolLore = new ArrayList<>(Arrays.asList(
-                Tools.colorText("&6"+(int) Math.ceil(8*costMod)+"&dx&fКнижная полка,Сундук; &6"+(int) Math.ceil(1*costMod)+"&dx&fКафедра;"),
-                Tools.colorText("&6"+(int) Math.ceil(16*costMod)+"&dx&fБревно,Факел,Стекло"),
-                Tools.colorText(" "),
-                Tools.colorText("&fУвеличивает прирост ОИ на &a1."),
-                Tools.colorText("&fПроизводит бумагу"),
-                Tools.colorText("&eМожно построить только одну в городе")
-        ));
-        ItemStack school = Tools.createBuildingBuy(Material.BOOK,"Школа","school",schoolLore,schoolCost,tSchool);
-
-        List<String> diplomacyLore = new ArrayList<>(Arrays.asList(
-                Tools.colorText("&f+1 к торговым отношениям и мнению "),
-                Tools.colorText("&fсо страной, где построено посольство."),
-                Tools.colorText(" "),
-                Tools.colorText("&fВ посольство можно телепортироваться"),
-                Tools.colorText("&fиз своей столицы"),
-                Tools.colorText(" "),
-                Tools.colorText("&fМожно строить только в столицах")
-        ));
-        ItemStack diplomacy = Tools.createBuildingBuy(Material.PAPER,"Посольство","diplomacy",diplomacyLore,diplomacyCost,tDiplomacy);
-
         List<String> bankLore = new ArrayList<>(Arrays.asList(
                 Tools.colorText("&6"+(int) Math.ceil(8*costMod)+"&dx&fБольшой сундук; &6"+(int) Math.ceil(32*costMod)+"&dx&fБумага"),
                 Tools.colorText("&6"+(int) Math.ceil(16*costMod)+"&dx&fСтекло,Бревно"),
@@ -265,10 +253,7 @@ public class StandartBuildingsMenu extends Menu {
         inventory.setItem(13, plant);
 
         inventory.setItem(6, university);
-        inventory.setItem(15, school);
-
-        inventory.setItem(8, diplomacy);
-        inventory.setItem(17, bank);
+        inventory.setItem(15, bank);
         inventory.setItem(26, market);
         inventory.setItem(35, port);
 

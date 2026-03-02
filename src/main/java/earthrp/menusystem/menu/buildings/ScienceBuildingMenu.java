@@ -54,18 +54,8 @@ public class ScienceBuildingMenu extends Menu {
         Material item = b.getItem();
         switch (Objects.requireNonNull(e.getCurrentItem()).getType()){
 
-            case HEART_OF_THE_SEA -> {
 
-                e.getWhoClicked().closeInventory();
 
-                new TechnologyMenu(new MenuUtility(p), this.earthPlugin).open();
-
-            }
-            case BARREL -> {
-
-                e.getWhoClicked().closeInventory();
-                new BuildingsMenu(new MenuUtility(p), this.earthPlugin).open();
-            }
             case REDSTONE_TORCH -> {
 
                 e.getWhoClicked().closeInventory();

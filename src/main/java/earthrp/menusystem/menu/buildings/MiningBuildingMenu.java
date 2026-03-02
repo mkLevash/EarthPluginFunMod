@@ -63,13 +63,7 @@ public class MiningBuildingMenu extends Menu {
         Material item = b.getItem();
         switch (Objects.requireNonNull(e.getCurrentItem()).getType()){
 
-            case HEART_OF_THE_SEA -> {
 
-                e.getWhoClicked().closeInventory();
-
-                new TechnologyMenu(new MenuUtility(p), this.earthPlugin).open();
-
-            }
             case SOUL_TORCH, BELL -> {
 
                 e.getWhoClicked().closeInventory();

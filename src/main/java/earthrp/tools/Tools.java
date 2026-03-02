@@ -427,19 +427,19 @@ public class Tools {
 
     public static void spawnBattleHologram(Battle battle){
 
-        Location spawnLoc = battle.getLoc().add(0,3,0);
+        Location spawnLoc = battle.getLoc().add(0,2,0);
         Army att = battle.getAttacker();
         Army def = battle.getDefender();
         spawnHologram(spawnLoc, att.getOwner().getDisplayName() + " vs " + def.getOwner().getDisplayName(),"battleTitle");
         int i = 0;
         spawnHologram(spawnLoc.clone().add(0,-0.25*++i,0), String.valueOf(Component.text("████ Привет ████").color(TextColor.color(0x555555))),"battlePhase");
         spawnHologram(spawnLoc.clone().add(0,-0.25*++i,0),"бросок кубика", "battleDice" );
-        spawnHologram(spawnLoc.clone().add(0,-0.25*++i,0),"урон", "battleCas" );
+        //spawnHologram(spawnLoc.clone().add(0,-0.25*++i,0),"урон", "battleCas" );
         spawnHologram(spawnLoc.clone().add(0,-0.25*++i,0),"0 в бою 0", "battleTroops" );
-        spawnHologram(spawnLoc.clone().add(0,-0.25*++i,0),"0 отступили 0", "battleRetreat");
-        spawnHologram(spawnLoc.clone().add(0,-0.25*++i,0),att.getSize() + "резервы" + def.getSize(), "battleReserve");
+        //spawnHologram(spawnLoc.clone().add(0,-0.25*++i,0),"0 отступили 0", "battleRetreat");
+        //spawnHologram(spawnLoc.clone().add(0,-0.25*++i,0),att.getSize() + "резервы" + def.getSize(), "battleReserve");
         spawnHologram(spawnLoc.clone().add(0,-0.25*++i,0),att.getMorale() + "мораль" + def.getMorale(), "battleMorale" );
-        spawnHologram(spawnLoc.clone().add(0,-0.25*++i,0),att.getTactic() + "тактика" +def.getTactic() , "battleTac" );
+        //spawnHologram(spawnLoc.clone().add(0,-0.25*++i,0),att.getTactic() + "тактика" +def.getTactic() , "battleTac" );
 
 
     }
@@ -570,35 +570,35 @@ public class Tools {
 
 
 
-    public static ItemStack createItemTech(Material material, String techName, String techId, int techCost, int techStatus, List<String> techLore, int techCheck){
-        ItemStack item = new ItemStack(material);
-        ItemMeta itemMeta = item.getItemMeta();
-
-        if (techStatus == 0) {
-            itemMeta.setDisplayName(colorText("&f" + techName + " &b" + techCost + "&fૹ"));
-            itemMeta.getPersistentDataContainer().set(techStatusKey,PersistentDataType.BOOLEAN, false);
-
-        } else {
-            itemMeta.setDisplayName(colorText("&f" + techName));
-            techLore.addFirst(colorText("&2Уже исследовано"));
-            itemMeta.addEnchant(Enchantment.INFINITY, 1, true);
-            itemMeta.getPersistentDataContainer().set(techStatusKey,PersistentDataType.BOOLEAN, true);
-
-        }
-        if(techCheck==0){
-            itemMeta.getPersistentDataContainer().set(techCheckKey,PersistentDataType.BOOLEAN, false);
-        }else{
-            itemMeta.getPersistentDataContainer().set(techCheckKey,PersistentDataType.BOOLEAN, true);
-        }
-        itemMeta.setLore(techLore);
-        itemMeta.getPersistentDataContainer().set(techCostKey,PersistentDataType.INTEGER, techCost);
-        itemMeta.getPersistentDataContainer().set(techIdKey,PersistentDataType.STRING, techId);
-        itemMeta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
-        itemMeta.addItemFlags(ItemFlag.HIDE_ADDITIONAL_TOOLTIP);
-        itemMeta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
-        item.setItemMeta(itemMeta);
-        return item;
-    }
+//    public static ItemStack createItemTech(Material material, String techName, String techId, int techCost, int techStatus, List<String> techLore, int techCheck){
+//        ItemStack item = new ItemStack(material);
+//        ItemMeta itemMeta = item.getItemMeta();
+//
+//        if (techStatus == 0) {
+//            itemMeta.setDisplayName(colorText("&f" + techName + " &b" + techCost + "&fૹ"));
+//            itemMeta.getPersistentDataContainer().set(techStatusKey,PersistentDataType.BOOLEAN, false);
+//
+//        } else {
+//            itemMeta.setDisplayName(colorText("&f" + techName));
+//            techLore.addFirst(colorText("&2Уже исследовано"));
+//            itemMeta.addEnchant(Enchantment.INFINITY, 1, true);
+//            itemMeta.getPersistentDataContainer().set(techStatusKey,PersistentDataType.BOOLEAN, true);
+//
+//        }
+//        if(techCheck==0){
+//            itemMeta.getPersistentDataContainer().set(techCheckKey,PersistentDataType.BOOLEAN, false);
+//        }else{
+//            itemMeta.getPersistentDataContainer().set(techCheckKey,PersistentDataType.BOOLEAN, true);
+//        }
+//        itemMeta.setLore(techLore);
+//        itemMeta.getPersistentDataContainer().set(techCostKey,PersistentDataType.INTEGER, techCost);
+//        itemMeta.getPersistentDataContainer().set(techIdKey,PersistentDataType.STRING, techId);
+//        itemMeta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
+//        itemMeta.addItemFlags(ItemFlag.HIDE_ADDITIONAL_TOOLTIP);
+//        itemMeta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
+//        item.setItemMeta(itemMeta);
+//        return item;
+//    }
 
     public static ItemStack createWarItemTech(String techName, String techId, int techCost, int techStatus, List<String> techLore, int techCheck, List<String> effectId, List<Double> effects){
         ItemStack item;
@@ -681,73 +681,73 @@ public class Tools {
         return item;
     }
 
-    public static ItemStack createItemTech(Material material,String techId, EPlayer player){
-        ItemStack item = new ItemStack(material);
-        ItemMeta itemMeta;
-        double costMod = player.getAttribute(EPlayerAttribute.TECH_COST);
-        boolean techStatus = player.getTech(EPlayerTech.fromString(techId));
-        boolean techCheck = EPlayerTech.fromString(techId).canResearch(player.getTechMap());
-        String techName = CustomConfig.get().getString("tech.name."+techId);
-        List<String> techLore = CustomConfig.get().getStringList("tech.lore."+techId);
-        int techCost = (int) Math.round(CustomConfig.get().getInt("tech.cost."+techId) * costMod );
+//    public static ItemStack createItemTech(Material material,String techId, EPlayer player){
+//        ItemStack item = new ItemStack(material);
+//        ItemMeta itemMeta;
+//        double costMod = player.getAttribute(EPlayerAttribute.TECH_COST);
+//        boolean techStatus = player.getTech(EPlayerTech.fromString(techId));
+//        boolean techCheck = EPlayerTech.fromString(techId).canResearch(player.getTechMap());
+//        String techName = CustomConfig.get().getString("tech.name."+techId);
+//        List<String> techLore = CustomConfig.get().getStringList("tech.lore."+techId);
+//        int techCost = (int) Math.round(CustomConfig.get().getInt("tech.cost."+techId) * costMod );
+//
+//        if (!techStatus) {
+//            itemMeta = item.getItemMeta();
+//            itemMeta.setDisplayName(colorText("&f" + techName + " &b" + techCost + "&fૹ"));
+//
+//        } else {
+//            itemMeta = item.getItemMeta();
+//            itemMeta.setDisplayName(colorText("&f" + techName));
+//            techLore.addFirst(colorText("&2Уже исследовано"));
+//            itemMeta.addEnchant(Enchantment.INFINITY, 1, true);
+//        }
+//        itemMeta.getPersistentDataContainer().set(techStatusKey,PersistentDataType.BOOLEAN, techStatus);
+//        itemMeta.getPersistentDataContainer().set(techCheckKey,PersistentDataType.BOOLEAN, techCheck);
+//        itemMeta.setLore(techLore);
+//        itemMeta.getPersistentDataContainer().set(techCostKey,PersistentDataType.INTEGER, techCost);
+//        itemMeta.getPersistentDataContainer().set(techIdKey,PersistentDataType.STRING, techId);
+//        itemMeta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
+//        itemMeta.addItemFlags(ItemFlag.HIDE_ADDITIONAL_TOOLTIP);
+//        itemMeta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
+//        item.setItemMeta(itemMeta);
+//        return item;
+//    }
 
-        if (!techStatus) {
-            itemMeta = item.getItemMeta();
-            itemMeta.setDisplayName(colorText("&f" + techName + " &b" + techCost + "&fૹ"));
-
-        } else {
-            itemMeta = item.getItemMeta();
-            itemMeta.setDisplayName(colorText("&f" + techName));
-            techLore.addFirst(colorText("&2Уже исследовано"));
-            itemMeta.addEnchant(Enchantment.INFINITY, 1, true);
-        }
-        itemMeta.getPersistentDataContainer().set(techStatusKey,PersistentDataType.BOOLEAN, techStatus);
-        itemMeta.getPersistentDataContainer().set(techCheckKey,PersistentDataType.BOOLEAN, techCheck);
-        itemMeta.setLore(techLore);
-        itemMeta.getPersistentDataContainer().set(techCostKey,PersistentDataType.INTEGER, techCost);
-        itemMeta.getPersistentDataContainer().set(techIdKey,PersistentDataType.STRING, techId);
-        itemMeta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
-        itemMeta.addItemFlags(ItemFlag.HIDE_ADDITIONAL_TOOLTIP);
-        itemMeta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
-        item.setItemMeta(itemMeta);
-        return item;
-    }
 
 
-
-    public static ItemStack createItemTech(String techId, EPlayer player){
-        ItemStack item;
-        ItemMeta itemMeta;
-        double costMod = player.getAttribute(EPlayerAttribute.TECH_COST);
-        boolean techStatus = player.getTech(EPlayerTech.fromString(techId));
-        boolean techCheck = EPlayerTech.fromString(techId).canResearch(player.getTechMap());
-        String techName = CustomConfig.get().getString("tech.name."+techId);
-        List<String> techLore = CustomConfig.get().getStringList("tech.lore."+techId);
-        int techCost = (int) Math.round(CustomConfig.get().getInt("tech.cost."+techId) * costMod );
-
-        if (!techStatus) {
-            item = new ItemStack(Material.BOOK);
-            itemMeta = item.getItemMeta();
-            itemMeta.setDisplayName(colorText("&f" + techName + " &b" + techCost + "&fૹ"));
-
-        } else {
-            item = new ItemStack(Material.ENCHANTED_BOOK);
-            itemMeta = item.getItemMeta();
-            itemMeta.setDisplayName(colorText("&f" + techName));
-            techLore.addFirst(colorText("&2Уже исследовано"));
-            itemMeta.addEnchant(Enchantment.INFINITY, 1, true);
-        }
-        itemMeta.getPersistentDataContainer().set(techStatusKey,PersistentDataType.BOOLEAN, techStatus);
-        itemMeta.getPersistentDataContainer().set(techCheckKey,PersistentDataType.BOOLEAN, techCheck);
-        itemMeta.setLore(techLore);
-        itemMeta.getPersistentDataContainer().set(techCostKey,PersistentDataType.INTEGER, techCost);
-        itemMeta.getPersistentDataContainer().set(techIdKey,PersistentDataType.STRING, techId);
-        itemMeta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
-        itemMeta.addItemFlags(ItemFlag.HIDE_ADDITIONAL_TOOLTIP);
-        itemMeta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
-        item.setItemMeta(itemMeta);
-        return item;
-    }
+//    public static ItemStack createItemTech(String techId, EPlayer player){
+//        ItemStack item;
+//        ItemMeta itemMeta;
+//        double costMod = player.getAttribute(EPlayerAttribute.TECH_COST);
+//        boolean techStatus = player.getTech(EPlayerTech.fromString(techId));
+//        boolean techCheck = EPlayerTech.fromString(techId).canResearch(player.getTechMap());
+//        String techName = CustomConfig.get().getString("tech.name."+techId);
+//        List<String> techLore = CustomConfig.get().getStringList("tech.lore."+techId);
+//        int techCost = (int) Math.round(CustomConfig.get().getInt("tech.cost."+techId) * costMod );
+//
+//        if (!techStatus) {
+//            item = new ItemStack(Material.BOOK);
+//            itemMeta = item.getItemMeta();
+//            itemMeta.setDisplayName(colorText("&f" + techName + " &b" + techCost + "&fૹ"));
+//
+//        } else {
+//            item = new ItemStack(Material.ENCHANTED_BOOK);
+//            itemMeta = item.getItemMeta();
+//            itemMeta.setDisplayName(colorText("&f" + techName));
+//            techLore.addFirst(colorText("&2Уже исследовано"));
+//            itemMeta.addEnchant(Enchantment.INFINITY, 1, true);
+//        }
+//        itemMeta.getPersistentDataContainer().set(techStatusKey,PersistentDataType.BOOLEAN, techStatus);
+//        itemMeta.getPersistentDataContainer().set(techCheckKey,PersistentDataType.BOOLEAN, techCheck);
+//        itemMeta.setLore(techLore);
+//        itemMeta.getPersistentDataContainer().set(techCostKey,PersistentDataType.INTEGER, techCost);
+//        itemMeta.getPersistentDataContainer().set(techIdKey,PersistentDataType.STRING, techId);
+//        itemMeta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
+//        itemMeta.addItemFlags(ItemFlag.HIDE_ADDITIONAL_TOOLTIP);
+//        itemMeta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
+//        item.setItemMeta(itemMeta);
+//        return item;
+//    }
 
 
     public static void techProcess(ItemStack item, EPlayer player, Player p){
@@ -762,9 +762,6 @@ public class Tools {
                 player.addAttribute(effect,tech.getEffect().get(effect));
             }
             ItemStack idea = createIdea();
-            if(tech.equals(EPlayerTech.SCHOOL)){
-                p.getInventory().addItem(idea);
-            }
             if(tech.equals(EPlayerTech.UNIVERSITY)){
                 idea.setAmount(2);
                 p.getInventory().addItem(idea);
@@ -773,9 +770,6 @@ public class Tools {
             player.setTech(tech,false);
             player.addAttribute(EPlayerAttribute.OI_BALANCE, techCost);
             ItemStack idea = createIdea();
-            if(tech.equals(EPlayerTech.SCHOOL)){
-                p.getInventory().removeItem(idea);
-            }
             if(tech.equals(EPlayerTech.UNIVERSITY)){
                 idea.setAmount(2);
                 p.getInventory().removeItem(idea);
@@ -799,7 +793,7 @@ public class Tools {
             for(EPlayerAttribute effect:tech.getEffect().keySet()){
                 player.addAttribute(effect,tech.getEffect().get(effect));
             }
-        }else {
+        }else if (player.getTech(tech)) {
             player.setTech(tech,false);
             player.addAttribute(EPlayerAttribute.OI_BALANCE, techCost);
             for(EPlayerAttribute effect:tech.getEffect().keySet()){

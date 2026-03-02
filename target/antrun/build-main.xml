@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project name="maven-antrun-" default="main">
   <target name="main">
-    <copy file="target/EarthPluginFunMod-beta 0.1.jar" tofile="C:\Users\user\Documents\Minecraft\minecraft_1.21\plugins\EarthPlugin.jar" />
+    <copy file="target/EarthPluginFunMod-beta 0.1.jar" tofile="C:\Users\user\Documents\Minecraft\paper_1.21.4\plugins\EarthPluginLegacyMod.jar" />
   </target>
 </project>

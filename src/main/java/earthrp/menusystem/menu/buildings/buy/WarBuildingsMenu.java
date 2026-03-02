@@ -33,12 +33,17 @@ public class WarBuildingsMenu extends Menu {
 
     double costMod = player.getWarBuildingCost();
     double traditionMod = 1.0;
-    boolean tBarack = player.getTech(EPlayerTech.INF2);
-    boolean tStable = player.getTech(EPlayerTech.CAV2);
+    
+    // Военные здания - некоторые требуют технологий
+    boolean tBarack = player.getTech(EPlayerTech.INF3);
+    boolean tStable = player.getTech(EPlayerTech.CAV3);
     boolean tGunFactory = player.getTech(EPlayerTech.ART1);
-    boolean tFort = player.getTech(EPlayerTech.FORT);
-    boolean tForge = player.getTech(EPlayerTech.FORGE);
-    boolean tShipyard = player.getTech(EPlayerTech.SHIPYARD);
+    
+    // Здания с прямыми зависимостями от базовых технологий
+    boolean tFort = player.getTech(EPlayerTech.BUILDING);
+    boolean tForge = player.getTech(EPlayerTech.COPPER);
+    boolean tShipyard = player.getTech(EPlayerTech.SHIPBUILDING);
+    
     int barrackCost = (int) Math.ceil(128*costMod);
     int stableCost = (int) Math.ceil(160*costMod);
     int gunFactoryCost = (int) Math.ceil(256*costMod);
@@ -109,7 +114,7 @@ public class WarBuildingsMenu extends Menu {
                 (" "),
                 Tools.colorText( "&a20 &fТрадиций для скидки"),
                 (" "),
-                Tools.colorText("&fПозволяет создавать Пехоту 2+ уровня.")
+                Tools.colorText("&fПозволяет создавать Пехоту 3+ уровня.")
         ));
         ItemStack barrack = Tools.createBuildingBuy(Material.ICE,"Казарма","barrack",barrackLore,barrackCost,tBarack, "inf");
 
@@ -119,7 +124,7 @@ public class WarBuildingsMenu extends Menu {
                 (" "),
                 Tools.colorText( "&a20 &fТрадиций для скидки"),
                 (" "),
-                Tools.colorText("&fПозволяет создавать Кавалерию.")
+                Tools.colorText("&fПозволяет создавать Кавалерию 3+ уровня.")
         ));
         ItemStack stable = Tools.createBuildingBuy(Material.ICE, "Конюшня","stable",stableLore,stableCost,tStable, "cav");
 
@@ -173,10 +178,6 @@ public class WarBuildingsMenu extends Menu {
         inventory.setItem(12, fort);
         inventory.setItem(13, forge);
         inventory.setItem(14, shipyard);
-//
-//        inventory.setItem(6, tech7);
-//
-//        inventory.setItem(7, tech8);
 
         inventory.setItem(17, createBackItem());
 

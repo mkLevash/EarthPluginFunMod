@@ -62,7 +62,7 @@ public class ReusTechMenu extends Menu {
 
     @Override
     public int getSlots() {
-        return 9;
+        return 27;
     }
 
     @Override
@@ -104,8 +104,8 @@ public class ReusTechMenu extends Menu {
                     }
                 }
             }
-            if(item.getType().equals(Material.BARRIER)) new TechnologyMenu(menuUtility, this.earthPlugin).open();
-            else new ReusTechMenu(menuUtility, this.earthPlugin).open();
+            if(item.getType().equals(Material.BARRIER)) new TechnologyMenu(menuUtility).open();
+            else new ReusTechMenu(menuUtility).open();
 
         }
 
@@ -146,11 +146,6 @@ public class ReusTechMenu extends Menu {
         tech42Meta.getPersistentDataContainer().set(techIdKey,PersistentDataType.STRING, "tac");
         tech42.setItemMeta(tech42Meta);
 
-        ItemStack next = new ItemStack(Material.BARRIER, 1);
-        ItemMeta nextMeta = next.getItemMeta();
-        nextMeta.setDisplayName(ChatColor.DARK_GREEN + "BACK");
-        next.setItemMeta(nextMeta);
-
 
 
 
@@ -162,7 +157,13 @@ public class ReusTechMenu extends Menu {
 
 
 
-        inventory.setItem(8, next);
+        for (int i = 0; i <= 9; i++) {
+            fillIfEmpty(i);
+            fillIfEmpty(i + 17);
+        }
+
+
+        inventory.setItem(22,createBackItem());
 
     }
 }

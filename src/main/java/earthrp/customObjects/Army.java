@@ -192,15 +192,6 @@ public class Army implements Comparable<Army>{
         Map<Material,Integer> cavMaterials = new HashMap<>();
         Map<Material,Integer> artMaterials = new HashMap<>();
 
-        if (getOwner().getTech(EPlayerTech.INF2)) {
-            maxInf = 2;
-            infFire = 0.8;
-            infShock = 0.95;
-            infFirePips = 1;
-            infShockPips = 1;
-            infMaterials = Map.of(Material.HAY_BLOCK,2, Material.IRON_BLOCK,2, Material.ARROW,2,Material.LEATHER,1);
-
-        }
         if (getOwner().getTech(EPlayerTech.INF3)) {
             maxInf = 3;
             infFire = 2.1;
@@ -210,25 +201,7 @@ public class Army implements Comparable<Army>{
             infMoralePips = 1;
             infMaterials = Map.of(Material.HAY_BLOCK,2,Material.IRON_BLOCK,1,Material.DIAMOND_BLOCK,1,Material.COOKED_PORKCHOP,2,Material.GUNPOWDER,1);
         }
-        if (getOwner().getTech(EPlayerTech.INF4)) {
-            maxInf = 4;
-            infFire = 3.1;
-            infShock = 2.1;
-            infFirePips = 3;
-            infShockPips = 2;
-            infMoralePips = 2;
-            infMaterials = Map.of(Material.HAY_BLOCK,2,Material.AMETHYST_BLOCK,1,Material.DIAMOND_BLOCK,1,Material.GUNPOWDER,3);
-        }
 
-        if (getOwner().getTech(EPlayerTech.CAV2)) {
-            maxCav = 2;
-            cavFire = 0;
-            cavShock = 2;
-            cavShockPips = 2;
-            cavMoralePips = 1;
-            cavMaterials = Map.of(Material.HAY_BLOCK,2,Material.IRON_BLOCK,2,Material.LEATHER,1,Material.ARROW,1);
-
-        }
         if (getOwner().getTech(EPlayerTech.CAV3)) {
             maxCav = 3;
             cavFire = 0.5;
@@ -247,7 +220,7 @@ public class Army implements Comparable<Army>{
             cavMaterials = Map.of(Material.HAY_BLOCK,1,Material.AMETHYST_BLOCK,1,Material.DIAMOND_BLOCK,1,Material.LEATHER,1,Material.GUNPOWDER,2);
         }
 
-        if (getOwner().getTech(EPlayerTech.ART2)) {
+        if (getOwner().getTech(EPlayerTech.ART1)) {
             maxArt = 4;
             artFire = 8;
             artShock = 1.5;

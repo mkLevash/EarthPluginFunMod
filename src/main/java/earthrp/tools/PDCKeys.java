@@ -49,6 +49,7 @@ public class PDCKeys {
     public final static NamespacedKey techEffectKey = new NamespacedKey(Earth.getInstance(), "techEffect");
 
     public final static NamespacedKey menuIdKey = new NamespacedKey(Earth.getInstance(), "menuId");
+    public final static NamespacedKey epochUnlockedKey = new NamespacedKey(Earth.getInstance(), "epochUnlocked");
 
     public final static NamespacedKey debugStickKey = new NamespacedKey(Earth.getInstance(), "debugStick");
 }

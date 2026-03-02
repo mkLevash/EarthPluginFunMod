@@ -29,7 +29,7 @@ public class Main extends Menu {
 
     @Override
     public int getSlots() {
-        return 9;
+        return 27;
     }
 
     @Override
@@ -80,25 +80,27 @@ public class Main extends Menu {
 
 
 
-        ItemStack tech = makeItem("Технологии","menuTech","tech");
+        ItemStack tech = makeItem("Технологии","tech","menuTech");
 
-        ItemStack build = makeItem(Material.BARREL, ChatColor.GOLD + "Здания");
+        ItemStack build = makeItem(Material.BARREL, "<gold>Здания");
 
         ItemStack country = makeItem(Material.BOOK,"Статистика страны");
 
-        ItemStack war = makeItem("Армия страны","menuArmyStat","army");
+        ItemStack war = makeItem("Армия страны","army","menuArmyStat");
 
-        ItemStack idea = makeItem("Идеи","menuIdea","idea");
+        ItemStack idea = makeItem("Идеи","idea","menuIdea");
 
 
-        inventory.setItem(0, tech);
+        inventory.setItem(10, tech);
 
-        inventory.setItem(1, idea);
+        inventory.setItem(11, idea);
 
-        inventory.setItem(4, build);
+        inventory.setItem(13, build);
 
-        inventory.setItem(7, country);
-        inventory.setItem(8, war);
+        inventory.setItem(15, country);
+        inventory.setItem(16, war);
+
+
 
 
     }

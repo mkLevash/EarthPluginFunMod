@@ -142,13 +142,6 @@ public class EPlayer implements Comparable<EPlayer> {
 
     public int getMaxPolit(){
         double max = getAttribute(EPlayerAttribute.POLIT_MAX);
-
-        if (getTech(EPlayerTech.OFFICE_BASE)){
-            max += 5;
-        }
-        if (getTech(EPlayerTech.OFFICE_UP)){
-            max += 5;
-        }
         return (int) Math.floor(max*getAttribute(EPlayerAttribute.POLIT_MAX_MOD));
     }
 
