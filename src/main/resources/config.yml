@@ -4,7 +4,7 @@ status:
   day: '1'
   month: '1'
 #токен для подключения к боту дискорд
-token: 'MTA0MjExMjYwNzAxMzg0Mjk4NA.GpJMxc.0fYIOqBUh1T-BorOZfmPfiln492g3TbBQXFhgY'
+token: ''
 #Увеличение стоимости идей за каждый закрытый шалкер(плоское)
 ideaIncMod: 10
 ideaCostBase: 25
