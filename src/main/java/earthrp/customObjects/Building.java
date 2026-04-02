@@ -33,14 +33,12 @@ public class Building implements Comparable<Building>{
 
     private int status;
 
-    private final String world;
-    private final int x;
-    private final int z;
+    private final Location location;
 
     private Material item;
 
 
-    public Building( UUID buildingUniqueId, UUID townUniqueId, String townName, UUID marketUniqueId, String buildingType, int buildingStatus, String material, String worldName, int chunkX, int chunkZ){
+    public Building( UUID buildingUniqueId, UUID townUniqueId, String townName, UUID marketUniqueId, String buildingType, int buildingStatus, String material, Location location){
         this.uuid = buildingUniqueId;
         this.tuuid = townUniqueId;
         this.tName = townName;
@@ -48,9 +46,7 @@ public class Building implements Comparable<Building>{
         this.type = buildingType;
         this.status = buildingStatus;
         this.item = material != null ? Material.matchMaterial(material) : null;
-        this.world = worldName;
-        this.x = chunkX;
-        this.z = chunkZ;
+        this.location = location;
         db = Earth.getInstance().getServerDatabase();
 
     }
@@ -64,18 +60,6 @@ public class Building implements Comparable<Building>{
     public UUID getMarketId(){return this.muuid;}
     public String getTownName(){return this.tName;}
 
-
-
-
-    public Location getLocation(){
-        Entity[] tileEntities = Bukkit.getWorld(this.world).getChunkAt(x,z).getEntities();
-        for(Entity en: tileEntities){
-            if (en instanceof ArmorStand armorStand && uuid.toString().equals(armorStand.getCustomName())) {
-                return armorStand.getLocation();
-            }
-        }
-        return null;
-    }
 
 
 

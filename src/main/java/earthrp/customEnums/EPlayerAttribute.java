@@ -89,6 +89,9 @@ public enum EPlayerAttribute {
     MORALE_DAMAGE(1.0),
     MORALE_RESIST(1.0),
 
+    LAND_MORALE(2.5),
+    NAVAL_MORALE(2.5),
+
     // Типы войск (Стоимость и Боеспособность)
     INF_COST(1.0),
     INF_COMBAT_ABILITY(1.0),

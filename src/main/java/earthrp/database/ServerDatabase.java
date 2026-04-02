@@ -162,8 +162,9 @@ public class ServerDatabase {
                 "item = ?, " +
                 "status = ?, " +
                 "world = ?, " +
-                "chunk_x = ?, " +
-                "chunk_z = ?, " +
+                "x = ?, " +
+                "y = ?, " +
+                "z = ?, " +
                 "market_id = ? " +
                 "WHERE uuid = ?";
         Set<Building> buildings = getBuildings();
@@ -178,9 +179,10 @@ public class ServerDatabase {
                 pstmt.setString(paramIndex++, building.getType());
                 pstmt.setString(paramIndex++, building.getItem() != null ? building.getItem().toString() : null);
                 pstmt.setInt(paramIndex++, building.getStatus());
-                pstmt.setString(paramIndex++, building.getWorld());
-                pstmt.setInt(paramIndex++, building.getX());
-                pstmt.setInt(paramIndex++, building.getZ());
+                pstmt.setString(paramIndex++, building.getLocation().getWorld().toString());
+                pstmt.setDouble(paramIndex++, building.getLocation().getX());
+                pstmt.setDouble(paramIndex++, building.getLocation().getY());
+                pstmt.setDouble(paramIndex++, building.getLocation().getZ());
                 pstmt.setString(paramIndex++, building.getMarketId() != null ? building.getMarketId().toString() : null);
                 pstmt.setString(paramIndex, building.getUniqueId().toString());
                 pstmt.addBatch();
@@ -739,6 +741,8 @@ public class ServerDatabase {
     private Building createBuildingFromResultSet(ResultSet rs) throws SQLException {
         String marketIdStr = rs.getString("market_id");
         UUID marketId = marketIdStr != null ? UUID.fromString(marketIdStr) : null;
+        World world = Bukkit.getWorld(rs.getString("world"));
+        Location location = new Location(world,rs.getDouble("x"),rs.getDouble("y"),rs.getDouble("z"));
         return new Building(
                 UUID.fromString(rs.getString("uuid")),
                 UUID.fromString(rs.getString("town_id")),
@@ -747,9 +751,7 @@ public class ServerDatabase {
                 rs.getString("type"),
                 rs.getInt("status"),
                 rs.getString("item"),
-                rs.getString("world"),
-                rs.getInt("chunk_x"),
-                rs.getInt("chunk_z")
+                location
         );
     }
 
@@ -1696,15 +1698,16 @@ public class ServerDatabase {
 
     public void addBuilding(Building building){
         try (Connection conn = getConnection("addBuilding");
-             PreparedStatement preparedStatement = conn.prepareStatement("INSERT INTO buildings (town_name, uuid, town_id, type, world, chunk_x, chunk_z) VALUES (?, ?, ?, ?, ?, ?, ?)")){
+             PreparedStatement preparedStatement = conn.prepareStatement("INSERT INTO buildings (town_name, uuid, town_id, type, world, x, y, z) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")){
             int paramIndex = 1;
             preparedStatement.setString(paramIndex++, building.getTownName());
             preparedStatement.setString(paramIndex++, building.getUniqueId().toString());
             preparedStatement.setString(paramIndex++, building.getTownId().toString());
             preparedStatement.setString(paramIndex++, building.getType());
-            preparedStatement.setString(paramIndex++, building.getWorld());
-            preparedStatement.setInt(paramIndex++, building.getX());
-            preparedStatement.setInt(paramIndex, building.getZ());
+            preparedStatement.setString(paramIndex++, building.getLocation().getWorld().toString());
+            preparedStatement.setDouble(paramIndex++, building.getLocation().getX());
+            preparedStatement.setDouble(paramIndex++, building.getLocation().getY());
+            preparedStatement.setDouble(paramIndex, building.getLocation().getZ());
             preparedStatement.executeUpdate();
             buildingCache.put(building.getUniqueId(),building);
             Town town = getTown(building.getTownId());
@@ -1720,11 +1723,8 @@ public class ServerDatabase {
         Town town = getTown(building.getTownId());
         town.removeBuilding(building);
 
-        // Получаем мир и ищем ArmorStand
-        World world = Bukkit.getWorld(building.getWorld());
-        if (world == null) return;
 
-        Chunk chunk = world.getChunkAt(building.getLocation());
+        Chunk chunk = building.getLocation().getChunk();
         Location[] armorStandLocs = new Location[3];
         armorStandLocs[0] = building.getLocation();
         armorStandLocs[1] = building.getLocation().clone().add(0.5, 1, 0.5);

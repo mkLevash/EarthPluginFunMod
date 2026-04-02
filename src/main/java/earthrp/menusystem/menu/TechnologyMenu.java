@@ -92,6 +92,7 @@ public class TechnologyMenu extends Menu {
             case "feudalism" -> new FeudalTechMenu(menuUtility).open();
             case "renaissance" -> new RenaissanceTechMenu(menuUtility).open();
             case "manufacture" -> new ManufactureTechMenu(menuUtility).open();
+            case "industrial" -> new TechnologyMenu(menuUtility).open();
         }
     }
 
@@ -122,8 +123,8 @@ public class TechnologyMenu extends Menu {
         ItemStack economy = createEpochItem("<red>","Племя", "tribal", player);
         ItemStack reusable = createEpochItem("<green>","Феодализм", "feudalism", player);
         ItemStack social = createEpochItem(Material.BOOK,"<blue>","Ренессанс", "renaissance", player);
-        ItemStack craft = createEpochItem(Material.CRAFTING_TABLE,"<light_purple>","Мануфактуры", "manufacture", player);
-        ItemStack industrial = createEpochItem(Material.SMITHING_TABLE,"<aqua>","Индустриализация", "industrial", player);
+        ItemStack craft = createEpochItem(Material.SMITHING_TABLE,"<light_purple>","Мануфактуры", "manufacture", player);
+        ItemStack industrial = createEpochItem(Material.BLAST_FURNACE,"<aqua>","Индустриализация", "industrial", player);
 
 
         inventory.setItem(20, economy);

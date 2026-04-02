@@ -37,11 +37,11 @@ public class WarBuildingsMenu extends Menu {
     // Военные здания - некоторые требуют технологий
     boolean tBarack = player.getTech(EPlayerTech.INF3);
     boolean tStable = player.getTech(EPlayerTech.CAV3);
-    boolean tGunFactory = player.getTech(EPlayerTech.ART1);
+    boolean tGunFactory = player.getTech(EPlayerTech.GUNPOWDER);
     
     // Здания с прямыми зависимостями от базовых технологий
     boolean tFort = player.getTech(EPlayerTech.BUILDING);
-    boolean tForge = player.getTech(EPlayerTech.COPPER);
+    boolean tForge = player.getTech(EPlayerTech.IRON);
     boolean tShipyard = player.getTech(EPlayerTech.SHIPBUILDING);
     
     int barrackCost = (int) Math.ceil(128*costMod);

@@ -60,24 +60,34 @@ public class TribalTechMenu extends Menu {
         inventory.setItem(0,tribal);
         // === ЦЕНТР - Ключевые технологии ===
         ItemStack mining = makeTech("mining",player,"mining");
-        ItemStack building = makeTech("building",player, "building");
+        ItemStack building = makeTech(Material.CHEST,"building",player);
+        ItemStack fort = makeTech(Material.COBBLESTONE,"fort",player);
+        ItemStack lumber = makeTech("lumber",player,"lumber");
 
-        inventory.setItem(21, mining); // Центр
-        inventory.setItem(30, building);
+        inventory.setItem(20, mining);
+        inventory.setItem(21, fort);
+        inventory.setItem(29, lumber); // Центр
+        inventory.setItem(33, building);
         
         // === ЭКОНОМИКА (слева) ===
+        ItemStack baseMilitary = makeTech("baseMilitary", player,"military1");
+        inventory.setItem(13, baseMilitary);
         ItemStack livestock = makeTech(Material.LEATHER,"livestock",player);
         ItemStack irrigation = makeTech(Material.WHEAT,"irrigation",player);
-        inventory.setItem(22, livestock);
-        inventory.setItem(23, irrigation);
+        ItemStack horseRidding = makeTech(Material.SADDLE, "horseRidding", player);
+        inventory.setItem(22, horseRidding);
+        inventory.setItem(23, livestock);
+        inventory.setItem(24, irrigation);
         
         // === ТОРГОВЛЯ И МОРСКОЕ ДЕЛО (справа) ===
         ItemStack shipping = makeTech(Material.OAK_BOAT,"shipping",player);
-        inventory.setItem(31, shipping);
+        inventory.setItem(30, shipping);
         
         // === НАУКА (низ) ===
         ItemStack writing = makeTech(Material.BOOK,"writing",player);
-        inventory.setItem(32, writing);
+        inventory.setItem(31, writing);
+        ItemStack trade = makeTech(Material.EMERALD, "trade", player);
+        inventory.setItem(32, trade);
 
         for (int i = 0; i <= 9; i++) {
             fillIfEmpty(i);

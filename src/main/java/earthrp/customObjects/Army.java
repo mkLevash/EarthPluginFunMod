@@ -220,7 +220,7 @@ public class Army implements Comparable<Army>{
             cavMaterials = Map.of(Material.HAY_BLOCK,1,Material.AMETHYST_BLOCK,1,Material.DIAMOND_BLOCK,1,Material.LEATHER,1,Material.GUNPOWDER,2);
         }
 
-        if (getOwner().getTech(EPlayerTech.ART1)) {
+        if (getOwner().getTech(EPlayerTech.ART2)) {
             maxArt = 4;
             artFire = 8;
             artShock = 1.5;

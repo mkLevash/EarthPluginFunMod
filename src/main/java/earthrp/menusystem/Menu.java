@@ -106,16 +106,23 @@ public abstract class Menu implements InventoryHolder {
 
     public ItemStack makeTech(Material material, String techId, EPlayer player, String customModel){
         double costMod = player.getAttribute(EPlayerAttribute.TECH_COST);
-        boolean techStatus = player.getTech(EPlayerTech.fromString(techId));
-        boolean techCheck = EPlayerTech.fromString(techId).canResearch(player.getTechMap());
-        int techCost = (int) Math.round(CustomConfig.get().getInt("tech.cost."+techId) * costMod );
-
-        String techName = CustomConfig.get().getString("tech.name."+techId, "techName");
-        List<String> techLore = CustomConfig.get().getStringList("tech.lore."+techId);
+        EPlayerTech tech = EPlayerTech.fromString(techId);
+        boolean techStatus = false;
+        boolean techCheck = false;
+        int techCost = 0;
+        String techName = "defaultName";
         List<Component> lore = new ArrayList<>();
-        for(String s:techLore){
-            lore.add(colorText(s));
+        if (tech != null){
+            techStatus = player.getTech(tech);
+            techCheck = tech.canResearch(player.getTechMap());
+            techCost = (int) Math.round(CustomConfig.get().getInt("tech.cost."+techId) * costMod );
+
+            techName = CustomConfig.get().getString("tech.name."+techId, "techName");
+            lore = tech.getLore(player.getTechMap());
+
         }
+
+
 
 
         ItemStack item = makeItem(material, techName + " <aqua>" + techCost + "<white>ૹ");
@@ -124,8 +131,7 @@ public abstract class Menu implements InventoryHolder {
 
         if(techStatus) {
             if(material.equals(Material.BOOK)) item = makeItem(Material.ENCHANTED_BOOK,techName);
-            else item = makeItem(material,techName);
-            lore.addFirst(colorText("<green>Уже исследовано"));
+            else item = makeItem(material,techName+" <green>✔");
             enchantLvl = 1;
         }
         ItemMeta meta = item.getItemMeta();

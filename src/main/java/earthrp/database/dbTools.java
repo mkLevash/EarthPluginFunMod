@@ -74,8 +74,9 @@ public class dbTools {
                 type TEXT NOT NULL,
                 status INTEGER NOT NULL DEFAULT 1,
                 world TEXT NOT NULL,
-                chunk_x INTEGER NOT NULL,
-                chunk_z INTEGER NOT NULL,
+                x REAL NOT NULL,
+                y REAL NOT NULL,
+                z REAL NOT NULL,
                 item TEXT NULL)
                 """);
 

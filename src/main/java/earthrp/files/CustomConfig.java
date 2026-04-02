@@ -47,44 +47,6 @@ public class CustomConfig {
                 "<white>Админ. эфф. 0अ"
         ));
 
-        // ==================== ЭПОХА 0: ПЛЕМЯ ====================
-        get().addDefault("tech.cost.mining",5);
-        get().addDefault("tech.name.mining","Горное дело");
-        get().addDefault("tech.lore.mining",List.of(
-                "<dark_green>Позволяет строить <green>шахты"
-        ));
-
-        get().addDefault("tech.cost.building",5);
-        get().addDefault("tech.name.building","Каменная кладка");
-        get().addDefault("tech.lore.building",List.of(
-                "<gray>Позволяет строить <light_purple>древние стены, застава лесорубов, амбар"
-        ));
-
-        get().addDefault("tech.cost.shipping",5);
-        get().addDefault("tech.name.shipping","Мореплавание");
-        get().addDefault("tech.lore.shipping",List.of(
-                "<gray>Позволяет строить <light_purple>порт"
-        ));
-
-        get().addDefault("tech.cost.irrigation",5);
-        get().addDefault("tech.name.irrigation","Орошение");
-        get().addDefault("tech.lore.irrigation",List.of(
-                "<gray>Позволяет строить <light_purple>грядка"
-        ));
-
-        get().addDefault("tech.cost.livestock",5);
-        get().addDefault("tech.name.livestock","Животноводство");
-        get().addDefault("tech.lore.livestock",List.of(
-                "<gray>Позволяет строить <light_purple>пастбище"
-        ));
-
-        get().addDefault("tech.cost.writing",5);
-        get().addDefault("tech.name.writing","Письменность");
-        get().addDefault("tech.lore.writing",List.of(
-                "<gray>Позволяет строить <light_purple>библиотека"
-        ));
-
-        // ==================== ЭПОХА 1: ФЕОДАЛИЗМ ====================
         get().addDefault("tech.cost.feudalism",15);
         get().addDefault("tech.name.feudalism","Феодализм");
         get().addDefault("tech.lore.feudalism",List.of(
@@ -94,160 +56,215 @@ public class CustomConfig {
                 "<white>Админ. эфф. 1अ"
         ));
 
+
+        get().addDefault("tech.cost.renaissance",50);
+        get().addDefault("tech.name.renaissance","Ренессанс");
+        get().addDefault("tech.lore.renaissance",List.of(
+                "<gray>Прирост <cyan>ОИ<gray> от научных зданий <green>+0.5"
+        ));
+
+        get().addDefault("tech.cost.manufacture",100);
+        get().addDefault("tech.name.manufacture","Мануфактуры");
+        get().addDefault("tech.lore.manufacture",List.of(
+                "<gray>Открывает <aqua>мануфактура, карьер"
+        ));
+
+        // ==================== ЭПОХА 0: ПЛЕМЯ ====================
+        get().addDefault("tech.cost.mining",5);
+        get().addDefault("tech.name.mining","Горное дело");
+        get().addDefault("tech.lore.mining",List.of(
+                "<gray>Позволяет строить <aqua>шахты"
+        ));
+
+        get().addDefault("tech.cost.building",5);
+        get().addDefault("tech.name.building","Каменная кладка");
+        get().addDefault("tech.lore.building",List.of(
+                "<gray>Позволяет строить <aqua>амбар"
+        ));
+
+        get().addDefault("tech.cost.fort",5);
+        get().addDefault("tech.name.fort","Древние стены");
+        get().addDefault("tech.lore.fort",List.of(
+                "<gray>Позволяет строить <aqua>крепость <green>1</green> ур"
+        ));
+
+        get().addDefault("tech.cost.shipping",5);
+        get().addDefault("tech.name.shipping","Мореплавание");
+        get().addDefault("tech.lore.shipping",List.of(
+                "<gray>Позволяет строить <aqua>порт"
+        ));
+
+        get().addDefault("tech.cost.irrigation",5);
+        get().addDefault("tech.name.irrigation","Орошение");
+        get().addDefault("tech.lore.irrigation",List.of(
+                "<gray>Позволяет строить <aqua>грядка"
+        ));
+
+        get().addDefault("tech.cost.livestock",5);
+        get().addDefault("tech.name.livestock","Животноводство");
+        get().addDefault("tech.lore.livestock",List.of(
+                "<gray>Позволяет строить <aqua>пастбище"
+        ));
+
+        get().addDefault("tech.cost.writing",5);
+        get().addDefault("tech.name.writing","Письменность");
+        get().addDefault("tech.lore.writing",List.of(
+                "<gray>Позволяет строить <aqua>библиотека"
+        ));
+
+        get().addDefault("tech.cost.lumber",5);
+        get().addDefault("tech.name.lumber","Лесоповал");
+        get().addDefault("tech.lore.lumber",List.of(
+                "<gray>Позволяет строить <aqua>застава лесорубов"
+        ));
+
+        get().addDefault("tech.cost.baseMilitary",15);
+        get().addDefault("tech.name.baseMilitary","base military");
+        get().addDefault("tech.lore.baseMilitary",List.of(
+                "<cyan>Тактика <green>+0.1",
+                "<cyan>Мораль войск <green>+0.5"
+        ));
+
+        get().addDefault("tech.cost.horseRidding",5);
+        get().addDefault("tech.name.horseRidding","Верховая езда");
+        get().addDefault("tech.lore.horseRidding",List.of(
+                "<gray>Позволяет нанимать <aqua>лёгких всадников"
+        ));
+
+        // ==================== ЭПОХА 1: ФЕОДАЛИЗМ ====================
+
+
         get().addDefault("tech.cost.bankBase",10);
         get().addDefault("tech.name.bankBase","Ростовщики");
         get().addDefault("tech.lore.bankBase",List.of(
-                "<gray>Возможность брать долги",
+                "<gray>Позволяет брать долги",
                 "<white>1 <gray>долг - <green>5<white>$<gray> под <white>20%"
         ));
 
         get().addDefault("tech.cost.banner",10);
-        get().addDefault("tech.name.banner","Баннеры");
+        get().addDefault("tech.name.banner","Система призыва");
         get().addDefault("tech.lore.banner",List.of(
-                "<gray>Возможность поднимать <light_purple>ополчение",
-                "<white>Восстановление ऴ <green>+10<white>%"
+                "<gray>Позволяет поднимать <aqua>ополчение",
+                "<white>Восстановление ऴ <green>+5<white>%"
         ));
 
         get().addDefault("tech.cost.motte",10);
         get().addDefault("tech.name.motte","Мотт");
         get().addDefault("tech.lore.motte",List.of(
-                "<gray>Позволяет строить <light_purple>крепость <green>2 <gray>уровня"
+                "<gray>Позволяет строить <aqua>крепость <green>2 <gray>уровня"
         ));
 
-        get().addDefault("tech.cost.horseRidding",10);
-        get().addDefault("tech.name.horseRidding","Верховая езда");
-        get().addDefault("tech.lore.horseRidding",List.of(
-                "<gray>Позволяет нанимать <light_purple>лёгких всадников"
-        ));
+
 
         get().addDefault("tech.cost.trade",10);
         get().addDefault("tech.name.trade","Торговля");
         get().addDefault("tech.lore.trade",List.of(
-                "<gray>Позволяет строить <light_purple>рынок"
+                "<gray>Позволяет строить <aqua>рынок"
         ));
 
         get().addDefault("tech.cost.copper",10);
         get().addDefault("tech.name.copper","Обработка меди");
         get().addDefault("tech.lore.copper",List.of(
-                "<gray>Позволяет добывать <light_purple>медь уголь",
-                "<gray>Позволяет строить <light_purple>кузня"
+                "<gray>Позволяет добывать <aqua>медь уголь",
+                "<gray>Позволяет строить <aqua>кузня"
         ));
 
         get().addDefault("tech.cost.engineering",15);
         get().addDefault("tech.name.engineering","Инженерное дело");
         get().addDefault("tech.lore.engineering",List.of(
                 "<green>+10<white>% базовой осады",
-                "<gray>Позволяет штурмовать крепость",
-                "<gray>Позволяет строить <light_purple>акведук"
+                "<gray>Позволяет проводить <aqua>штурм крепости",
+                "<gray>Позволяет строить <aqua>акведук",
+                "<aqua>Производительность <gray>шахты <green>+0.25"
         ));
 
-        get().addDefault("tech.cost.lowerMedievalMilitary",15);
-        get().addDefault("tech.name.lowerMedievalMilitary","Нижне-средневековое военное дело");
-        get().addDefault("tech.lore.lowerMedievalMilitary",List.of(
-                "<white>ᠨ<green>+0.1<white>ᠩ<green>+0.5",
-                "<gray>Позволяет нанимать <light_purple>лёгких мечников"
-        ));
+
 
         get().addDefault("tech.cost.shipbuilding",10);
         get().addDefault("tech.name.shipbuilding","Базовое судостроение");
         get().addDefault("tech.lore.shipbuilding",List.of(
-                "<gray>Позволяет строить <light_purple>верфи"
+                "<gray>Позволяет строить <aqua>верфи"
         ));
 
         get().addDefault("tech.cost.iron",15);
-        get().addDefault("tech.name.iron","Обработка железа");
+        get().addDefault("tech.name.iron","Обработка металла");
         get().addDefault("tech.lore.iron",List.of(
-                "<gray>Позволяет добывать <light_purple>железо"
+                "<gray>Позволяет добывать и обратывать <aqua>железо медь",
+                "<gray>Позволяет строить <aqua>кузня"
         ));
 
         get().addDefault("tech.cost.earlyCarrack",10);
-        get().addDefault("tech.name.earlyCarrack","Ранняя каррака");
+        get().addDefault("tech.name.earlyCarrack","Средневековое судостроение");
         get().addDefault("tech.lore.earlyCarrack",List.of(
-                "<yellow>Требуется: <aqua>Базовое судостроение"
         ));
 
         get().addDefault("tech.cost.workshop",15);
         get().addDefault("tech.name.workshop","Мастерские");
         get().addDefault("tech.lore.workshop",List.of(
-                "<yellow>Требуется: <aqua>Инженерное дело",
-                "<gray>Открывает мастерские",
-                "<green>Увеличивает производительность шахты +0.25"
+                "<gray>Позволяет строить <aqua>мастерские"
         ));
 
-        get().addDefault("tech.cost.highMedievalMilitary",20);
-        get().addDefault("tech.name.highMedievalMilitary","Верхне-средневековое военное дело");
-        get().addDefault("tech.lore.highMedievalMilitary",List.of(
-                "<yellow>Требуется: <aqua>Нижне-средневековое военное дело, Обработка железа",
-                "<green>Тактика +0.15, мораль +0.5",
-                "<gray>Открывает казармы и конюшни (2 лвл войск)"
+        get().addDefault("tech.cost.medievalMilitary",20);
+        get().addDefault("tech.name.medievalMilitary","medieval military");
+        get().addDefault("tech.lore.medievalMilitary",List.of(
+                "<aqua>Тактика <green>+0.25"," <aqua>Мораль войск <green>+0.5",
+                "<gray>Позволяет строить <aqua>казармы конюшни"
         ));
 
         get().addDefault("tech.cost.medievalAdministration",15);
         get().addDefault("tech.name.medievalAdministration","Средневековая администрация");
         get().addDefault("tech.lore.medievalAdministration",List.of(
-                "<green>Админ. эффективность +1"
+                "<aqua>Админ. эффективность <green>+1"
         ));
 
         get().addDefault("tech.cost.castle",15);
         get().addDefault("tech.name.castle","Замки");
         get().addDefault("tech.lore.castle",List.of(
-                "<yellow>Требуется: <aqua>Мотт",
-                "<gray>Открывает крепость 3 уровня"
+                "<gray>Крепость <green>3</green> уровня"
         ));
 
-        // ==================== ЭПОХА 2: РЕНЕССАНС ====================
-        get().addDefault("tech.cost.renaissance",50);
-        get().addDefault("tech.name.renaissance","Ренессанс");
-        get().addDefault("tech.lore.renaissance",List.of(
-                "<green>Прирост ОИ от научных зданий +0.5"
-        ));
+      // ==================== ЭПОХА 2: РЕНЕССАНС ====================
 
         get().addDefault("tech.cost.university",50);
         get().addDefault("tech.name.university","Университет");
         get().addDefault("tech.lore.university",List.of(
-                "<gray>Университет",
-                "<yellow>Минимум 20 населения в городе"
+                "<gray>Позволяет строить <aqua>Университет"
         ));
 
         get().addDefault("tech.cost.bastion",30);
         get().addDefault("tech.name.bastion","Бастион");
         get().addDefault("tech.lore.bastion",List.of(
-                "<gray>Открывает крепость 5 уровня"
+                "<gray>Крепость <green>4</green> уровня"
         ));
 
         get().addDefault("tech.cost.bankUp",30);
         get().addDefault("tech.name.bankUp","Банковское дело");
         get().addDefault("tech.lore.bankUp",List.of(
-                "<gray>Возможность строить банк",
-                "<green>1 долг после постройки банка - 10$ под 10%",
-                "<green>+-% 1% за ед. стабильности с капом в 4%"
+                "<gray>Позволяет строить <aqua>банк"
         ));
 
         get().addDefault("tech.cost.gunpowder",75);
         get().addDefault("tech.name.gunpowder","Порох");
         get().addDefault("tech.lore.gunpowder",List.of(
-                "<gray>Артиллерия и оружейная фабрика",
-                "<gray>Пороховые мастерские, рудники"
+                "<gray>Позволяет строить <aqua>оружейная фабрика</aqua>,<aqua>рудник"
         ));
 
         get().addDefault("tech.cost.professionalArmy",50);
         get().addDefault("tech.name.professionalArmy","Профессиональная армия");
         get().addDefault("tech.lore.professionalArmy",List.of(
-                "<green>Тактика +0.25, мораль +1"
+                "<aqua>Тактика <green>+0.25","<aqua>Мораль войск <green>+1.0"
         ));
 
         get().addDefault("tech.cost.inf3",15);
         get().addDefault("tech.name.inf3","Аркебузиры");
         get().addDefault("tech.lore.inf3",List.of(
-                "<yellow>Требуется: <aqua>Профессиональная армия",
-                "<gray>Пехота 3 уровня"
+                "<gray>Пехота <green>3</green> уровня"
         ));
 
         get().addDefault("tech.cost.cav3",15);
         get().addDefault("tech.name.cav3","Рейтары");
         get().addDefault("tech.lore.cav3",List.of(
-                "<yellow>Требуется: <aqua>Профессиональная армия",
-                "<gray>Кавалерия 3 уровня"
+                "<gray>Кавалерия <green>3</green> уровня"
         ));
 
         get().addDefault("tech.cost.dock",30);
@@ -260,115 +277,95 @@ public class CustomConfig {
         get().addDefault("tech.cost.earlyModernAdministration",50);
         get().addDefault("tech.name.earlyModernAdministration","Администрация Нового времени");
         get().addDefault("tech.lore.earlyModernAdministration",List.of(
-                "<gray>Суды",
-                "<green>Макс ПП +5"
+                "<gray>Позволяет строить <aqua>cуд"
         ));
 
         get().addDefault("tech.cost.printingPress",100);
         get().addDefault("tech.name.printingPress","Печатный станок");
         get().addDefault("tech.lore.printingPress",List.of(
-                "<green>Стоимость технологий -10%"
-        ));
-
-        get().addDefault("tech.cost.starFort",30);
-        get().addDefault("tech.name.starFort","Звёздчатый форт");
-        get().addDefault("tech.lore.starFort",List.of(
-                "<yellow>Требуется: <aqua>Печатный станок",
-                "<gray>Открывает крепость 7 уровня"
+                "<gray>Стоимость технологий <green>-10%"
         ));
 
         get().addDefault("tech.cost.spainSquare",50);
         get().addDefault("tech.name.spainSquare","Испанское каре");
         get().addDefault("tech.lore.spainSquare",List.of(
-                "<yellow>Требуется: <aqua>Печатный станок",
-                "<green>Тактика +0.25",
-                "<gray>Терции - пехота 4 уровня"
+                "<aqua>Тактика <green>+0.5"
         ));
 
-        get().addDefault("tech.cost.art1",15);
-        get().addDefault("tech.name.art1","Стандартизация калибров");
-        get().addDefault("tech.lore.art1",List.of(
-                "<yellow>Требуется: <aqua>Испанское каре",
-                "<gray>Артиллерия 2 уровня"
+        get().addDefault("tech.cost.art2",15);
+        get().addDefault("tech.name.art2","Стандартизация калибров");
+        get().addDefault("tech.lore.art2",List.of(
+                "<gray>Артиллерия <green>2</green> уровня"
+        ));
+
+        get().addDefault("tech.cost.inf4",15);
+        get().addDefault("tech.name.inf4","Пистоли");
+        get().addDefault("tech.lore.inf4",List.of(
+                "<gray>Пехота <green>4</green> уровня"
         ));
 
         get().addDefault("tech.cost.cav4",15);
         get().addDefault("tech.name.cav4","Карабинеры");
         get().addDefault("tech.lore.cav4",List.of(
-                "<yellow>Требуется: <aqua>Испанское каре",
-                "<gray>Кавалерия 4 уровня"
+                "<gray>Кавалерия <green>4</green> уровня"
         ));
 
-        get().addDefault("tech.cost.charterCompany",30);
-        get().addDefault("tech.name.charterCompany","Чартерные компании");
-        get().addDefault("tech.lore.charterCompany",List.of(
-                "<yellow>Требуется: <aqua>Печатный станок",
-                "<gray>Галеас, Галеон, Ранний фрегат, Бриг",
-                "<green>+1 нави мораль"
-        ));
 
         get().addDefault("tech.cost.separationPower",30);
         get().addDefault("tech.name.separationPower","Разделение властей");
         get().addDefault("tech.lore.separationPower",List.of(
-                "<yellow>Требуется: <aqua>Печатный станок",
-                "<gray>Позволяет менять Форму Правления"
+                "<gray>Позволяет менять <light_purple>Форму Правления"
         ));
 
         get().addDefault("tech.cost.bureaucracyBase",30);
         get().addDefault("tech.name.bureaucracyBase","Базовая бюрократия");
         get().addDefault("tech.lore.bureaucracyBase",List.of(
-                "<yellow>Требуется: <aqua>Печатный станок",
-                "<green>Админ. эффективность +1"
+                "<gray>Админ. эффективность <green>+1"
         ));
 
         // ==================== ЭПОХА 3: МАНУФАКТУРЫ ====================
-        get().addDefault("tech.cost.manufacture",100);
-        get().addDefault("tech.name.manufacture","Мануфактуры");
-        get().addDefault("tech.lore.manufacture",List.of(
-                "<gray>Открывает мануфактуры и карьеры"
-        ));
+
 
         get().addDefault("tech.cost.fortress",30);
         get().addDefault("tech.name.fortress","Цитадель");
         get().addDefault("tech.lore.fortress",List.of(
-                "<gray>Открывает крепость 9 уровня"
+                "<gray>Открывает крепость 5 уровня"
         ));
 
         get().addDefault("tech.cost.enlightenment",30);
         get().addDefault("tech.name.enlightenment","Просвещение");
         get().addDefault("tech.lore.enlightenment",List.of(
-                "<green>Снижает требование для университетов в 2 раза"
+                "<gray>Снижает требование для университетов в <green>2</green> раза"
         ));
 
         get().addDefault("tech.cost.constitution",30);
         get().addDefault("tech.name.constitution","Конституция");
         get().addDefault("tech.lore.constitution",List.of(
-                "<green>Макс ПП +5"
+                "<white>Макс £ <green>+5"
         ));
 
         get().addDefault("tech.cost.bureaucracyUp",30);
         get().addDefault("tech.name.bureaucracyUp","Развитая бюрократия");
         get().addDefault("tech.lore.bureaucracyUp",List.of(
-                "<green>Стоимость национализации -50%"
+                "<gray>Стоимость национализации <green>-50%"
         ));
 
         get().addDefault("tech.cost.lineInfantry",50);
         get().addDefault("tech.name.lineInfantry","Линейное построение");
         get().addDefault("tech.lore.lineInfantry",List.of(
-                "<green>Тактика +0.25, мораль +1"
+                "<aqua>Тактика <green>+0.25","<aqua>Мораль войск <green>+1.0"
         ));
 
-        get().addDefault("tech.cost.cartridges",15);
-        get().addDefault("tech.name.cartridges","Патроны");
-        get().addDefault("tech.lore.cartridges",List.of(
-                "<gray>Артиллерия 3 уровня",
-                "<gray>Пехота 5 уровня"
+        get().addDefault("tech.cost.inf5",15);
+        get().addDefault("tech.name.inf5","Патроны");
+        get().addDefault("tech.lore.inf5",List.of(
+                "<gray>Пехота <green>5</green> уровня"
         ));
 
         get().addDefault("tech.cost.cav5",15);
         get().addDefault("tech.name.cav5","Разведка");
         get().addDefault("tech.lore.cav5",List.of(
-                "<gray>Кавалерия 5 уровня"
+                "<gray>Кавалерия <green>5</green> уровня"
         ));
 
         get().addDefault("trade.playerName.playerName",true);

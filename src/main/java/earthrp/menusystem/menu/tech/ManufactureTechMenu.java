@@ -1,6 +1,7 @@
 package earthrp.menusystem.menu.tech;
 
 import earthrp.customObjects.EPlayer;
+import earthrp.files.CustomConfig;
 import earthrp.menusystem.Menu;
 import earthrp.menusystem.MenuUtility;
 import earthrp.menusystem.menu.TechnologyMenu;
@@ -9,6 +10,8 @@ import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
+
+import java.util.List;
 
 import static earthrp.tools.PDCKeys.techIdKey;
 
@@ -49,8 +52,9 @@ public class ManufactureTechMenu extends Menu {
         // Эпоха 3: Мануфактуры
         
         // === ЦЕНТР - Ключевая технология ===
-        ItemStack manufacture = makeTech(Material.CRAFTING_TABLE, "manufacture", player);
-        inventory.setItem(22, manufacture); // Центр
+        List<String> manufactureLore = CustomConfig.get().getStringList("tech.lore.manufacture");
+        ItemStack manufacture = makeItem(Material.SMITHING_TABLE,"<light_purple>Мануфактуры", manufactureLore);
+        inventory.setItem(0, manufacture); // Центр
         
         // === ГРАЖДАНСКИЕ ТЕХНОЛОГИИ (слева) ===
         // Строительство
@@ -62,22 +66,25 @@ public class ManufactureTechMenu extends Menu {
         ItemStack enlightenment = makeTech(Material.BOOK, "enlightenment", player);
         
         inventory.setItem(10, fortress);
-        inventory.setItem(11, constitution);
-        inventory.setItem(12, bureaucracyUp);
-        inventory.setItem(13, enlightenment);
+        inventory.setItem(13, constitution);
+        inventory.setItem(15, bureaucracyUp);
+        inventory.setItem(14, enlightenment);
         
         // === ВОЕННЫЕ ТЕХНОЛОГИИ (справа) ===
         // Пехота
         ItemStack lineInfantry = makeTech(Material.CROSSBOW, "lineInfantry", player);
         // Кавалерия
-        ItemStack cav5 = makeTech(Material.DIAMOND_HORSE_ARMOR, "cav5", player);
+        ItemStack cav5 = makeTech( "cav5", player,"inf5");
+        ItemStack art3 = makeTech( "art3", player,"art3");
         // Артиллерия
-        ItemStack cartridges = makeTech(Material.PAPER, "cartridges", player);
+        ItemStack cartridges = makeTech("inf5", player,"inf5");
         
-        inventory.setItem(28, lineInfantry);
-        inventory.setItem(29, cav5);
-        inventory.setItem(30, cartridges);
+        inventory.setItem(23, lineInfantry);
 
+        inventory.setItem(24, cav5);
+        inventory.setItem(22, cartridges);
+
+        inventory.setItem(32, art3);
         for (int i = 0; i <= 9; i++) {
             fillIfEmpty(i);
             fillIfEmpty(i + 44);
@@ -86,6 +93,8 @@ public class ManufactureTechMenu extends Menu {
         fillIfEmpty(18);
         fillIfEmpty(26);
         fillIfEmpty(27);
+        fillIfEmpty(35);
+        fillIfEmpty(36);
 
         inventory.setItem(49, createBackItem());
     }

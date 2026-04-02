@@ -94,37 +94,7 @@ public class Tools {
 
     }
 
-    public static void build(ItemStack bItem, Inventory chest, Town town){
 
-        ServerDatabase db = Earth.getInstance().getServerDatabase();
-        PersistentDataContainer data = bItem.getItemMeta().getPersistentDataContainer();
-        UUID buildingId = UUID.fromString(data.get(buildingIdKey,PersistentDataType.STRING));
-        String type = data.get(buildingTypeKey,PersistentDataType.STRING);
-        String displayName = bItem.getItemMeta().getDisplayName();
-        Location loc = chest.getLocation();
-        Building building = new Building(
-                buildingId,
-                town.getUniqueId(),
-                town.getName(),
-                town.getMarketId(),
-                type,
-                1,
-                null,
-                loc.getWorld().getName(),
-                loc.getChunk().getX(),
-                loc.getChunk().getZ()
-
-        );
-        db.addBuilding(building);
-
-        spawnHologram(loc.clone(),String.valueOf(buildingId),"buildingId", false);
-
-        spawnHologram(loc.clone().add(0.5, 1, 0.5),displayName,"buildingName" , true);
-
-        chest.addItem(bItem);
-        bItem.setAmount(0);
-
-    }
 
     public static void buyBuilding(EPlayer p, int buildingCost){
         if (p.getAttribute(EPlayerAttribute.TREASURY)>=buildingCost){
@@ -783,8 +753,10 @@ public class Tools {
     }
 
     public static void techProcess(ItemStack item, EPlayer player){
+
         int oiBalance = (int) player.getAttribute(EPlayerAttribute.OI_BALANCE);
         EPlayerTech tech = EPlayerTech.fromString(item.getItemMeta().getPersistentDataContainer().get(techIdKey, PersistentDataType.STRING));
+        if(tech == null) return;
         boolean techCheck = item.getItemMeta().getPersistentDataContainer().get(techCheckKey, PersistentDataType.BOOLEAN);
         int techCost = item.getItemMeta().getPersistentDataContainer().get(techCostKey, PersistentDataType.INTEGER);
         if(!player.getTech(tech) && oiBalance >= techCost && techCheck){
@@ -793,7 +765,8 @@ public class Tools {
             for(EPlayerAttribute effect:tech.getEffect().keySet()){
                 player.addAttribute(effect,tech.getEffect().get(effect));
             }
-        }else if (player.getTech(tech)) {
+        }else if (player.getTech(tech) && tech.canRefund(player.getTechMap())) {
+
             player.setTech(tech,false);
             player.addAttribute(EPlayerAttribute.OI_BALANCE, techCost);
             for(EPlayerAttribute effect:tech.getEffect().keySet()){

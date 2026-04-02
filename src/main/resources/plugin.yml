@@ -4,7 +4,7 @@ main: earthrp.Earth
 api-version: '1.20'
 authors: [ levash ]
 description: Plugin for Earth RP
-softdepend: ["PlaceholderAPI","dynmap","SkinsRestorer"]
+softdepend: ["PlaceholderAPI","SkinsRestorer"]
 commands:
   mset:
     description: shows the amount of player's treasury

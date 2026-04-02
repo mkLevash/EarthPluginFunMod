@@ -1,6 +1,7 @@
 package earthrp.menusystem.menu.tech;
 
 import earthrp.customObjects.EPlayer;
+import earthrp.files.CustomConfig;
 import earthrp.menusystem.Menu;
 import earthrp.menusystem.MenuUtility;
 import earthrp.menusystem.menu.TechnologyMenu;
@@ -9,6 +10,8 @@ import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
+
+import java.util.List;
 
 import static earthrp.tools.PDCKeys.techIdKey;
 
@@ -49,54 +52,56 @@ public class FeudalTechMenu extends Menu {
         // Эпоха 1: Феодализм
         
         // === ЦЕНТР - Ключевая технология ===
-        ItemStack feudalism = makeTech(Material.GRASS_BLOCK, "feudalism", player);
-        inventory.setItem(22, feudalism); // Центр
+        List<String> feudalismLore = CustomConfig.get().getStringList("tech.lore.feudalism");
+        ItemStack feudalism = makeItem("<green>Феодализм","","feudalism", feudalismLore);
+        //ItemStack feudalism = makeTech(Material.GRASS_BLOCK, "feudalism", player);
+        inventory.setItem(0, feudalism); // Центр
         
         // === ГРАЖДАНСКИЕ ТЕХНОЛОГИИ (слева) ===
         // Экономика
-        ItemStack bankBase = makeTech(Material.ENDER_CHEST, "bankBase", player);
-        ItemStack trade = makeTech(Material.EMERALD, "trade", player);
+        ItemStack bankBase = makeTech("bankBase", player, "bankBase");
+
         // Строительство
-        ItemStack motte = makeTech(Material.OAK_FENCE, "motte", player);
+        //ItemStack motte = makeTech(Material.OAK_FENCE, "motte", player);
         ItemStack castle = makeTech(Material.STONE_BRICKS, "castle", player);
         // Администрация
         ItemStack banner = makeTech(Material.WHITE_BANNER, "banner", player);
-        ItemStack medievalAdministration = makeTech(Material.WRITABLE_BOOK, "medievalAdministration", player);
+        //ItemStack medievalAdministration = makeTech(Material.WRITABLE_BOOK, "medievalAdministration", player);
         
-        inventory.setItem(10, bankBase);
-        inventory.setItem(11, trade);
-        inventory.setItem(12, motte);
-        inventory.setItem(13, castle);
-        inventory.setItem(14, banner);
-        inventory.setItem(15, medievalAdministration);
+        inventory.setItem(12, bankBase);
+        //inventory.setItem(11, trade);
+        //inventory.setItem(12, motte);
+        inventory.setItem(21, castle);
+        inventory.setItem(32, banner);
+        //inventory.setItem(15, medievalAdministration);
         
         // === ВОЕННЫЕ ТЕХНОЛОГИИ (справа) ===
         // Кавалерия
-        ItemStack horseRidding = makeTech(Material.SADDLE, "horseRidding", player);
+
         // Пехота
-        ItemStack lowerMedievalMilitary = makeTech(Material.IRON_SWORD, "lowerMedievalMilitary", player);
-        ItemStack highMedievalMilitary = makeTech(Material.SHIELD, "highMedievalMilitary", player);
+
+        ItemStack highMedievalMilitary = makeTech("medievalMilitary", player,"medievalMilitary");
         // Ресурсы
-        ItemStack copper = makeTech(Material.COPPER_INGOT, "copper", player);
+        //ItemStack copper = makeTech(Material.COPPER_INGOT, "copper", player);
         ItemStack iron = makeTech(Material.IRON_INGOT, "iron", player);
         // Инженерия
         ItemStack engineering = makeTech(Material.COMPASS, "engineering", player);
         ItemStack workshop = makeTech(Material.CRAFTING_TABLE, "workshop", player);
         
-        inventory.setItem(28, horseRidding);
-        inventory.setItem(29, lowerMedievalMilitary);
-        inventory.setItem(30, highMedievalMilitary);
-        inventory.setItem(31, copper);
-        inventory.setItem(32, iron);
-        inventory.setItem(33, engineering);
-        inventory.setItem(34, workshop);
+
+
+        inventory.setItem(31, highMedievalMilitary);
+        //inventory.setItem(31, copper);
+        inventory.setItem(30, iron);
+        inventory.setItem(22, engineering);
+        inventory.setItem(23, workshop);
         
         // === МОРСКИЕ ТЕХНОЛОГИИ (низ) ===
         ItemStack shipbuilding = makeTech(Material.OAK_BOAT, "shipbuilding", player);
-        ItemStack earlyCarrack = makeTech(Material.OAK_BOAT, "earlyCarrack", player);
+        //ItemStack earlyCarrack = makeTech(Material.OAK_BOAT, "earlyCarrack", player);
         
-        inventory.setItem(37, shipbuilding);
-        inventory.setItem(38, earlyCarrack);
+        inventory.setItem(13, shipbuilding);
+        //inventory.setItem(38, earlyCarrack);
 
         for (int i = 0; i <= 9; i++) {
             fillIfEmpty(i);
