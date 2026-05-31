@@ -64,7 +64,7 @@ public class LoadingManager {
         instance.getCommand("town").setExecutor(new GiveTown(instance));
         instance.getCommand("earth").setExecutor(new EarthCommand());
         instance.getCommand("createBot").setExecutor(new CreateBot(instance));
-        instance.getCommand("battle").setExecutor(new Battle(instance));
+        instance.getCommand("battle").setExecutor(new BattleCommand(instance));
         instance.getCommand("leader").setExecutor(new Leader(instance));
         //instance.getCommand("chunk").setExecutor(new ChunkCommand(instance));
         instance.getCommand("tradeway").setExecutor(new TradeWay(instance));
@@ -92,8 +92,9 @@ public class LoadingManager {
     public void runTasks(){
 
         new CheckDay().runTaskTimer(instance, 0L, 20L);
-        new CheckTowns().runTaskTimer(instance, 0L, 500L);
-        new BattlePhase().runTaskTimer(instance, 0L, 100L);
+        new CheckTowns().runTaskTimer(instance, 0L, 800L);
+        new BattlePhase().runTaskTimer(instance, 0L, 60L);
+        new ArmyTask().runTaskTimer(instance, 0L, 60L);
         new Meteor().runTaskTimer(instance, 0L, 168000L);
 
         new SpeedGive().runTaskTimerAsynchronously(instance,0,20);

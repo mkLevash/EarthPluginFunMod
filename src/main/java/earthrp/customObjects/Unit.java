@@ -86,7 +86,7 @@ public class Unit implements Comparable<Unit>{
     }
 
     public double getMaxMorale() {
-        return Tools.round(getBaseMorale() * getArmy().getOwner().getMorale());
+        return Tools.round((getBaseMorale() * getArmy().getOwner().getMoraleMod()) * getArmy().getOwner().getAttribute(EPlayerAttribute.ARMY_SATIETY) ) ;
     }
 
     public Army getArmy() {

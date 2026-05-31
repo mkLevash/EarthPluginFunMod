@@ -34,6 +34,8 @@ public enum EPlayerAttribute {
     TAX_INCOME(0.0),
     TAX_MOD(1.0),
     EXPENSE(0.0),
+    FARM_EFFICIENCY(0.25),
+
 
     CORRUPTION(0.0),
     INFLATION(0.0),
@@ -71,15 +73,18 @@ public enum EPlayerAttribute {
     ARMY_EXPENSE_MOD(1.0),
 
     MANPOWER_LIMIT_MOD(1.0),
-    MANPOWER_REC_MOD(0.1),
+    MANPOWER_REC_MOD(0.05),
     DISCIPLE(1.0),
     TACTIC(Earth.getInstance().getConfig().getDouble("tacBase")),
     MORALE_MOD(1.0),
-    MORALE_REDUCE(0.33),
+    MORALE_REDUCE(1.0),
     TROOPS_REDUCE(0.33),
     TRADITION(0.0),
     TRADITION_MOD(1.0),
     SIEGE_ABILITY(0.0),
+
+    ARMY_SATIETY_MAX(1.0),
+    ARMY_SATIETY(1.0),
 
     // Боевые фазы и урон
     FIRE_DAMAGE(1.0),

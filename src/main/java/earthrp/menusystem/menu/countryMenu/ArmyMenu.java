@@ -9,12 +9,10 @@ import earthrp.database.ServerDatabase;
 import earthrp.menusystem.Menu;
 import earthrp.menusystem.MenuUtility;
 import earthrp.menusystem.menu.Main;
-import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 
 import java.util.ArrayList;
@@ -114,7 +112,7 @@ public class ArmyMenu extends Menu {
         double tac = Tools.round(player.getAttribute(EPlayerAttribute.TACTIC) * player.getAttribute(EPlayerAttribute.DISCIPLE));
         String dis = Tools.getColorMod(player.getAttribute(EPlayerAttribute.DISCIPLE));
         List<String> mainStatsList = List.of(
-                Tools.colorText("&fМоральᠩ&a"+Tools.getColorMod(player.getMorale())),
+                Tools.colorText("&fМоральᠩ&a"+Tools.getColorMod(player.getMoraleMod())),
                 Tools.colorText("&fТрадиции &2" + (int) player.getAttribute(EPlayerAttribute.TRADITION)),
                 Tools.colorText("&fТактикаᠨ&a" + tac + " &f|ᠨ&b" + player.getAttribute(EPlayerAttribute.TACTIC) + " " + dis + "&fᠧ"),
                 Tools.colorText("&fСоотношение кав-рииᢰ&d" + (int) Math.round(player.getAttribute(EPlayerAttribute.CAV_RATIO) * 100)+"&f%" )

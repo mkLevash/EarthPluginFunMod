@@ -1,6 +1,8 @@
 package earthrp.customObjects;
 
+import com.google.gson.Gson;
 import earthrp.Earth;
+import earthrp.customEnums.TownItem;
 import earthrp.tools.Tools;
 import earthrp.customEnums.EPlayerAttribute;
 import earthrp.database.ServerDatabase;
@@ -11,15 +13,55 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.TextDisplay;
+import org.bukkit.persistence.PersistentDataType;
 
 import java.util.*;
+
+import static earthrp.tools.PDCKeys.holoKey;
 
 @Getter
 @Setter
 public class Town implements Comparable<Town> {
     
     private ServerDatabase db;
+    private TownData data; // Объект с данными
 
+    public void setTownItem(TownItem type, long newValue) {
+        data.items.put(type, newValue);
+    }
+
+    private void addTownItem(TownItem type, long delta) {
+
+        setTownItem(type, getItem(type) + delta);
+    }
+
+    public long getItem(TownItem type) {
+        return data.items.getOrDefault(type, 0L);
+    }
+
+    public long getItemAmount(){
+        return data.items.values().stream()
+                .mapToLong(Long::longValue)
+                .sum();
+    }
+
+
+
+    private int barnAmount = 0;
+
+
+    public long getItemMax(){
+        return 3456 + (10368L * barnAmount);
+    }
+
+    public void addItem(TownItem type, long delta){
+        addTownItem(type, Math.min (delta, getAvailableSpace()));
+    }
+
+    public long getAvailableSpace(){
+        return Math.max(0, getItemMax() - getItemAmount());
+    }
 
     private final UUID uuid;
     private UUID ownerId;
@@ -41,8 +83,9 @@ public class Town implements Comparable<Town> {
     private final int x;
     private final int z;
     private Location location;
+    private double famine = 0.0;
 
-    public Town(UUID townUniqueId, UUID playerUniqueId, String townType, String townName, String playerName, int townHouses, int bonusBuildingsSites, String worldName, int chunkX, int chunkZ, boolean port, boolean landHub, UUID tradeTownId){
+    public Town(UUID townUniqueId, UUID playerUniqueId, String townType, String townName, String playerName, int townHouses, int bonusBuildingsSites, String worldName, int chunkX, int chunkZ, boolean port, boolean landHub, UUID tradeTownId, String jsonData){
         this.uuid = townUniqueId;
         this.ownerId = playerUniqueId;
         this.type = townType;
@@ -57,11 +100,12 @@ public class Town implements Comparable<Town> {
         this.landHub = landHub;
         this.tradeTownId = tradeTownId;
         db = Earth.getInstance().getServerDatabase();
-
-        Entity[] tileEntities = Bukkit.getWorld(this.world).getChunkAt(x,z).getEntities();
-        for(Entity en: tileEntities){
-            if (en instanceof ArmorStand armorStand && uuid.toString().equals(armorStand.getCustomName())) {
-                location = armorStand.getLocation();
+        loadData(jsonData);
+        for (Entity entity : Bukkit.getWorld(this.world).getChunkAt(x,z).getEntities()) {
+            if (entity instanceof TextDisplay display) {
+                if (display.getPersistentDataContainer().has(holoKey) && display.getPersistentDataContainer().get(holoKey, PersistentDataType.STRING).equals(this.uuid.toString()) ) {
+                    location = display.getLocation().clone().add(-0.5, -1, -0.5);
+                }
             }
         }
     }
@@ -80,25 +124,17 @@ public class Town implements Comparable<Town> {
         this.landHub = false;
         this.tradeTownId = null;
         db = Earth.getInstance().getServerDatabase();
+        loadData("");
 
-        Entity[] tileEntities = Bukkit.getWorld(this.world).getChunkAt(x,z).getEntities();
-        for(Entity en: tileEntities){
-            if (en instanceof ArmorStand armorStand && uuid.toString().equals(armorStand.getCustomName())) {
-                location = armorStand.getLocation();
+        for (Entity entity : Bukkit.getWorld(this.world).getChunkAt(x,z).getEntities()) {
+            if (entity instanceof TextDisplay display) {
+                if (display.getPersistentDataContainer().has(holoKey) && display.getPersistentDataContainer().get(holoKey, PersistentDataType.STRING).equals(this.uuid.toString()) ) {
+                    location = display.getLocation().clone().add(-0.5, -1, -0.5);
+                }
             }
         }
     }
-//
-//    public void delMarket(){
-//        market = null;
-//        setLandHubId(null);
-//        
-//    }
-//
-//    public void updateMarket(Market market){
-//        this.market = market;
-//        
-//    }
+
 
     private final Set<Building> buildings = new HashSet<>();
 
@@ -125,6 +161,9 @@ public class Town implements Comparable<Town> {
             case "port" -> {
                 setPort(true);
             }
+            case "barn" ->{
+                this.barnAmount += 1;
+            }
         }
     }
 
@@ -143,7 +182,36 @@ public class Town implements Comparable<Town> {
             case "port" -> {
                 setPort(false);
             }
+            case "barn" ->{
+                this.barnAmount -= 1;
+                if(barnAmount < 0) barnAmount = 0;
+            }
         }
+    }
+
+    private static final Gson gson = new Gson();
+
+
+    private String rawJson;    // То, что пришло из БД
+
+    // Вызываем при загрузке из БД
+    public void loadData(String json) {
+        if (json == null || json.isEmpty()) {
+            this.data = new TownData();
+        } else {
+            this.data = gson.fromJson(json, TownData.class);
+        }
+    }
+
+    // Вызываем перед сохранением в БД
+    public String serializeData() {
+        return gson.toJson(this.data);
+    }
+
+    // Удобный геттер
+    public TownData getData() {
+        if (this.data == null) this.data = new TownData();
+        return this.data;
     }
 
 
@@ -367,8 +435,12 @@ public class Town implements Comparable<Town> {
         return income;
     }
 
+    public double getTaxIncome(){
+        return Tools.round(getPeople() * (1 - famine ));
+    }
+
     public double getIncome(){
-        return Tools.round (getProdIncome()+getPeople()+getTradeIncome());
+        return Tools.round (getProdIncome()+getTaxIncome()+getTradeIncome());
     }
 
     public void setTradeTownId(UUID tradeTownId) {
@@ -391,6 +463,10 @@ public class Town implements Comparable<Town> {
 //        }
 //        this.landHubId = landHubId;
 //        }
+
+    public boolean isCapital(){
+        return this.type.equals("capital");
+    }
 
 
     @Override

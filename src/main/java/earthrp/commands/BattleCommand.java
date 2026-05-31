@@ -1,8 +1,9 @@
 package earthrp.commands;
 
+import earthrp.battle.Battle;
 import earthrp.customObjects.Army;
 import earthrp.Earth;
-import earthrp.database.ServerDatabase;
+import earthrp.tools.Tools;
 import org.bukkit.*;
 import org.bukkit.block.ShulkerBox;
 import org.bukkit.command.Command;
@@ -22,9 +23,9 @@ import java.util.*;
 import static earthrp.tools.PDCKeys.*;
 
 
-public class Battle implements CommandExecutor, TabCompleter {
+public class BattleCommand implements CommandExecutor, TabCompleter {
     private final Earth earth;
-    public Battle(Earth plugin) {
+    public BattleCommand(Earth plugin) {
         this.earth = plugin;
     }
 
@@ -48,6 +49,26 @@ public class Battle implements CommandExecutor, TabCompleter {
             }else{
                 Bukkit.broadcastMessage("null");
             }
+        } else if (args.length == 1 && commandSender instanceof Player player) {
+            int ter = 0;
+            try{
+               ter = Integer.parseInt(args[0]);
+            } catch (NumberFormatException e) {
+                player.sendMessage("Вы неправильно ввели модификатор местности");
+                return true;
+            }
+
+            for(Battle b:Earth.getInstance().getBattleManager().getBattles()){
+                if(player.getLocation().getChunk().equals(b.getLoc().getChunk())){
+
+                    Tools.removePreBattleHologram(b.getLoc());
+                    Tools.spawnBattleHologram(b);
+
+                    b.setTer(ter);
+                    b.setPrePhase(false);
+                }
+            }
+
         }
         if(commandSender instanceof Player player && args.length >= 2){
             Army attacker = null;
@@ -98,18 +119,7 @@ public class Battle implements CommandExecutor, TabCompleter {
 
     @Override
     public @Nullable List<String> onTabComplete(@NotNull CommandSender commandSender, @NotNull Command command, @NotNull String s, @NotNull String[] args) {
-        if(args.length==1||args.length==2){
-            ServerDatabase db = Earth.getInstance().getServerDatabase();
-            Player[] OnlinePlayers = Bukkit.getServer().getOnlinePlayers().toArray(new Player[0]);
-            List<String> Players = new ArrayList<>();
-            for (Player onlinePlayer : OnlinePlayers) {
-                Players.add(onlinePlayer.getDisplayName());
-            }
-            Set<Army> armies = db.getArmies();
-
-
-            return Players;
-        }else if (args.length==3) {
+        if (args.length==1) {
             return  List.of("<Модификатор местности>");
         } else{
             return List.of();

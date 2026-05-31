@@ -20,7 +20,6 @@ import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.components.CustomModelDataComponent;
-import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 
 import java.math.BigDecimal;
@@ -49,33 +48,45 @@ public class Tools {
         return Math.sqrt(dx * dx + dz * dz);
     }
 
-    public static void changeStat(UUID uuid, String statId, double value){
+    public static void addStat(UUID uuid, String statId, double value, String name){
         ServerDatabase db = Earth.getInstance().getServerDatabase();
         EPlayer player = db.getPlayer(uuid);
-        player.addAttribute(EPlayerAttribute.fromString(statId),value);
+        PlayerModifier mod = new PlayerModifier(name,name+statId,value, PlayerModifier.Operation.ADD);
+        player.getData().addModifier(EPlayerAttribute.fromString(statId),mod);
+        //player.addAttribute(EPlayerAttribute.fromString(statId),value);
+
+    }
+
+    public static void removeStat(UUID uuid, String statId, String name){
+        ServerDatabase db = Earth.getInstance().getServerDatabase();
+        EPlayer player = db.getPlayer(uuid);
+        player.getData().removeModifier(EPlayerAttribute.fromString(statId),name+statId);
+        //player.addAttribute(EPlayerAttribute.fromString(statId),value);
 
     }
 
     public static void backIdea(ItemStack item){
+        String name = item.getItemMeta().getPersistentDataContainer().get(ideaNameKey,PersistentDataType.STRING);
         List<String> effectId = item.getItemMeta().getPersistentDataContainer().get(ideaEffectIdKey,PersistentDataType.LIST.strings());
         List<Double> effect = item.getItemMeta().getPersistentDataContainer().get(ideaEffectKey,PersistentDataType.LIST.doubles());
         UUID playerId = UUID.fromString(item.getItemMeta().getPersistentDataContainer().get(ideaOwnerKey, PersistentDataType.STRING));
 
         if((effectId!= null && effect!=null) && effect.size() == effectId.size()){
             for (int i = 0; i < effect.size(); i++) {
-                changeStat(playerId,effectId.get(i),-effect.get(i));
+                removeStat(playerId,effectId.get(i),name);
             }
         }
     }
 
     public static void investIdea(ItemStack item){
+        String name = item.getItemMeta().getPersistentDataContainer().get(ideaNameKey,PersistentDataType.STRING);
         List<String> effectId = item.getItemMeta().getPersistentDataContainer().get(ideaEffectIdKey,PersistentDataType.LIST.strings());
         List<Double> effect = item.getItemMeta().getPersistentDataContainer().get(ideaEffectKey,PersistentDataType.LIST.doubles());
         UUID playerId = UUID.fromString(item.getItemMeta().getPersistentDataContainer().get(ideaOwnerKey, PersistentDataType.STRING));
 
         if((effectId!= null && effect!=null) && effect.size() == effectId.size()){
             for (int i = 0; i < effect.size(); i++) {
-                changeStat(playerId,effectId.get(i),effect.get(i));
+                addStat(playerId,effectId.get(i),effect.get(i),name);
             }
         }
     }
@@ -83,6 +94,7 @@ public class Tools {
     public static ItemStack createIdeaItem(Material material,String name,List<String> effectId, List<String> lore, List<Double> effect, UUID ownerId){
         ItemStack item = createItem(material,name,lore);
         ItemMeta meta = item.getItemMeta();
+        meta.getPersistentDataContainer().set(ideaNameKey,PersistentDataType.STRING, name);
         meta.getPersistentDataContainer().set(ideaEffectIdKey,PersistentDataType.LIST.strings(), effectId);
         meta.getPersistentDataContainer().set(ideaEffectKey,PersistentDataType.LIST.doubles(), effect);
         meta.getPersistentDataContainer().set(ideaOwnerKey,PersistentDataType.STRING, ownerId.toString());
@@ -98,7 +110,7 @@ public class Tools {
 
     public static void buyBuilding(EPlayer p, int buildingCost){
         if (p.getAttribute(EPlayerAttribute.TREASURY)>=buildingCost){
-            p.setAttribute(EPlayerAttribute.TREASURY,-buildingCost);
+            p.addAttribute(EPlayerAttribute.TREASURY,-buildingCost);
 
         }
     }
@@ -113,8 +125,8 @@ public class Tools {
 
     public static ItemStack createBuildingBuy(Material material, String name, String type, List<String> lore, int cost, boolean techCheck, String modelId){
         if(!techCheck && lore!=null){
-            lore.addFirst(colorText(" "));
-            lore.addFirst(colorText("&cНе изучено"));
+            //lore.addFirst(colorText(" "));
+            //lore.addFirst(colorText("&cНе изучено"));
         }
         ItemStack building = createItem(material,colorText("&f" + name + " &6" + cost + "&f$"),lore);
         ItemMeta meta = building.getItemMeta();
@@ -360,6 +372,16 @@ public class Tools {
         }
     }
 
+    public static void removePreBattleHologram(Location loc) {
+        for (Entity entity : loc.getChunk().getEntities()) {
+            if (entity instanceof TextDisplay display) {
+                if (display.getPersistentDataContainer().has(holoKey) && Objects.requireNonNull(display.getPersistentDataContainer().get(holoKey, PersistentDataType.STRING)).contains("preBattle")) {
+                    display.remove();
+                }
+            }
+        }
+    }
+
     public static void spawnHologram(Location loc, String customName, String type, boolean visible) {
 
 
@@ -390,17 +412,26 @@ public class Tools {
             display.setBrightness(new Display.Brightness(15, 15));
 
             display.setBillboard(Display.Billboard.VERTICAL);
-        });// Защита от случайного удаления
+        });
 
+    }
+
+    public static void spawnPreBattleHologram(Location location, EPlayer attacker, EPlayer defender){
+
+        Location spawnLoc = location.clone().add(0,2,0);
+
+        spawnHologram(spawnLoc, attacker.getCountryName() + " vs " + defender.getCountryName(),"preBattleTitle");
+
+        spawnHologram(spawnLoc.clone().add(0,-0.50,0), "Введите модификатор местности при помощи /battle","preBattleDesc");
 
     }
 
     public static void spawnBattleHologram(Battle battle){
 
         Location spawnLoc = battle.getLoc().add(0,2,0);
-        Army att = battle.getAttacker();
-        Army def = battle.getDefender();
-        spawnHologram(spawnLoc, att.getOwner().getDisplayName() + " vs " + def.getOwner().getDisplayName(),"battleTitle");
+        EPlayer att = battle.getAttacker().getFirst();
+        EPlayer def = battle.getDefender().getFirst();
+        spawnHologram(spawnLoc, att.getCountryName() + " vs " + def.getCountryName(),"battleTitle");
         int i = 0;
         spawnHologram(spawnLoc.clone().add(0,-0.25*++i,0), String.valueOf(Component.text("████ Привет ████").color(TextColor.color(0x555555))),"battlePhase");
         spawnHologram(spawnLoc.clone().add(0,-0.25*++i,0),"бросок кубика", "battleDice" );
@@ -408,17 +439,27 @@ public class Tools {
         spawnHologram(spawnLoc.clone().add(0,-0.25*++i,0),"0 в бою 0", "battleTroops" );
         //spawnHologram(spawnLoc.clone().add(0,-0.25*++i,0),"0 отступили 0", "battleRetreat");
         //spawnHologram(spawnLoc.clone().add(0,-0.25*++i,0),att.getSize() + "резервы" + def.getSize(), "battleReserve");
-        spawnHologram(spawnLoc.clone().add(0,-0.25*++i,0),att.getMorale() + "мораль" + def.getMorale(), "battleMorale" );
+        spawnHologram(spawnLoc.clone().add(0,-0.25*++i,0),att.getMoraleMod() + "мораль" + def.getMoraleMod(), "battleMorale" );
         //spawnHologram(spawnLoc.clone().add(0,-0.25*++i,0),att.getTactic() + "тактика" +def.getTactic() , "battleTac" );
 
 
     }
 
-    public static void editHologram(Location location,String type, String newValue ){
+    public static void editHologram(Location location, String type, String newValue ){
         for (Entity entity : location.getChunk().getEntities()) {
             if (entity instanceof TextDisplay display) {
                 if (display.getPersistentDataContainer().has(holoKey) && display.getPersistentDataContainer().get(holoKey, PersistentDataType.STRING).equals(type) ) {
                     display.setText(Tools.colorText(newValue));
+                }
+            }
+        }
+    }
+
+    public static void deleteHologram(Location location, String type){
+        for (Entity entity : location.getChunk().getEntities()) {
+            if (entity instanceof TextDisplay display) {
+                if (display.getPersistentDataContainer().has(holoKey) && display.getPersistentDataContainer().get(holoKey, PersistentDataType.STRING).equals(type) ) {
+                    display.remove();
                 }
             }
         }

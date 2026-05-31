@@ -37,15 +37,11 @@ public class DeclarePeace implements CommandExecutor, TabCompleter {
             EPlayer targetCountry = db.getPlayer(db.getPlayerUuid(targetPlayer));
 
             Bukkit.broadcastMessage(ChatColor.translateAlternateColorCodes('&', "&3" + p.getDisplayName() + "&e заключил мир с &a" + args[0]));
-            String path = "war."+p.getDisplayName()+"."+targetPlayer;
-            String tarPath = "war."+targetPlayer+"."+p.getDisplayName();
-            CustomConfig.set(path,true);
-            CustomConfig.set(tarPath,true);
+            p.getData().getWar().remove(targetCountry.getUniqueId());
+            targetCountry.getData().getWar().remove(p.getUniqueId());
 
-            ConfigurationSection section = CustomConfig.get().createSection("war."+p.getDisplayName());
-
-            if(!isAnyWar(args[0])) targetCountry.setAttribute(EPlayerAttribute.WAR_STATUS,0);
-            if(!isAnyWar(p.getDisplayName())) p.setAttribute(EPlayerAttribute.WAR_STATUS,0);
+            if(p.getData().getWar().isEmpty()) targetCountry.setAttribute(EPlayerAttribute.WAR_STATUS,0);
+            if(targetCountry.getData().getWar().isEmpty()) p.setAttribute(EPlayerAttribute.WAR_STATUS,0);
 
             return true;
 
@@ -65,14 +61,5 @@ public class DeclarePeace implements CommandExecutor, TabCompleter {
         return Arrays.asList(Players);
     }
 
-    private boolean isAnyWar(String name) {
-        ConfigurationSection warSection = CustomConfig.get().getConfigurationSection("war."+name);
-        if (warSection == null) return false;
-        for (String otherTown : warSection.getKeys(false)) {
-            if (warSection.getBoolean(otherTown)) {
-                return true;
-            }
-        }
-        return false;
-    }
+
 }

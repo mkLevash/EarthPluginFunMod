@@ -63,31 +63,98 @@ public class ServerDatabase {
     private final Map<UUID, EPlayer> playerCache = new ConcurrentHashMap<>();
     private final Map<Long, UUID> chunkCache = new ConcurrentHashMap<>();
 
-    private static long getChunkKey(int x, int z) {
-        return ((long) x << 32) | (z & 0xffffffffL);
+
+
+
+
+//    public void unMarkChunk(long key) {
+//        chunkCache.remove(key);
+//        String connId = "unMarkChunk";
+//        String sql = "DELETE FROM chunks WHERE chunkKey = ?";
+//        try(Connection conn = getConnection(connId);
+//            PreparedStatement stmt = conn.prepareStatement(sql);){
+//            stmt.setLong(1, key);
+//            stmt.executeUpdate();
+//
+//        } catch (SQLException e) {
+//            instance.getLogger().severe("DataBase error while processing " + connId);
+//            Bukkit.broadcast(MiniMessage.miniMessage().deserialize("Database <yellow>"+connId+" <red>critical error"));
+//            throw new RuntimeException(e);
+//        }
+//    }
+//
+//    public void markChunk(long key, UUID townId) {
+//        chunkCache.put(key, townId);
+//        String connId = "markChunk";
+//        String sql = "INSERT OR REPLACE INTO chunks (chunkKey, townId) VALUES (?, ?)";
+//        try(Connection conn = getConnection(connId);
+//            PreparedStatement stmt = conn.prepareStatement(sql);){
+//            stmt.setLong(1, key);
+//            stmt.setString(2, townId.toString());
+//            stmt.executeUpdate();
+//
+//        } catch (SQLException e) {
+//            instance.getLogger().severe("DataBase error while processing " + connId);
+//            Bukkit.broadcast(MiniMessage.miniMessage().deserialize("Database <yellow>"+connId+" <red>critical error"));
+//            throw new RuntimeException(e);
+//        }
+//
+//    }
+
+    public boolean isChunkClaimed(long key){
+        UUID owner = chunkCache.get(key);
+        return owner != null;
     }
 
-    private static final UUID EMPTY_UUID = new UUID(0L, 0L);
-
-    public void markChunk(int x, int z) {
-        chunkCache.put(getChunkKey(x,z), EMPTY_UUID);
-    }
-
-    public void markChunk(int x, int z, UUID townId) {
-        chunkCache.put(getChunkKey(x,z), townId);
-    }
-
-    public boolean isChunkClaimed(int x, int z){
-        UUID owner = chunkCache.get(getChunkKey(x, z));
-        return owner != null && !owner.equals(EMPTY_UUID);
-    }
-
-    public Town getTownAtChunk(int x, int z){
-        if(isChunkClaimed(x,z)){
-            return getTown(chunkCache.get(getChunkKey(x,z)));
+    public Town getTownAtChunk(long key){
+        if(isChunkClaimed(key)){
+            return getTown(chunkCache.get(key));
         }
         return null;
     }
+
+    public void loadChunk(){
+
+        chunkCache.clear();
+        String query = "SELECT * FROM chunks";
+        String connId = "loadChunks";
+        try (Connection conn = getConnection(connId);
+             PreparedStatement stmt = conn.prepareStatement(query);
+             ResultSet rs = stmt.executeQuery()) {
+            while (rs.next()) {
+                chunkCache.put(rs.getLong("chunkKey"),UUID.fromString(rs.getString("townId")));
+            }
+        } catch (SQLException e) {
+            instance.getLogger().severe("DataBase error while processing " + connId);
+            Bukkit.broadcast(MiniMessage.miniMessage().deserialize("Database <yellow>"+connId+" <red>critical error"));
+            throw new RuntimeException(e);
+        }
+    }
+
+//    public void saveChunk(){
+//
+//        String connId = "saveChunk";
+//        String sql = "INSERT INTO chunks (chunkKey, townId) VALUES (?, ?)";
+//
+//        try (Connection conn = getConnection(connId);
+//             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+//
+//            conn.setAutoCommit(false);
+//            for (long key:chunkCache.keySet()){
+//                pstmt.setString(1,chunkCache.get(key).toString());
+//                pstmt.setLong(2,key);
+//            }
+//
+//            pstmt.executeBatch();
+//            conn.commit();
+//
+//
+//        } catch (SQLException e) {
+//            instance.getLogger().severe("DataBase error while processing " + connId);
+//            Bukkit.broadcast(MiniMessage.miniMessage().deserialize("Database <yellow>"+connId+" <red>critical error"));
+//            throw new RuntimeException(e);
+//        }
+//    }
 
     public void loadCache(){
         loadBuildings();
@@ -95,6 +162,7 @@ public class ServerDatabase {
         loadUnits();
         loadArmies();
         loadPlayers();
+        loadChunk();
     }
 
     public void saveCache(){
@@ -165,7 +233,8 @@ public class ServerDatabase {
                 "x = ?, " +
                 "y = ?, " +
                 "z = ?, " +
-                "market_id = ? " +
+                "market_id = ?, " +
+                "data = ? " +
                 "WHERE uuid = ?";
         Set<Building> buildings = getBuildings();
         try (Connection conn = getConnection(connId);
@@ -179,11 +248,12 @@ public class ServerDatabase {
                 pstmt.setString(paramIndex++, building.getType());
                 pstmt.setString(paramIndex++, building.getItem() != null ? building.getItem().toString() : null);
                 pstmt.setInt(paramIndex++, building.getStatus());
-                pstmt.setString(paramIndex++, building.getLocation().getWorld().toString());
+                pstmt.setString(paramIndex++, building.getLocation().getWorld().getName());
                 pstmt.setDouble(paramIndex++, building.getLocation().getX());
                 pstmt.setDouble(paramIndex++, building.getLocation().getY());
                 pstmt.setDouble(paramIndex++, building.getLocation().getZ());
                 pstmt.setString(paramIndex++, building.getMarketId() != null ? building.getMarketId().toString() : null);
+                pstmt.setString(paramIndex++, building.serializeData());
                 pstmt.setString(paramIndex, building.getUniqueId().toString());
                 pstmt.addBatch();
             }
@@ -218,13 +288,14 @@ public class ServerDatabase {
                 "tradeTown = ?, " +
                 "world = ?, " +
                 "chunk_x = ?, " +
-                "chunk_z = ? " +
+                "chunk_z = ?, " +
+                "data = ? " +
                 "WHERE uuid = ?";
 
         try (Connection conn = getConnection("saveTowns");
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-            conn.setAutoCommit(false); // Выключаем авто-коммит для ускорения
+            conn.setAutoCommit(false);
 
             for (Town town : towns) {
                 int paramIndex = 0;
@@ -241,21 +312,7 @@ public class ServerDatabase {
 
                 pstmt.setBoolean(++paramIndex,town.isPort());
                 pstmt.setBoolean(++paramIndex,town.isLandHub());
-//                // Устанавливаем port
-//                UUID port = town.getPortId();
-//                if (port != null) {
-//                    pstmt.setString(++paramIndex, port.toString());
-//                } else {
-//                    pstmt.setNull(++paramIndex, Types.VARCHAR);
-//                }
-//
-//                // Устанавливаем landHub
-//                UUID landHub = town.getLandHubId();
-//                if (landHub != null) {
-//                    pstmt.setString(++paramIndex, landHub.toString());
-//                } else {
-//                    pstmt.setNull(++paramIndex, Types.VARCHAR);
-//                }
+
 
                 UUID tradeTown = town.getTradeTownId();
                 if (tradeTown != null) {
@@ -267,14 +324,15 @@ public class ServerDatabase {
                 pstmt.setString(++paramIndex, town.getWorld());
                 pstmt.setInt(++paramIndex, town.getChunkX());
                 pstmt.setInt(++paramIndex, town.getChunkZ());
+                pstmt.setString(++paramIndex, town.serializeData());
 
                 pstmt.setString(++paramIndex, town.getUniqueId().toString());
 
-                pstmt.addBatch(); // Добавляем в пакет
+                pstmt.addBatch();
             }
 
-            pstmt.executeBatch(); // Выполняем всё разом
-            conn.commit();        // Фиксируем изменения
+            pstmt.executeBatch();
+            conn.commit();
         } catch (SQLException e) {
             instance.getLogger().severe("DataBase error while processing " + connId);
             Bukkit.broadcast(MiniMessage.miniMessage().deserialize("Database <yellow>"+connId+" <red>critical error"));
@@ -284,7 +342,6 @@ public class ServerDatabase {
 
     private void savePlayers() {
         String connId = "savePlayer";
-        // Генерируем запрос вида: UPDATE countries SET techCost=?, morale=? ... WHERE id=?
         String countryColumns = Stream.of(EPlayerAttribute.values())
                 .map(type -> toCamelCase(type.name()) + " = ?")
                 .collect(Collectors.joining(", "));
@@ -294,17 +351,22 @@ public class ServerDatabase {
 
         String sql = "UPDATE " + "countries" + " SET displayName = ?, " + countryColumns + " WHERE id = ?";
         String sqlTech = "UPDATE " + "tech" + " SET " + techColumns + " WHERE id = ?";
+        String sqlPlayer = "UPDATE " + "players" + " SET data = ? WHERE uuid = ?";
         Set<EPlayer> players = getPlayers();
         try (Connection conn = getConnection(connId);
              PreparedStatement stCountry = conn.prepareStatement(sql);
-             PreparedStatement stTech = conn.prepareStatement(sqlTech)) {
+             PreparedStatement stTech = conn.prepareStatement(sqlTech);
+             PreparedStatement stPlayer = conn.prepareStatement(sqlPlayer)) {
             conn.setAutoCommit(false);
             
             for (EPlayer p:players){
+                stPlayer.setString(1,p.serializeData());
+                stPlayer.setString(2,p.getUniqueId().toString());
+                stPlayer.addBatch();
                 int i = 1;
                 stCountry.setString(i++, p.getCountryName()); // displayName
                 for (EPlayerAttribute type : EPlayerAttribute.values()) {
-                    stCountry.setDouble(i++, p.getAttribute(type));
+                    stCountry.setDouble(i++, p.getAttributeValue(type));
                 }
                 stCountry.setString(i, p.getUniqueId().toString());// WHERE id = ?
 
@@ -321,6 +383,7 @@ public class ServerDatabase {
             }
             stTech.executeBatch();
             stCountry.executeBatch();
+            stPlayer.executeBatch();
             conn.commit();
         } catch (SQLException e) {
             instance.getLogger().severe("DataBase error while processing " + connId);
@@ -457,7 +520,6 @@ public class ServerDatabase {
                 if (buildings != null) for (Building building : buildings) town.addBuilding(building);
 
                 townCache.put(town.getUniqueId(), town);
-                markChunk(town.getX(),town.getChunkZ(),town.getUniqueId());
                 playerTownCache.computeIfAbsent(town.getOwnerId(), k -> new HashSet<>()).add(town);
             }
         } catch (SQLException e) {
@@ -572,6 +634,7 @@ public class ServerDatabase {
                     if (rs.next()) {
                         player = new EPlayer(UUID.fromString(rs.getString("uuid")));
                         player.setDisplayName(rs.getString("displayName"));
+                        player.loadData(rs.getString("data"));
                     }
                 }
             }
@@ -713,24 +776,14 @@ public class ServerDatabase {
                 rs.getInt("chunk_z"),
                 rs.getBoolean("port"),
                 rs.getBoolean("landHub"),
-                tradeTown
+                tradeTown,
+                rs.getString("data")
         );
         town.setCore(rs.getBoolean("core"));
         town.setInfrastructure(rs.getInt("infrastructure"));
         town.setStatus(rs.getBoolean("status"));
         town.setBStatus(rs.getBoolean("blockade_status"));
 
-        Entity[] tileEntities = Bukkit.getWorld(town.getWorld()).getChunkAt(town.getChunkX(),town.getChunkZ()).getEntities();
-        for(Entity en: tileEntities){
-            if (en instanceof ArmorStand armor){
-                if(Objects.equals(armor.getCustomName(), town.getUniqueId().toString())){
-                    town.setLocation(armor.getLocation());
-                    //System.out.println("[Earth]check");
-                    break;
-                }
-
-            }
-        }
 
         return town;
 
@@ -751,8 +804,10 @@ public class ServerDatabase {
                 rs.getString("type"),
                 rs.getInt("status"),
                 rs.getString("item"),
-                location
+                location,
+                rs.getString("data")
         );
+
     }
 
 
@@ -1006,7 +1061,7 @@ public class ServerDatabase {
 
     public void addBot(String botName, UUID botId) {
         String sqlPlayer = "INSERT INTO players (uuid, displayName) VALUES (?, ?)";
-        String sqlTech = "INSERT INTO tech (uuid, username) VALUES (?, ?)";
+        String sqlTech = "INSERT INTO tech (id, displayName) VALUES (?, ?)";
         String sqlCountry = "INSERT INTO countries (id, ownerName, displayName) VALUES (?, ?, ?)";
         try (Connection c = getConnection("addBot")) {
             try (PreparedStatement preparedStatement = c.prepareStatement(sqlPlayer)) {
@@ -1026,7 +1081,10 @@ public class ServerDatabase {
                 st.setString(++i, botName);
                 st.executeUpdate();
             }
-            playerCache.put(botId, getPlayerFromDb(botId.toString()));
+            EPlayer bot = getPlayerFromDb(botId.toString());
+            bot.getData().setBot(true);
+            playerCache.put(botId, bot);
+
         } catch (SQLException e) {
             System.out.println("[Earth]Earth DataBase error: " + e.getMessage());
             Bukkit.broadcastMessage(ChatColor.RED + "DataBase error");
@@ -1521,27 +1579,83 @@ public class ServerDatabase {
     }
 
     public void addTown(Town town){
+        townCache.put(town.getUniqueId(),town);
+        List<Long> chunkKeysToSave = new java.util.ArrayList<>();
+        int centerX = town.getLocation().getBlockX() >> 4;
+        int centerZ = town.getLocation().getBlockZ() >> 4;
+        int radius = 10;
+        for (int x = -radius; x <= radius; x++) {
+            for (int z = -radius; z <= radius; z++) {
+                int targetX = centerX + x;
+                int targetZ = centerZ + z;
 
-        String sql = "INSERT INTO towns (owner_name, town_name, uuid, owner_id, type, world, chunk_x, chunk_z, houses) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        try (Connection conn = getConnection("addTown");
-             PreparedStatement preparedStatement = conn.prepareStatement(sql)) {
-            int paramIndex = 1;
-            preparedStatement.setString(paramIndex++, town.getOwnerName());
-            preparedStatement.setString(paramIndex++, town.getName());
-            preparedStatement.setString(paramIndex++, town.getUniqueId().toString());
-            preparedStatement.setString(paramIndex++, town.getOwnerId().toString());
-            preparedStatement.setString(paramIndex++, town.getType());
-            preparedStatement.setString(paramIndex++, town.getWorld());
-            preparedStatement.setInt(paramIndex++, town.getChunkX());
-            preparedStatement.setInt(paramIndex++, town.getChunkZ());
-            preparedStatement.setInt(paramIndex, town.getHouses());
-            preparedStatement.executeUpdate();
-            townCache.put(town.getUniqueId(),town);
-            markChunk(town.getChunkX(),town.getChunkZ(),town.getUniqueId());
-            getPlayer(town.getOwnerId()).addTown(town);
-        } catch (SQLException e) {
-            e.printStackTrace();
+                // Быстрая упаковка координат в long без загрузки чанка
+                long chunkKey = org.bukkit.Chunk.getChunkKey(targetX, targetZ);
+
+                chunkCache.put(chunkKey, town.getUniqueId());
+
+                chunkKeysToSave.add(chunkKey);
+            }
         }
+        getPlayer(town.getOwnerId()).addTown(town);
+
+        String townUuidStr = town.getUniqueId().toString();
+        String ownerIdStr = town.getOwnerId().toString();
+
+        String ownerName = town.getOwnerName();
+        String townName = town.getName();
+        String type = town.getType();
+        String world = town.getWorld();
+        int chunkX = town.getChunkX();
+        int chunkZ = town.getChunkZ();
+        int houses = town.getHouses();
+
+        String connId = "addTown";
+        Bukkit.getScheduler().runTaskAsynchronously(instance, () -> {
+
+            String sql = "INSERT OR REPLACE INTO towns (owner_name, town_name, uuid, owner_id, type, world, chunk_x, chunk_z, houses) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            String chunkSql = "INSERT OR REPLACE INTO chunks (chunkKey, townId) VALUES (?, ?)";
+
+            // Открываем соединение внутри асинхронного потока
+            try (Connection conn = getConnection(connId)) {
+
+                // Отключаем авто-коммит, чтобы сделать транзакцию единым целым (огромный буст скорости в SQLite)
+                conn.setAutoCommit(false);
+
+                // 1. Сохраняем сам город
+                try (PreparedStatement preparedStatement = conn.prepareStatement(sql)) {
+                    int paramIndex = 1;
+                    preparedStatement.setString(paramIndex++, ownerName);
+                    preparedStatement.setString(paramIndex++, townName);
+                    preparedStatement.setString(paramIndex++, townUuidStr);
+                    preparedStatement.setString(paramIndex++, ownerIdStr);
+                    preparedStatement.setString(paramIndex++, type);
+                    preparedStatement.setString(paramIndex++, world);
+                    preparedStatement.setInt(paramIndex++, chunkX);
+                    preparedStatement.setInt(paramIndex++, chunkZ);
+                    preparedStatement.setInt(paramIndex, houses);
+                    preparedStatement.executeUpdate();
+                }
+
+                // 2. Сохраняем все 441 чанков через Batch пакет
+                try (PreparedStatement chunkStmt = conn.prepareStatement(chunkSql)) {
+                    for (long chunkKey : chunkKeysToSave) {
+                        chunkStmt.setLong(1, chunkKey);
+                        chunkStmt.setString(2, townUuidStr);
+                        chunkStmt.addBatch();
+                    }
+                    chunkStmt.executeBatch();
+                }
+
+                // Применяем транзакцию
+                conn.commit();
+                Earth.getInstance().getBlueMapManager().updateTownMarker(town);
+            }catch (SQLException e) {
+                instance.getLogger().severe("DataBase error while processing " + connId);
+                Bukkit.broadcast(MiniMessage.miniMessage().deserialize("Database <yellow>"+connId+" <red>critical error"));
+                throw new RuntimeException(e);
+            }
+        });
 
     }
 
@@ -1551,7 +1665,6 @@ public class ServerDatabase {
         for (Building b:buildings){
             deleteBuilding(b);
         }
-        // Получаем мир и ищем ArmorStand
         World world = Bukkit.getWorld(town.getWorld());
         if (world == null) return;
         int radius = instance.getConfig().getInt("townSize")*16;
@@ -1560,101 +1673,44 @@ public class ServerDatabase {
                 entity.remove();
             }
         }
-        Chunk chunk = world.getChunkAt(town.getLocation());
-        Location[] armorStandLocs = new Location[3];
-        armorStandLocs[0] = town.getLocation();
-        armorStandLocs[1] = town.getLocation().clone().add(0.5, 1, 0.5);
-        armorStandLocs[2] = town.getLocation().clone().add(0.5, -1, 0.5);
-        //processChest(chunk,armorStandLocs[0],town.getType());
-        removeArmorStands(chunk,armorStandLocs);
-        town.getOwner().addAttribute(EPlayerAttribute.PEOPLE,-town.getPeople());
-
-        markChunk(town.getChunkX(), town.getChunkZ());
+        Tools.deleteHologram(town.getLocation(),town.getUniqueId().toString());
         townCache.remove(town.getUniqueId());
         getPlayer(town.getOwnerId()).removeTown(town);
-        try (Connection conn = getConnection("deleteTown");
-             PreparedStatement preparedStatement = conn.prepareStatement("DELETE FROM towns WHERE uuid = ?")) {
-            preparedStatement.setString(1, town.getUniqueId().toString());
-            preparedStatement.executeUpdate();
-        } catch (SQLException e) {
-            e.printStackTrace();
+
+        if(town.getLocation().getBlock().getState() instanceof Chest chest){
+            chest.getBlockInventory().clear();
         }
+
+        String townUuidStr = town.getUniqueId().toString();
+        String connId = "deleteTown";
+        Bukkit.getScheduler().runTaskAsynchronously(instance, () -> {
+
+            String sql = "DELETE FROM towns WHERE uuid = ?";
+            String chunkSql = "DELETE FROM chunks WHERE townId = ?";
+
+            try (Connection conn = getConnection(connId)) {
+
+                conn.setAutoCommit(false);
+
+                try (PreparedStatement preparedStatement = conn.prepareStatement(sql)) {
+                    preparedStatement.setString(1, townUuidStr);
+                    preparedStatement.executeUpdate();
+                }
+
+                try (PreparedStatement chunkStmt = conn.prepareStatement(chunkSql)) {
+                    chunkStmt.setString(1, townUuidStr);
+                    chunkStmt.executeUpdate();
+                }
+
+                conn.commit();
+                Earth.getInstance().getBlueMapManager().removeTownMarker(town);
+            }catch (SQLException e) {
+                instance.getLogger().severe("DataBase error while processing " + connId);
+                Bukkit.broadcast(MiniMessage.miniMessage().deserialize("Database <yellow>"+connId+" <red>critical error"));
+                throw new RuntimeException(e);
+            }
+        });
     }
-//
-//    public void updateTown(Town town){
-//        townCache.put(town.getUniqueId(),town);
-//        String sql = "UPDATE towns SET " +
-//                "owner_name = ?, " +
-//                "town_name = ?, " +
-//                "owner_id = ?, " +
-//                "type = ?, " +
-//                "blockade_status = ?, " +
-//                "status = ?, " +
-//                "buildings = ?, " +
-//                "bonusBuildSites = ?, " +
-//                "houses = ?, " +
-//                "port_id = ?, " +       // заменили market_id на port
-//                "landHub_id = ?, " +
-//                "tradeTown = ?, " +// добавили landHub
-//                "world = ?, " +
-//                "chunk_x = ?, " +
-//                "chunk_z = ? " +
-//                "WHERE uuid = ?";
-//        try (Connection conn = getConnection("updateTown");
-//             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-//
-//            int paramIndex = 1;
-//            pstmt.setString(paramIndex++, town.getOwnerName());
-//            pstmt.setString(paramIndex++, town.getName());
-//            pstmt.setString(paramIndex++, town.getOwnerId().toString());
-//            pstmt.setString(paramIndex++, town.getType());
-//            pstmt.setInt(paramIndex++, town.getBlockadeStatus());
-//            pstmt.setInt(paramIndex++, town.getStatus());
-//            pstmt.setInt(paramIndex++, town.getBuildingsAmount());
-//            pstmt.setInt(paramIndex++, town.getBonusBuildSite());
-//            pstmt.setInt(paramIndex++, town.getHouses());
-//
-//            // Устанавливаем port
-//            UUID port = town.getPortId();
-//            if (port != null) {
-//                pstmt.setString(paramIndex++, port.toString());
-//            } else {
-//                pstmt.setNull(paramIndex++, Types.VARCHAR);
-//            }
-//
-//            // Устанавливаем landHub
-//            UUID landHub = town.getLandHubId();
-//            if (landHub != null) {
-//                pstmt.setString(paramIndex++, landHub.toString());
-//            } else {
-//                pstmt.setNull(paramIndex++, Types.VARCHAR);
-//            }
-//
-//            UUID tradeTown = town.getTradeTownId();
-//            if (tradeTown != null) {
-//                pstmt.setString(paramIndex++, tradeTown.toString());
-//            } else {
-//                pstmt.setNull(paramIndex++, Types.VARCHAR);
-//            }
-//
-//            pstmt.setString(paramIndex++, town.getWorld());
-//            pstmt.setInt(paramIndex++, town.getChunkX());
-//            pstmt.setInt(paramIndex++, town.getChunkZ());
-//
-//            pstmt.setString(paramIndex, town.getUniqueId().toString());
-//
-//            int affectedRows = pstmt.executeUpdate();
-//            if (affectedRows == 0) {
-//                throw new SQLException("Updating town failed, no rows affected.");
-//            }
-//        } catch (SQLException e) {
-//            System.err.println("Error updating town " + town.getUniqueId() + ": " + e.getMessage());
-//            throw new RuntimeException(e);
-//        }
-//    }
-
-
-    // Уже должен существовать где-то в классе:
 
 
 
@@ -1667,17 +1723,40 @@ public class ServerDatabase {
         return new HashSet<>(townCache.values());
     }
 
-
-
-
-
-
-
     public Town getTown(UUID townId) {
 
         return townCache.get(townId);
     }
 
+    public boolean isLocationSafeForNewTown(Location newLocation, double minDistance) {
+        String newWorldName = newLocation.getWorld().getName();
+
+        // Координаты нового города, который игрок пытается создать
+        int newX = newLocation.getBlockX();
+        int newZ = newLocation.getBlockZ();
+
+        for (Town existingTown : townCache.values()) {
+            if (!existingTown.getWorld().equals(newWorldName)) {
+                continue;
+            }
+
+            Location existingLocation = existingTown.getLocation();
+
+            // Считаем разницу между центрами городов по осям X и Z отдельно
+            int deltaX = Math.abs(newX - existingLocation.getBlockX());
+            int deltaZ = Math.abs(newZ - existingLocation.getBlockZ());
+
+            // ЗАЩИТА ОТ НАЛОЖЕНИЯ КВАДРАТОВ:
+            // Если переданный размер minDistance равен 336 (размер города),
+            // то города смогут ставиться ИДЕАЛЬНО встык-встык (граница к границе),
+            // но код не разрешит им зайти друг на друга ни на один блок!
+            if (deltaX < minDistance && deltaZ < minDistance) {
+                return false; // Квадраты пересекаются или накладываются!
+            }
+        }
+
+        return true; // Место свободно, можно строить
+    }
 
 
     public boolean buildingExists(UUID buildingId){
@@ -1704,7 +1783,7 @@ public class ServerDatabase {
             preparedStatement.setString(paramIndex++, building.getUniqueId().toString());
             preparedStatement.setString(paramIndex++, building.getTownId().toString());
             preparedStatement.setString(paramIndex++, building.getType());
-            preparedStatement.setString(paramIndex++, building.getLocation().getWorld().toString());
+            preparedStatement.setString(paramIndex++, building.getLocation().getWorld().getName());
             preparedStatement.setDouble(paramIndex++, building.getLocation().getX());
             preparedStatement.setDouble(paramIndex++, building.getLocation().getY());
             preparedStatement.setDouble(paramIndex, building.getLocation().getZ());

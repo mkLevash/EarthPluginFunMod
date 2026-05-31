@@ -17,14 +17,12 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 
 public class PaginatedItemMenu extends PaginatedMenu {
-    private final Earth earthPlugin;
     Building building = menuUtility.getBuilding();
     Player p = menuUtility.getOwner();
     ArrayList<ItemStack> items;
 
-    public PaginatedItemMenu(MenuUtility menuUtility, Earth earthPlugin) {
+    public PaginatedItemMenu(MenuUtility menuUtility) {
         super(menuUtility);
-        this.earthPlugin = earthPlugin;
         if (building.getType().equals("lumber")){
             this.items = Items.getWoods();
         }
@@ -65,7 +63,7 @@ public class PaginatedItemMenu extends PaginatedMenu {
     public void handleMenu(InventoryClickEvent e)  {
         if (e.getCurrentItem().getType().equals(Material.BARRIER)) {
             //close inventory
-            new MiningBuildingMenu(menuUtility,this.earthPlugin).open();
+            new MiningBuildingMenu(menuUtility).open();
 
         }else if(e.getCurrentItem().getType().equals(Material.DARK_OAK_BUTTON)){
             if (ChatColor.stripColor(e.getCurrentItem().getItemMeta().getDisplayName()).equalsIgnoreCase("Left")){
@@ -87,14 +85,14 @@ public class PaginatedItemMenu extends PaginatedMenu {
             building.setItem(null);
             
             menuUtility.setBuilding(building);
-            new MiningBuildingMenu(menuUtility,this.earthPlugin).open();
+            new MiningBuildingMenu(menuUtility).open();
 
         } else if(!e.getCurrentItem().getType().equals(Material.GRAY_STAINED_GLASS_PANE)){
             System.out.println("[Earth]check0");
             building.setItem(e.getCurrentItem().getType());
             
             menuUtility.setBuilding(building);
-            new MiningBuildingMenu(menuUtility,this.earthPlugin).open();
+            new MiningBuildingMenu(menuUtility).open();
         }
 
 

@@ -2,6 +2,7 @@ package earthrp.battle;
 
 import earthrp.Earth;
 import earthrp.customObjects.Army;
+import earthrp.customObjects.EPlayer;
 import earthrp.customObjects.Unit;
 import earthrp.database.ServerDatabase;
 import earthrp.tools.Tools;
@@ -27,6 +28,14 @@ public class BattleManager {
         Tools.spawnBattleHologram(battle);
     }
 
+    public void newBattle(List<Army> attacker, List<Army> defender, Location location, EPlayer a,EPlayer d){
+
+        Tools.spawnPreBattleHologram(location, a, d);
+
+        Battle battle = new Battle(attacker,a,defender,d,location);
+        battleCache.put(battle.getUuid(),battle);
+    }
+
     public void updateBattle(Battle battle){
         battleCache.remove(battle.getUuid());
         battleCache.put(battle.getUuid(),battle);
@@ -35,6 +44,7 @@ public class BattleManager {
 
     public void delBattle(Battle battle){
         ServerDatabase db = Earth.getInstance().getServerDatabase();
+        Tools.removePreBattleHologram(battle.getLoc());
         Tools.removeBattleHologram(battle.getLoc());
         for(BattleUnit u:battle.getAttUnits()){
             Unit unit = db.getUnit(u.getUniqueId());

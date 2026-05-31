@@ -21,15 +21,13 @@ import java.util.UUID;
 import static earthrp.tools.PDCKeys.*;
 
 public class MarketSelectMenu extends PaginatedMenu {
-    private final Earth earthPlugin;
     Building building = menuUtility.getBuilding();
     Player p = menuUtility.getOwner();
     Town town = menuUtility.getTown();
     List<Town> towns = town.getTradeTowns();
 
-    public MarketSelectMenu(MenuUtility menuUtility, Earth earthPlugin) {
+    public MarketSelectMenu(MenuUtility menuUtility) {
         super(menuUtility);
-        this.earthPlugin = earthPlugin;
     }
 
     @Override
@@ -48,7 +46,7 @@ public class MarketSelectMenu extends PaginatedMenu {
         if (item != null ) {
             switch (item.getType()){
                 case BARRIER -> {
-                    new TradeMenu(menuUtility,this.earthPlugin).open();
+                    new TradeMenu(menuUtility).open();
                 }
                 case DARK_OAK_BUTTON -> {
                     if (ChatColor.stripColor(e.getCurrentItem().getItemMeta().getDisplayName()).equalsIgnoreCase("Left")){
@@ -70,7 +68,7 @@ public class MarketSelectMenu extends PaginatedMenu {
                 case BELL -> {
                     UUID id = UUID.fromString(item.getItemMeta().getPersistentDataContainer().get(tradeId,PersistentDataType.STRING));
                     town.setTradeTownId(id);
-                    new TradeMenu(menuUtility,this.earthPlugin).open();
+                    new TradeMenu(menuUtility).open();
                 }
             }
 
@@ -88,14 +86,14 @@ public class MarketSelectMenu extends PaginatedMenu {
             building.setItem(null);
             
             menuUtility.setBuilding(building);
-            new MiningBuildingMenu(menuUtility,this.earthPlugin).open();
+            new MiningBuildingMenu(menuUtility).open();
 
         } else if(!e.getCurrentItem().getType().equals(Material.GRAY_STAINED_GLASS_PANE)){
             System.out.println("[Earth]check0");
             building.setItem(e.getCurrentItem().getType());
             
             menuUtility.setBuilding(building);
-            new MiningBuildingMenu(menuUtility,this.earthPlugin).open();
+            new MiningBuildingMenu(menuUtility).open();
         }
 
 

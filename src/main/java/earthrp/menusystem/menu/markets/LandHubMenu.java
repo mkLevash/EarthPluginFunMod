@@ -42,13 +42,13 @@ public class LandHubMenu extends Menu {
             case BOOK-> {
 
                 e.getWhoClicked().closeInventory();
-                new TradeMenu(menuUtility,this.earthPlugin).open();
+                new TradeMenu(menuUtility).open();
 
             }
             case BARRIER -> {
                 e.getWhoClicked().closeInventory();
                 //menuUtility.setDeleteBuilding(market);
-                new DeleteConfirmMenu(menuUtility,this.earthPlugin).open();
+                new DeleteConfirmMenu(menuUtility).open();
             }
         }
 

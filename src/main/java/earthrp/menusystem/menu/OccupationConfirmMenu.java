@@ -19,13 +19,9 @@ import java.util.ArrayList;
 import java.util.Objects;
 
 public class OccupationConfirmMenu extends Menu {
-    private final Earth earthPlugin;
     Town town = menuUtility.getTown();
-    private final ServerDatabase db;
-    public OccupationConfirmMenu(MenuUtility menuUtility, Earth earthPlugin) {
+    public OccupationConfirmMenu(MenuUtility menuUtility) {
         super(menuUtility);
-        this.earthPlugin = earthPlugin;
-        db = Earth.getInstance().getServerDatabase();
     }
 
     @Override
@@ -48,10 +44,10 @@ public class OccupationConfirmMenu extends Menu {
                 town.setStatus(false);
                 p.sendMessage("Вы оккупировали "+town.getName());
 
-                new TownsMenu(menuUtility,earthPlugin).open();
+                new TownsMenu(menuUtility).open();
             }case BARRIER->{
                 p.closeInventory();
-                new TownsMenu(menuUtility,earthPlugin).open();
+                new TownsMenu(menuUtility).open();
             }
         }
 

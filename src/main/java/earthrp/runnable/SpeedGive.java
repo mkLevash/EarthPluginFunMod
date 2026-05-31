@@ -26,6 +26,7 @@ public class SpeedGive extends BukkitRunnable {
                     }
                 }.runTask(Earth.getInstance());
             }
+
         }
     }
 }

@@ -38,10 +38,8 @@ public class DeclareWar implements CommandExecutor, TabCompleter {
             targetCountry.setAttribute(EPlayerAttribute.WAR_STATUS,1);
             p.setAttribute(EPlayerAttribute.WAR_STATUS,1);
             Bukkit.broadcastMessage(Tools.colorText("&4" + p.getDisplayName() + "&e объявил вону &a" + args[0]));
-            String path = "war."+p.getDisplayName()+"."+targetPlayer;
-            String tarPath = "war."+targetPlayer+"."+p.getDisplayName();
-            CustomConfig.set(path,true);
-            CustomConfig.set(tarPath,true);
+            p.getData().getWar().add(targetCountry.getUniqueId());
+            targetCountry.getData().getWar().add(p.getUniqueId());
         }
         return false;
     }

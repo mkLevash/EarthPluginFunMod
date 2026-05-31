@@ -90,9 +90,13 @@ public class BuildConfirmMenu extends Menu {
                 type,
                 1,
                 null,
-                loc
+                loc,
+                ""
 
         );
+        if (type.equals("pasture")){
+            building.getData().pastureArea = Building.countEnclosedArea(building.getLocation(),1000);
+        }
         db.addBuilding(building);
 
         Tools.spawnHologram(loc.clone(),String.valueOf(buildingId),"buildingId", false);

@@ -16,14 +16,13 @@ import org.bukkit.inventory.meta.ItemMeta;
 import java.util.ArrayList;
 
 public class DeleteConfirmMenu extends Menu {
-    private final Earth earthPlugin;
+
     Town town = menuUtility.getDeleteTown();
     Building building = menuUtility.getDeleteBuilding();
     Army army = menuUtility.getDeleteArmy();
     private final ServerDatabase db;
-    public DeleteConfirmMenu(MenuUtility menuUtility, Earth earthPlugin) {
+    public DeleteConfirmMenu(MenuUtility menuUtility) {
         super(menuUtility);
-        this.earthPlugin = earthPlugin;
         db = Earth.getInstance().getServerDatabase();
     }
 

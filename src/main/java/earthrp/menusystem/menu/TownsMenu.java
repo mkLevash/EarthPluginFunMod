@@ -1,6 +1,7 @@
 package earthrp.menusystem.menu;
 
 import earthrp.Earth;
+import earthrp.customEnums.TownItem;
 import earthrp.tools.Tools;
 import earthrp.customEnums.EPlayerAttribute;
 import earthrp.customObjects.EPlayer;
@@ -23,13 +24,10 @@ import java.util.List;
 import java.util.Objects;
 
 public class TownsMenu extends Menu {
-    private final Earth earthPlugin;
+
     Town t = menuUtility.getTown();
-    private final ServerDatabase db;
-    public TownsMenu(MenuUtility menuUtility, Earth earthPlugin) {
+    public TownsMenu(MenuUtility menuUtility) {
         super(menuUtility);
-        this.earthPlugin = earthPlugin;
-        db = Earth.getInstance().getServerDatabase();
     }
 
     @Override
@@ -46,34 +44,39 @@ public class TownsMenu extends Menu {
     public void handleMenu(InventoryClickEvent e)  {
         Player p = (Player) e.getWhoClicked();
         switch (Objects.requireNonNull(e.getCurrentItem()).getType()){
+
+            case CRAFTING_TABLE -> {
+                e.getWhoClicked().closeInventory();
+                new TownItemsMenu(menuUtility).open();
+            }
             
             case BELL -> {
 
                 e.getWhoClicked().closeInventory();
-                new TradeMenu(menuUtility, this.earthPlugin).open();
+                new TradeMenu(menuUtility).open();
             }
 
             case BARRIER -> {
                 e.getWhoClicked().closeInventory();
                 menuUtility.setDeleteTown(t);
-                new DeleteConfirmMenu(menuUtility,this.earthPlugin).open();
+                new DeleteConfirmMenu(menuUtility).open();
             }
 
             case PLAYER_HEAD -> {
                 if(!t.getOwner().getUniqueId().equals(p.getUniqueId())){
                     if(t.isStatus()){
                         p.closeInventory();
-                        new OccupationConfirmMenu(menuUtility,earthPlugin).open();
+                        new OccupationConfirmMenu(menuUtility).open();
                     }else{
                         p.closeInventory();
-                        new AnnexConfirmMenu(menuUtility,earthPlugin).open();
+                        new AnnexConfirmMenu(menuUtility).open();
                     }
                 }
                 else if (!t.isStatus()) {
                     p.closeInventory();
                     p.sendMessage(ChatColor.GREEN+"Город успешно освобождён");
                     t.setStatus(true);
-                    new TownsMenu(menuUtility,this.earthPlugin).open();
+                    new TownsMenu(menuUtility).open();
                 }
                 else if(!t.isCore()){
                     if(t.getOwner().getAttribute(EPlayerAttribute.POLIT_BALANCE)>=t.getCoreCost()){
@@ -81,7 +84,7 @@ public class TownsMenu extends Menu {
                         p.sendMessage(ChatColor.GREEN+"Город успешно национализирован");
                         t.setCore(true);
                         t.getOwner().addAttribute(EPlayerAttribute.POLIT_BALANCE,-t.getCoreCost());
-                        new TownsMenu(menuUtility,this.earthPlugin).open();
+                        new TownsMenu(menuUtility).open();
                     }else{
                         p.sendMessage(ChatColor.YELLOW+"У вас недостаточно полит власти");
                     }
@@ -93,7 +96,7 @@ public class TownsMenu extends Menu {
                         p.sendMessage(ChatColor.GREEN+"Инфраструктура успешно увеличена");
                         t.getOwner().addAttribute(EPlayerAttribute.POLIT_BALANCE,-t.getInfrastructureCost());
                         t.setInfrastructure(t.getInfrastructure()+1);
-                        new TownsMenu(menuUtility,this.earthPlugin).open();
+                        new TownsMenu(menuUtility).open();
                     }else{
                         p.sendMessage(ChatColor.YELLOW+"У вас недостаточно полит власти");
                     }
@@ -162,9 +165,11 @@ public class TownsMenu extends Menu {
         EPlayer player = t.getOwner();
         List<String> statsLore = List.of(
 
-                Tools.colorText("&fНалоги &a" + (int) Math.round(t.getPeople()* player.getAttribute(EPlayerAttribute.TAX_MOD))),
+                Tools.colorText("&fНалоги &a" + t.getTaxIncome()),
                 Tools.colorText("&fПроизводство &a" +  (int) Math.round( t.getProdIncome()*player.getAttribute(EPlayerAttribute.PROD_MOD))),
-                Tools.colorText("&fЗдания = &d" + t.getBuildings().size()+"&f/&e"+t.getBuildSite())
+                Tools.colorText("&fЗдания = &d" + t.getBuildings().size()+"&f/&e"+t.getBuildSite()),
+                Tools.colorText("&fЗерна = " + t.getItem(TownItem.WHEAT)),
+                Tools.colorText("&fГолод - " + t.getFamine())
 
         );
         ItemStack stats = Tools.createItem(Material.CRAFTING_TABLE,"Основная информация о городе",statsLore);

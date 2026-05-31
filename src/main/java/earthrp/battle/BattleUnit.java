@@ -37,6 +37,9 @@ public class BattleUnit extends Unit {
         this.defMoralePips = unit.getPipsMorale();
         this.offMoralePips = defMoralePips;
 
+        this.cavDebuff = 0.0;
+        this.cavRatio = unit.getArmy().getCavRatio();
+
 
 
         this.setArmyId(unit.getArmyId());
@@ -62,6 +65,9 @@ public class BattleUnit extends Unit {
 
     private int offMoralePips;
     private int defMoralePips;
+
+    private double cavDebuff;
+    private double cavRatio;
 
     public double getDisciple(){
         return getArmy().getDisc()+this.getDisc();

@@ -15,6 +15,7 @@ import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 public class GiveMora implements CommandExecutor {
@@ -64,7 +65,17 @@ public class GiveMora implements CommandExecutor {
 
                    // moraMeta.getPersistentDataContainer().set(new NamespacedKey(Earth.getPlugin(), "uuid"), PersistentDataType.STRING, players.get(index).getUniqueId().toString());
                     ItemStack mora = Tools.createMora(amount);
-                    player.getInventory().addItem(mora);
+
+                    Map<Integer, ItemStack> overflow = player.getInventory().addItem(mora);
+
+                    if (!overflow.isEmpty()) {
+                        // Если карта не пуста, значит, часть предметов не влезла
+                        for (ItemStack remaining : overflow.values()) {
+                            // Спавним не поместившиеся предметы на землю рядом с игроком
+                            player.getWorld().dropItemNaturally(player.getLocation(), remaining);
+                        }
+                        player.sendMessage("Ваш инвентарь полон! Часть предметов упала на землю.");
+                    }
                     sender.sendMessage(ChatColor.GREEN + "Вы выдали себе " + amount + " моры");
                 }else{
                     sender.sendMessage(ChatColor.YELLOW + "В вашей казне недостаточно моры!");

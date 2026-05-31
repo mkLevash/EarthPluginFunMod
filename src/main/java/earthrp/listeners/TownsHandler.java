@@ -2,13 +2,18 @@ package earthrp.listeners;
 
 
 import earthrp.Earth;
+import earthrp.customObjects.Building;
 import earthrp.customObjects.Town;
 import earthrp.database.ServerDatabase;
 import earthrp.menusystem.MenuUtility;
+import earthrp.menusystem.menu.Main;
 import earthrp.menusystem.menu.TownsMenu;
+import earthrp.menusystem.menu.buildings.BuildMenu;
+import earthrp.menusystem.menu.buildings.TownConfirmMenu;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.World;
 import org.bukkit.block.Container;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.EntityType;
@@ -23,9 +28,12 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.persistence.PersistentDataContainer;
+import org.bukkit.persistence.PersistentDataType;
 
 import java.util.*;
 
+import static earthrp.tools.PDCKeys.buildingTypeKey;
 
 
 public class TownsHandler implements Listener {
@@ -39,87 +47,24 @@ public class TownsHandler implements Listener {
     ServerDatabase db;
 
     @EventHandler
-    public void onMenuClick(InventoryClickEvent e) {
-        try {
-            if (!isValidTownTransfer(e)) return;
-
-            ItemStack item = e.getCurrentItem();
-            ItemMeta meta = item.getItemMeta();
-            List<String> lore = meta.getLore();
-
-            String type = lore.get(0);
-            UUID townId = UUID.fromString(lore.get(1));
-            UUID ownerId = UUID.fromString(lore.get(2));
-            String ownerName = lore.get(3);
-            String townName = meta.getDisplayName();
-            Location loc = e.getInventory().getLocation();
-
-            if (db.townExists(townId)) {
-                handleExistingTown(e, townId, townName);
-            } else {
-                handleNewTown(e, townId, ownerId, ownerName, townName, type, loc);
-            }
-        } catch (Exception ex) {
-            Bukkit.getLogger().severe("Ошибка при обработке клика: " + ex.getMessage());
+    public void onInteract(PlayerInteractEvent e) {
+        if(isValidTownInteract(e)){
             e.setCancelled(true);
+            if(db.isLocationSafeForNewTown(e.getClickedBlock().getLocation(),336)){
+                MenuUtility menuUtility = new MenuUtility(e.getPlayer());
+
+                ItemStack item = e.getItem();
+                menuUtility.setBuildingItem(item);
+
+                Container container = (Container) e.getClickedBlock().getState();
+                menuUtility.setBuildingChest(container.getInventory());
+
+                new TownConfirmMenu(menuUtility).open();
+            }else{
+                e.getPlayer().sendMessage("Слишком близко к другому городу!");
+            }
+
         }
-    }
-
-    private void handleExistingTown(InventoryClickEvent e, UUID townId, String townName) {
-        Town town = db.getTown(townId);
-        db.deleteTown(town);
-    }
-
-    private void handleNewTown(InventoryClickEvent e, UUID townId, UUID ownerId, String ownerName, String townName, String type, Location loc) {
-        int x = loc.getChunk().getX();
-        int z = loc.getChunk().getZ();
-        String world = loc.getWorld().getName();
-
-
-        if (db.isChunkClaimed(x,z)) {
-            cancelEventWithMessage(e, "Слишком близко к другому городу");
-            return;
-        }
-
-        createTownHologram(loc, townName, townId);
-
-
-        Town town = new Town(townId,ownerId,type,townName,ownerName,world,x,z);
-        db.addTown(town);
-        db.markChunk(x,z,townId);
-
-    }
-
-    private void createTownHologram(Location loc, String name, UUID townId) {
-        spawnHologram(loc.clone(), String.valueOf(townId), false);
-
-        // Голограмма для отображаемого имени
-        spawnHologram(loc.clone().add(0.5, 1, 0.5), name, true);
-    }
-
-    private void spawnHologram(Location loc, String text, boolean visible) {
-        ArmorStand hologram = (ArmorStand) loc.getWorld().spawnEntity(loc, EntityType.ARMOR_STAND);
-        hologram.setVisible(false);
-        hologram.setMarker(true);
-        hologram.setCustomNameVisible(visible);
-        hologram.setCustomName(text);
-        hologram.setGravity(false);
-        hologram.setCollidable(false);
-        hologram.setInvulnerable(true); // Защита от случайного удаления
-    }
-
-    private boolean isValidTownTransfer(InventoryClickEvent e) {
-        return e.getAction() == InventoryAction.MOVE_TO_OTHER_INVENTORY
-                && e.getInventory().getType() == InventoryType.CHEST
-                && e.getCurrentItem() != null
-                && e.getCurrentItem().getItemMeta() != null
-                && e.getCurrentItem().getItemMeta().getLore() != null
-                && List.of("capital", "townHall").contains(e.getCurrentItem().getItemMeta().getLore().get(0));
-    }
-
-    private void cancelEventWithMessage(InventoryClickEvent e, String message) {
-        e.setCancelled(true);
-        e.getWhoClicked().sendMessage(message);
     }
 
     @EventHandler
@@ -149,10 +94,23 @@ public class TownsHandler implements Listener {
                     Town town = db.getTown(UUID.fromString(lore.get(1)));
                     MenuUtility pmu = new MenuUtility(player);
                     pmu.setTown(town);
-                    new TownsMenu(pmu, Earth.getInstance()).open();
+                    new TownsMenu(pmu).open();
                 }
             }
         }
     }
+
+    private boolean isValidTownInteract(PlayerInteractEvent e) {
+
+        return e.getAction() == Action.RIGHT_CLICK_BLOCK
+                && e.hasItem()
+                && e.getClickedBlock().getType().equals(Material.CHEST)
+                && e.getItem() != null
+                && e.getItem().hasItemMeta()
+                && e.getItem().getItemMeta().hasLore()
+                && List.of("capital", "townHall").contains(e.getItem().getItemMeta().getLore().get(0));
+    }
+
+
 
 }

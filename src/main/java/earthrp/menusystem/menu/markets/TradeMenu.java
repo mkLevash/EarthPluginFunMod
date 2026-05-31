@@ -17,13 +17,9 @@ import org.bukkit.inventory.meta.ItemMeta;
 import java.util.List;
 
 public class TradeMenu extends Menu {
-    private final Earth earthPlugin;
-    private final ServerDatabase db;
     Town town = menuUtility.getTown();
-    public TradeMenu(MenuUtility menuUtility, Earth earthPlugin) {
+    public TradeMenu(MenuUtility menuUtility) {
         super(menuUtility);
-        this.earthPlugin = earthPlugin;
-        db = Earth.getInstance().getServerDatabase();
     }
 
     @Override
@@ -50,13 +46,13 @@ public class TradeMenu extends Menu {
 
             case SADDLE->{
                 e.getWhoClicked().closeInventory();
-                new MarketSelectMenu(menuUtility,this.earthPlugin).open();
+                new MarketSelectMenu(menuUtility).open();
                 //new LoadingMenu(menuUtility,this.earthPlugin).open();
             }
 
             case BARRIER-> {
                 e.getWhoClicked().closeInventory();
-                new TownsMenu(menuUtility,this.earthPlugin).open();
+                new TownsMenu(menuUtility).open();
 
             }
         }

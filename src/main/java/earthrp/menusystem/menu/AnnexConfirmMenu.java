@@ -18,12 +18,10 @@ import java.util.ArrayList;
 import java.util.Objects;
 
 public class AnnexConfirmMenu extends Menu {
-    private final Earth earthPlugin;
     Town town = menuUtility.getTown();
     private final ServerDatabase db;
-    public AnnexConfirmMenu(MenuUtility menuUtility, Earth earthPlugin) {
+    public AnnexConfirmMenu(MenuUtility menuUtility) {
         super(menuUtility);
-        this.earthPlugin = earthPlugin;
         db = Earth.getInstance().getServerDatabase();
     }
 
@@ -55,10 +53,10 @@ public class AnnexConfirmMenu extends Menu {
                 p.sendMessage("Вы аннексировали "+town.getName());
                 Player target = Bukkit.getPlayer(town.getOwnerName());
                 if(target!= null) target.sendMessage(p.getDisplayName() + " оккупировал ваш город "+town.getName()+ "!");
-                new TownsMenu(menuUtility,earthPlugin).open();
+                new TownsMenu(menuUtility).open();
             }case BARRIER->{
                 p.closeInventory();
-                new TownsMenu(menuUtility,earthPlugin).open();
+                new TownsMenu(menuUtility).open();
             }
         }
 

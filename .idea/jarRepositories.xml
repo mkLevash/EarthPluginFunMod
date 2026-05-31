@@ -47,6 +47,11 @@
       <option name="url" value="https://repository.jboss.org/nexus/content/repositories/public/" />
     </remote-repository>
     <remote-repository>
+      <option name="id" value="bluecolored" />
+      <option name="name" value="bluecolored" />
+      <option name="url" value="https://repo.bluecolored.de/releases" />
+    </remote-repository>
+    <remote-repository>
       <option name="id" value="minecraft-repo" />
       <option name="name" value="minecraft-repo" />
       <option name="url" value="https://libraries.minecraft.net/" />

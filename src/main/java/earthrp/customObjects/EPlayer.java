@@ -3,6 +3,7 @@ package earthrp.customObjects;
 import java.util.*;
 
 
+import com.google.gson.Gson;
 import earthrp.Earth;
 import earthrp.tools.Tools;
 import earthrp.customEnums.EPlayerAttribute;
@@ -23,14 +24,69 @@ public class EPlayer implements Comparable<EPlayer> {
         db = Earth.getInstance().getServerDatabase();
     }
 
+    private static final Gson gson = new Gson();
+
+
+    private PlayerData data;
+
+    private String rawJson;    // То, что пришло из БД
+
+    // Вызываем при загрузке из БД
+    public void loadData(String json) {
+        if (json == null || json.isEmpty()) {
+            this.data = new PlayerData();
+        } else {
+            this.data = gson.fromJson(json, PlayerData.class);
+        }
+    }
+
+    // Вызываем перед сохранением в БД
+    public String serializeData() {
+        return gson.toJson(this.data);
+    }
+
+    // Удобный геттер
+    public PlayerData getData() {
+        if (this.data == null) this.data = new PlayerData();
+        return this.data;
+    }
+
     private final Map<EPlayerAttribute, Double> attributes = new EnumMap<>(EPlayerAttribute.class);
     private final Map<EPlayerTech, Boolean> techMap = new EnumMap<>(EPlayerTech.class);
 
     public void setAttribute(EPlayerAttribute type, double newValue) {
         attributes.put(type, newValue);
     }
-    public void addAttribute(EPlayerAttribute type, double delta) {setAttribute(type, Tools.round(getAttribute(type) + delta));}
-    public double getAttribute(EPlayerAttribute type) {return Tools.round(attributes.getOrDefault(type, type.getDefaultValue()));}
+    public void addAttribute(EPlayerAttribute type, double delta) {setAttribute(type, Tools.round(getAttributeValue(type) + delta));}
+    public double getAttributeValue(EPlayerAttribute type) {return Tools.round(attributes.getOrDefault(type, type.getDefaultValue()));}
+
+    public double getAttribute(EPlayerAttribute attribute) {
+        double baseValue = getAttributeValue(attribute); // Твое дефолтное значение из Enum
+        List<PlayerModifier> modifiers = this.data.attributeModifiers.get(attribute);
+
+        if (modifiers == null || modifiers.isEmpty()) {
+            return baseValue;
+        }
+
+        // 1. Сначала применяем все операции ADD
+        double totalAdd = 0;
+        for (PlayerModifier mod : modifiers) {
+            if (mod.getOperation() == PlayerModifier.Operation.ADD) {
+                totalAdd += mod.getValue();
+            }
+        }
+        double result = baseValue + totalAdd;
+
+        // 2. Затем применяем MULTIPLY (например, если бафф дает 0.2, это +20% к итогу)
+        double totalMultiply = 1.0;
+        for (PlayerModifier mod : modifiers) {
+            if (mod.getOperation() == PlayerModifier.Operation.MULTIPLY) {
+                totalMultiply += mod.getValue(); // 1.0 + 0.2 = 1.2
+            }
+        }
+
+        return Tools.round(result * totalMultiply);
+    }
 
     public void setTech(EPlayerTech type, boolean newValue) {
         techMap.put(type, newValue);
@@ -92,8 +148,16 @@ public class EPlayer implements Comparable<EPlayer> {
         return (int) Math.round(getAttribute(EPlayerAttribute.TRIBUTE)*getAttribute(EPlayerAttribute.TRIBUTE_MOD));
     }
 
-    public double getMorale(){
+    public double getMoraleMod(){
         return Tools.round(getAttribute(EPlayerAttribute.MORALE_MOD) + (getAttribute(EPlayerAttribute.TRADITION)*0.005) + (getRevanchism() * getAttribute(EPlayerAttribute.REVANCHISM_MOD) * 0.1));
+    }
+
+    public String getSatietyColor(){
+        if(getAttribute(EPlayerAttribute.ARMY_SATIETY) < 1){
+            return "&cx"+getAttribute(EPlayerAttribute.ARMY_SATIETY);
+        }else{
+            return "&ax"+getAttribute(EPlayerAttribute.ARMY_SATIETY);
+        }
     }
 
     public int getPeople(){
@@ -136,7 +200,10 @@ public class EPlayer implements Comparable<EPlayer> {
 
 
     public int getTaxIncome(){
-        double tax = getAttribute(EPlayerAttribute.TAX_INCOME) + getPeople();
+        double tax = getAttribute(EPlayerAttribute.TAX_INCOME);
+        for(Town t: getTowns()){
+            tax += t.getTaxIncome();
+        }
         return (int) Math.floor(tax * getAttribute(EPlayerAttribute.TAX_MOD));
     }
 
@@ -308,6 +375,17 @@ public class EPlayer implements Comparable<EPlayer> {
         debt += CustomConfig.get().getInt(path+"1");
         debt += CustomConfig.get().getInt(path+"2");
         return debt;
+    }
+
+    public List<Army> getArmiesInHand() {
+        List<Army> armies = new ArrayList<>();
+        for (UUID id : this.getData().armiesInHand) {
+            Army army = Earth.getInstance().getServerDatabase().getArmy(id);
+            if (army != null) { // Защита от NullPointerException, если армии нет в БД
+                armies.add(army);
+            }
+        }
+        return armies;
     }
 
     @Override

@@ -340,14 +340,10 @@ public class MoraExpansion extends PlaceholderExpansion {
             return day + ", " + hour + ":" + min;
         }
         if(params.equalsIgnoreCase("town")){
-            Location loc = player.getLocation();
-            int x = loc.getChunk().getX();
-            int z = loc.getChunk().getZ();
-            String world = loc.getWorld().getName();
+            long chunkKey = player.getLocation().getChunk().getChunkKey();
 
-            Town town = earth.getServerDatabase().getTownAtChunk(x,z);
+            Town town = earth.getServerDatabase().getTownAtChunk(chunkKey);
             if (town==null){
-                earth.getServerDatabase().markChunk(x,z);
                 return " ";
             }else if(town.getOwnerId().equals(player.getUniqueId())) {
                 return "[&3"+earth.getServerDatabase().getPlayer(town.getOwnerId()).getCountryName() +"&f]&2"+town.getName();

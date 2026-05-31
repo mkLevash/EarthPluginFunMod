@@ -7,11 +7,14 @@ import lombok.Setter;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.Tag;
+import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Entity;
+import com.google.gson.Gson;
 
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 
 @Getter
 @Setter
@@ -38,7 +41,9 @@ public class Building implements Comparable<Building>{
     private Material item;
 
 
-    public Building( UUID buildingUniqueId, UUID townUniqueId, String townName, UUID marketUniqueId, String buildingType, int buildingStatus, String material, Location location){
+
+
+    public Building( UUID buildingUniqueId, UUID townUniqueId, String townName, UUID marketUniqueId, String buildingType, int buildingStatus, String material, Location location, String jsonData){
         this.uuid = buildingUniqueId;
         this.tuuid = townUniqueId;
         this.tName = townName;
@@ -47,8 +52,34 @@ public class Building implements Comparable<Building>{
         this.status = buildingStatus;
         this.item = material != null ? Material.matchMaterial(material) : null;
         this.location = location;
+        loadData(jsonData);
         db = Earth.getInstance().getServerDatabase();
 
+    }
+
+    private static final Gson gson = new Gson();
+
+    private BuildingData data; // Объект с данными
+    private String rawJson;    // То, что пришло из БД
+
+    // Вызываем при загрузке из БД
+    public void loadData(String json) {
+        if (json == null || json.isEmpty()) {
+            this.data = new BuildingData();
+        } else {
+            this.data = gson.fromJson(json, BuildingData.class);
+        }
+    }
+
+    // Вызываем перед сохранением в БД
+    public String serializeData() {
+        return gson.toJson(this.data);
+    }
+
+    // Удобный геттер
+    public BuildingData getData() {
+        if (this.data == null) this.data = new BuildingData();
+        return this.data;
     }
 
     public UUID getUniqueId(){
@@ -93,6 +124,44 @@ public class Building implements Comparable<Building>{
         int res = tName.compareTo(other.tName);
         if (res == 0) res = uuid.compareTo(other.uuid);
         return res;
+    }
+
+    public static int countEnclosedArea(Location startLoc, int maxBlocks) {
+        Set<Block> found = new HashSet<>();
+        Queue<Block> queue = new LinkedList<>();
+
+        Block startBlock = startLoc.getBlock();
+        if (isFence(startBlock.getType())) return 0; // Центр не может быть забором
+
+        queue.add(startBlock);
+        found.add(startBlock);
+
+        while (!queue.isEmpty() && found.size() < maxBlocks) {
+            Block current = queue.poll();
+
+            // Проверяем 4 соседних блока (Север, Юг, Восток, Запад)
+            for (BlockFace face : new BlockFace[]{BlockFace.NORTH, BlockFace.SOUTH, BlockFace.EAST, BlockFace.WEST}) {
+                Block relative = current.getRelative(face);
+                Material type = relative.getType();
+
+                // Если это не забор и мы тут еще не были
+                if (!isFence(type) && !found.contains(relative)) {
+                    found.add(relative);
+                    queue.add(relative);
+                }
+            }
+        }
+
+        // Если мы достигли лимита, значит забор не закрыт или слишком велик
+        if (found.size() >= maxBlocks) return -1;
+
+        return found.size();
+    }
+
+    private static boolean isFence(Material material) {
+        // Tag.FENCES — включает все деревянные и адские заборы
+        // Tag.FENCE_GATES — включает все виды калиток
+        return Tag.FENCES.isTagged(material) || Tag.FENCE_GATES.isTagged(material);
     }
 
 }

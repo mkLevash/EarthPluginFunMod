@@ -21,6 +21,7 @@ import org.bukkit.persistence.PersistentDataType;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 import static earthrp.tools.PDCKeys.*;
 
@@ -130,13 +131,11 @@ public class CountryMenu extends Menu {
         inventory.setItem(10,politStats);
 
         List<String> townStatsList = new ArrayList<>();
-        if (towns != null){
-            for(Town t:towns){
-                townStatsList.add(Tools.colorText("&f"+t.getName() + ": &2" + t.getIncome() + "&f$" + t.getPeople() + "ह"));
-            }
+        for(UUID id :player.getData().getWar()){
+            townStatsList.add(Earth.getInstance().getServerDatabase().getPlayer(id).getCountryName());
         }
-        ItemStack townStats = Tools.createCountryStat("Статистика по городам",townStatsList,"townStats");
-        //inventory.setItem(12,townStats);
+        ItemStack townStats = Tools.createCountryStat("Война",townStatsList,"townStats");
+        inventory.setItem(19,townStats);
 
         List<String> techStatsList = List.of(
                 Tools.colorText("&fБалансૹ " + (int) player.getAttribute(EPlayerAttribute.OI_BALANCE)),

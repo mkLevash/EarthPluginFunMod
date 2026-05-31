@@ -10,9 +10,7 @@ import lombok.Getter;
 import lombok.Setter;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
-import org.bukkit.ChatColor;
-import org.bukkit.Material;
-import org.bukkit.Sound;
+import org.bukkit.*;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
@@ -73,6 +71,33 @@ public class Army implements Comparable<Army>{
         }
     }
 
+
+    private Location staticLocation;
+    private UUID playerUUID = null;
+    private boolean playerOffline = false; // Новый флаг
+
+    public Location getLocation() {
+        // Если игрок оффлайн, возвращаем точку, где он вышел из игры
+        if (playerOffline) {
+            return staticLocation;
+        }
+
+        if (playerUUID != null) {
+            Player player = Bukkit.getPlayer(playerUUID);
+            if (player != null && player.isOnline()) {
+                return player.getLocation();
+            }
+        }
+        return staticLocation;
+    }
+
+
+    public void setPlayerOffline(boolean offline, Location logoutLoc) {
+        this.playerOffline = offline;
+        if (offline) {
+            this.staticLocation = logoutLoc; // Замораживаем на месте выхода
+        }
+    }
 
 
     public EPlayer getOwner(){

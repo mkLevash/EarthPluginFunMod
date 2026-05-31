@@ -62,7 +62,8 @@ public class dbTools {
             st.execute("""
                 CREATE TABLE IF NOT EXISTS players (
                 uuid TEXT PRIMARY KEY,
-                displayName TEXT NOT NULL)
+                displayName TEXT NOT NULL,
+                data TEXT)
                 """);
 
             st.execute("""
@@ -77,7 +78,8 @@ public class dbTools {
                 x REAL NOT NULL,
                 y REAL NOT NULL,
                 z REAL NOT NULL,
-                item TEXT NULL)
+                item TEXT NULL,
+                data TEXT)
                 """);
 
             st.execute("""
@@ -98,7 +100,8 @@ public class dbTools {
                 chunk_z INTEGER NOT NULL,
                 port INTEGER NOT NULL DEFAULT 0,
                 landHub INTEGER NOT NULL DEFAULT 0,
-                tradeTown TEXT NULL)
+                tradeTown TEXT NULL,
+                data TEXT)
                 """);
 
             st.execute("""
@@ -117,12 +120,9 @@ public class dbTools {
                 """);
 
             st.execute("""
-                CREATE TABLE IF NOT EXISTS claimed_chunks (
-                x INTEGER NOT NULL,
-                z INTEGER NOT NULL,
-                world TEXT NOT NULL,
-                town_id TEXT,
-                UNIQUE(x, z, world))
+                CREATE TABLE IF NOT EXISTS chunks (
+                chunkKey INTEGER PRIMARY KEY,
+                townId TEXT)
                 """);
 
             st.execute("""

@@ -4,6 +4,7 @@ import earthrp.battle.BattleHandler;
 import earthrp.battle.BattleManager;
 import earthrp.battle.BattlePhaseHandler;
 
+import earthrp.bot.GeminiManager;
 import earthrp.customObjects.EPlayer;
 import earthrp.customEnums.EPlayerAttribute;
 import earthrp.customObjects.Town;
@@ -11,6 +12,7 @@ import earthrp.customObjects.Town;
 import earthrp.listeners.*;
 import earthrp.database.ServerDatabase;
 import earthrp.menusystem.MenuUtility;
+import earthrp.tools.BlueMapManager;
 import earthrp.tools.Crafts;
 import earthrp.tools.LoadingManager;
 import lombok.Getter;
@@ -40,6 +42,10 @@ public class Earth extends JavaPlugin {
     @Getter
     private ServerDatabase serverDatabase;
     @Getter
+    private GeminiManager geminiManager;
+    @Getter
+    private BlueMapManager blueMapManager;
+    @Getter
     private BattleManager battleManager;
     private static final HashMap<Player, MenuUtility> playerMenuUtilityMap = new HashMap<>();
 
@@ -47,7 +53,9 @@ public class Earth extends JavaPlugin {
 
     @Override
     public void onEnable() {
+        geminiManager = new GeminiManager(this);
         battleManager = new BattleManager();
+        blueMapManager = new BlueMapManager();
         LoadingManager lm = new LoadingManager(this);
         lm.loadConfig();
         try {serverDatabase = new ServerDatabase();} catch (SQLException ex) {
@@ -58,15 +66,11 @@ public class Earth extends JavaPlugin {
         }
         serverDatabase.loadCache();
 
-
-
-
         lm.registerCommands();
         lm.runTasks();
         lm.registerExpansion();
         lm.registerListeners();
-
-
+        blueMapManager.refreshAllTowns(serverDatabase.getTowns());
         Crafts.enableCrafts();
 
 

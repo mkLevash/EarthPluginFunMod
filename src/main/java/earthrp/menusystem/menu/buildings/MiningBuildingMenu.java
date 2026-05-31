@@ -1,8 +1,10 @@
 package earthrp.menusystem.menu.buildings;
 
+import earthrp.customEnums.EPlayerAttribute;
 import earthrp.customObjects.Building;
 import earthrp.Earth;
 import earthrp.customObjects.Town;
+import earthrp.listeners.MoraCount;
 import earthrp.menusystem.Menu;
 import earthrp.menusystem.MenuUtility;
 import earthrp.menusystem.menu.DeleteConfirmMenu;
@@ -21,11 +23,9 @@ import java.util.List;
 import java.util.Objects;
 
 public class MiningBuildingMenu extends Menu {
-    private final Earth earthPlugin;
     Building b = menuUtility.getBuilding();
-    public MiningBuildingMenu(MenuUtility menuUtility, Earth earthPlugin) {
+    public MiningBuildingMenu(MenuUtility menuUtility) {
         super(menuUtility);
-        this.earthPlugin = earthPlugin;
     }
 
     @Override
@@ -72,19 +72,19 @@ public class MiningBuildingMenu extends Menu {
             case REDSTONE_TORCH -> {
 
                 e.getWhoClicked().closeInventory();
-                new PaginatedItemMenu(menuUtility, this.earthPlugin).open();
+                new PaginatedItemMenu(menuUtility).open();
 
             }
             case BARRIER -> {
                 e.getWhoClicked().closeInventory();
                 menuUtility.setDeleteBuilding(b);
-                new DeleteConfirmMenu(menuUtility,this.earthPlugin).open();
+                new DeleteConfirmMenu(menuUtility).open();
             }
 
         }
         if (e.getCurrentItem().getType().equals(item)){
             e.getWhoClicked().closeInventory();
-            new PaginatedItemMenu(menuUtility, this.earthPlugin).open();
+            new PaginatedItemMenu(menuUtility).open();
         }
 
     }
@@ -94,9 +94,17 @@ public class MiningBuildingMenu extends Menu {
 
         ItemStack town = new ItemStack(Material.END_CRYSTAL, 1);
         ItemMeta townMeta = town.getItemMeta();
-        Town t = this.earthPlugin.getServerDatabase().getTown(b.getTownId());
+        Town t = Earth.getInstance().getServerDatabase().getTown(b.getTownId());
         townMeta.setDisplayName(ChatColor.LIGHT_PURPLE + t.getName());
         townMeta.setLore(List.of(ChatColor.WHITE + "Местоположение здания"));
+        if (b.getType().equals("pasture")){
+            townMeta.setLore(List.of(ChatColor.WHITE + "Местоположение здания", ChatColor.WHITE +"Размер пастбища = " + b.getData().pastureArea));
+        }
+        if (b.getType().equals("farm") && b.getItem() != null && b.getItem().equals(Material.WHEAT)){
+            int farmlands = MoraCount.countFarmland(b.getLocation());
+            long wheat = Math.round(farmlands * b.getOwner().getAttribute(EPlayerAttribute.FARM_EFFICIENCY));
+            townMeta.setLore(List.of(ChatColor.WHITE + "Местоположение здания", ChatColor.WHITE +"Производительность = " + wheat));
+        }
         town.setItemMeta(townMeta);
 
         ItemStack item;

@@ -44,6 +44,7 @@ public class MenuUtility {
 
     private EPlayer player;
 
+
     private ItemStack buildingItem;
     private Inventory buildingChest;
 

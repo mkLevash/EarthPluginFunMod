@@ -1,6 +1,7 @@
 package earthrp.battle;
 
 import earthrp.Earth;
+import earthrp.customObjects.EPlayer;
 import earthrp.tools.Tools;
 import earthrp.customEnums.EPlayerAttribute;
 import earthrp.customObjects.Army;
@@ -27,6 +28,7 @@ public class BattlePhaseHandler implements Listener {
     public void battlePhase(BattlePhaseEvent e){
 
         for(Battle battle : e.getBattles()){
+            if (battle.isPrePhase()) continue;
             int cw = battle.getCw();
             Earth.getInstance().getBattleManager().updateBattle(battle);
             if(isSideAlive(battle.getAttUnits()) && isSideAlive(battle.getDefUnits())){
@@ -37,8 +39,12 @@ public class BattlePhaseHandler implements Listener {
 
 
                 updateBattleHolograms(battle);
-
-                battle.setRound(battle.getRound()+1);
+                int R = battle.getRound()+1;
+                battle.setRound(R);
+                if(R == battle.getPhaseRound()){
+                    battle.setFire(!battle.isFire());
+                    battle.setPhaseRound(R+3);
+                }
 
                 battle.setADice((int) (Math.random() * 10));
                 battle.setDDice((int) (Math.random() * 10));
@@ -47,7 +53,7 @@ public class BattlePhaseHandler implements Listener {
                     Earth.getInstance().getLogger().warning("Проверьте файл config.yml в папке плагина");
 
 
-                    Bukkit.getConsoleSender().sendMessage("\n=== BATTLE FIELD DEBUG ===\n");
+                    Bukkit.getConsoleSender().sendMessage("\n=== BATTLE FIELD DEBUG " + battle.getRound() + " ===\n");
                     int width = battle.getCw();
 
                     for (int i = 0; i < width; i++) {
@@ -92,7 +98,8 @@ public class BattlePhaseHandler implements Listener {
                     a.getOwner().addAttribute(EPlayerAttribute.TRADITION,3);
                     a.setBattle(false);
                 }
-                Bukkit.broadcastMessage(Tools.colorText("&4" + battle.getAttacker().getOwner().getCountryName() + "&e напал &fна &2" + battle.getDefender().getOwner().getCountryName() + "&f и&a победил"));
+                Bukkit.broadcastMessage(Tools.colorText("&4" + battle.getAttacker().getFirst().getCountryName() + "&e напал &fна &2" + battle.getDefender().getFirst().getCountryName() + "&f и&a победил"));
+                retreat(battle.getDefender(),battle.getAttacker(),battle.getAttUnits());
                 Earth.getInstance().getBattleManager().delBattle(battle);
             }else{
                 for (Army a: battle.getAtt()){
@@ -103,11 +110,29 @@ public class BattlePhaseHandler implements Listener {
                     a.getOwner().addAttribute(EPlayerAttribute.TRADITION,1);
                     a.setBattle(false);
                 }
-                Bukkit.broadcastMessage(Tools.colorText("&4" + battle.getAttacker().getOwner().getCountryName() + "&e напал &fна &2" + battle.getDefender().getOwner().getCountryName() + "&f и&c проиграл"));
+                Bukkit.broadcastMessage(Tools.colorText("&4" + battle.getAttacker().getFirst().getCountryName() + "&e напал &fна &2" + battle.getDefender().getFirst().getCountryName() + "&f и&c проиграл"));
+                retreat(battle.getAttacker(),battle.getDefender(),battle.getDefUnits());
                 Earth.getInstance().getBattleManager().delBattle(battle);
             }
         }
 
+    }
+
+    private void retreat(List<EPlayer> retreat, List<EPlayer> winner, List<BattleUnit> winnerUnits){
+        for(EPlayer p:retreat){
+            Bukkit.getPlayer(p.getUniqueId()).sendMessage("Ваша армия отступает");
+            p.getData().setRetreat(true);
+            p.getData().setBattle(false);
+        }
+        for(EPlayer p:winner){
+            p.getData().setBattle(false);
+        }
+        for(BattleUnit bu:winnerUnits){
+            if(bu.getMorale()!=bu.getMaxMorale()){
+                double newMorale = Tools.round(bu.getMorale() + (bu.getMaxMorale()*0.33));
+                bu.setMorale(Math.min(bu.getMaxMorale(),newMorale));
+            }
+        }
     }
 
 
@@ -117,16 +142,18 @@ public class BattlePhaseHandler implements Listener {
         Map<UUID, Map<String, Double>> aCas;
         Map<UUID, Map<String, Double>> dCas;
 
-        Army att = battle.getAttacker();
+        Set<Army> attacker = battle.getAtt();
         BattleUnit[] ARow1 = battle.getARow1();
         BattleUnit[] ARow2 = battle.getARow2();
 
-        Army def = battle.getDefender();
+        Set<Army> def = battle.getDef();
         BattleUnit[] DRow1 = battle.getDRow1();
         BattleUnit[] DRow2 = battle.getDRow2();
 
-        battle.setACavDebuff(calcCavDebuff(ARow1,att.getCavRatio()));
-        battle.setDCavDebuff(calcCavDebuff(DRow1,def.getCavRatio()));
+
+        calcCavDebuff(ARow1);
+        calcCavDebuff(DRow1);
+
 
         aCas = attackRow(battle,ARow1,DRow1,ARow2,DRow2);
         dCas = attackRow(battle,DRow1,ARow1,DRow2,ARow2);
@@ -249,15 +276,16 @@ public class BattlePhaseHandler implements Listener {
     private Map<String, Double> calcCas(Battle battle, BattleUnit unit, BattleUnit targetUnit,BattleUnit targetArt){
         double mod = 1.0;
         if(targetUnit.getType().equals("art")) mod = 2;
+        if(unit.getType().equals("art")) mod /= 2;
         int unitPips;
         double unitDamage;
         double damageMod;
         int targetPips;
-        double cavMod;
+        double cavMod = 1 - targetUnit.getCavDebuff();
         double damageRec;
         int leaderPips;
         int R = battle.getRound();
-        if (R%2==0){//если чёт - фаза шока
+        if (!battle.isFire()){//если чёт - фаза шока
             unitPips = unit.getOffShockPips();
             targetPips = targetUnit.getDefShockPips() + (targetArt != null ? targetArt.getDefShockPips()/2 : 0);
             leaderPips = Math.max(0, unit.getArmy().getLeaderShock()-targetUnit.getArmy().getLeaderShock());
@@ -278,18 +306,17 @@ public class BattlePhaseHandler implements Listener {
         if(battle.getAtt().contains(unit.getArmy())){
             d = battle.getADice() + battle.getTer() + unitPips - targetPips + leaderPips;
             md = battle.getADice() + battle.getTer() + unit.getOffMoralePips() - targetMoralPips + leaderPips;
-            cavMod = 1 - battle.getDCavDebuff();
+
         }else{
             d = battle.getDDice() + unitPips - targetPips + leaderPips;
             md = battle.getDDice() + unit.getOffMoralePips() - targetMoralPips + leaderPips;
-            cavMod = 1 - battle.getACavDebuff();
         }
 
 
-        int dBase = Math.max(0,15 + 5 * d);
-        int mdBase = Math.max(0,15 + 5 * md);
+        int dBase = Math.max(0, 15 + 5 * d);
+        int mdBase = Math.max(0, 15 + 5 * md);
 
-        double CASMultipliers = unit.getHp()*0.001 * (unitDamage/targetUnit.getTac()*cavMod) * unit.getCA() * unit.getDisciple() * (1+(double) ( R * 3) / 100);
+        double CASMultipliers = unit.getHp()*0.001 * (unitDamage/(targetUnit.getTac()*cavMod)) * unit.getCA() * unit.getDisciple() * (1+(double) ( R ) / 100);
 
 
         Map<String, Double> res = new HashMap<>();
@@ -303,7 +330,7 @@ public class BattlePhaseHandler implements Listener {
 
 
 
-    private double calcCavDebuff(BattleUnit[] row, double cavRatio){
+    private void calcCavDebuff(BattleUnit[] row){
         double inf = 0;
         double cav = 0;
         for(BattleUnit bu: row){
@@ -313,10 +340,14 @@ public class BattlePhaseHandler implements Listener {
             }
         }
         double troops = inf+cav;
-        if (troops == 0) return 0.0;
-        if( Tools.round(cav / troops) > cavRatio){
-            return Tools.round((cav/troops - cavRatio) / 2);
-        }else return 0.0;
+
+        for(BattleUnit bu: row){
+            if(bu!=null && bu.getType().equals("cav")){
+                if( Tools.round(cav / troops) > bu.getCavRatio()){
+                    bu.setCavDebuff(Tools.round((cav/troops - bu.getCavRatio()) / 2));
+                }else bu.setCavDebuff(0.0);
+            }
+        }
     }
 
     private boolean isSideAlive(List<BattleUnit> sideUnits){
@@ -328,14 +359,14 @@ public class BattlePhaseHandler implements Listener {
         String ter;
         if(battle.getTer()!=0) ter = Tools.getColorMod(battle.getTer(),false,true);
         else ter = "";
-        if(battle.getRound()%2==0) Tools.editHologram(battleLoc,"battlePhase","Фаза &6шока");
+        if(!battle.isFire()) Tools.editHologram(battleLoc,"battlePhase","Фаза &6шока");
         else Tools.editHologram(battleLoc,"battlePhase","Фаза &4огня");
 
-        Tools.editHologram(battleLoc,"battleDice","&3"+battle.getADice()+ter+"&f |Бросок &3кубика&f| &3"+battle.getDDice());
+        Tools.editHologram(battleLoc,"battleDice","&c" + battle.getRoundACas() + " &3"+battle.getADice()+ter+"&f |Бросок &3кубика&f| &3"+battle.getDDice() + "&c " + battle.getRoundDCas() );
 
         //Tools.editHologram(battleLoc,"battleCas","&c"+battle.getRoundACas()+"&f |Урон| &c"+battle.getRoundDCas());
 
-        Tools.editHologram(battleLoc,"battleTroops","(&d"+getInBattleRgt(battle.getAttUnits())+"&f)&a"+getInBattleTroops(battle.getAttUnits())+" &f|В бою| &a"+getInBattleTroops(battle.getDefUnits()) + "&f(&d"+getInBattleRgt(battle.getDefUnits())+"&f)" );
+        Tools.editHologram(battleLoc,"battleTroops","(&d"+getInBattleRgt(battle.getAttUnits())+"&f)" + "&a"+getInBattleTroops(battle.getAttUnits())+" &f|В бою| &a"+getInBattleTroops(battle.getDefUnits())  + "&f(&d"+getInBattleRgt(battle.getDefUnits())+"&f)" );
 
         //Tools.editHologram(battleLoc,"battleRetreat","(&d"+getRetreatRgt(battle.getAttUnits())+"&f)&4"+getRetreatTroops(battle.getAttUnits())+"&f|Отступили|&4"+getRetreatTroops(battle.getDefUnits()) + "&f(&d"+getRetreatRgt(battle.getDefUnits())+"&f)" );
 
@@ -510,29 +541,41 @@ public class BattlePhaseHandler implements Listener {
             int right = middle + i;
             int left = middle - i;
             // Заполняем вправо
-            if (right < end && firstRow[right] == null) {
-                BattleUnit firstUnit = Battle.getUnit(type,sideUnits,status,-1);
-                if(firstUnit==null) break;
-                firstRow[right] = firstUnit;
-                firstUnit.setRowIndex(right);
-                BattleUnit secondUnit = Battle.getUnit("art",sideUnits,status,-1);
-                if(secondRow[right] == null &&  secondUnit != null){
-                    secondRow[right] = secondUnit;
-                    secondUnit.setRowIndex(right);
+            if (right < end) {
+                if(firstRow[right] == null) {
+                    BattleUnit firstUnit = Battle.getUnit(type, sideUnits, status, -1);
+                    if (firstUnit == null) break;
+                    firstRow[right] = firstUnit;
+                    firstUnit.setRowIndex(right);
+                }else{
+                    BattleUnit secondUnit = Battle.getUnit("art",sideUnits,status,-1);
+                    if(secondRow[right] == null &&  secondUnit != null){
+                        secondRow[right] = secondUnit;
+                        secondUnit.setRowIndex(right);
+                    }
                 }
+
+
+
+
 
             }
             // Заполняем влево
-            if (left >= start && firstRow[left] == null){
-                BattleUnit firstUnit = Battle.getUnit(type,sideUnits,status,-1);
-                if(firstUnit==null) break;
-                firstRow[left] = firstUnit;
-                firstUnit.setRowIndex(left);
-                BattleUnit secondUnit = Battle.getUnit("art",sideUnits,status,-1);
-                if(secondRow[left] == null &&  secondUnit != null){
-                    secondRow[left] = secondUnit;
-                    secondUnit.setRowIndex(left);
+            if (left >= start && left != right){
+                if(firstRow[left] == null){
+                    BattleUnit firstUnit = Battle.getUnit(type,sideUnits,status,-1);
+                    if(firstUnit==null) break;
+                    firstRow[left] = firstUnit;
+                    firstUnit.setRowIndex(left);
+                }else{
+                    BattleUnit secondUnit = Battle.getUnit("art",sideUnits,status,-1);
+                    if(secondRow[left] == null &&  secondUnit != null){
+                        secondRow[left] = secondUnit;
+                        secondUnit.setRowIndex(left);
+                    }
                 }
+
+
             }
         }
     }
@@ -546,33 +589,43 @@ public class BattlePhaseHandler implements Listener {
             int right = middle + i;
             int left = middle - i;
             // Заполняем вправо
-            if (right < end && firstRow[right] == null) {
-                BattleUnit firstUnit = Battle.getUnit(type,sideUnits,status);
-                if(firstUnit==null) break;
-                firstRow[right] = firstUnit;
-                firstUnit.setRowIndex(right);
-                firstUnit.setStatus("inBattle");
-                BattleUnit secondUnit = Battle.getUnit("art",sideUnits,status);
-                if(secondRow[right] == null &&  secondUnit != null){
-                    secondRow[right] = secondUnit;
-                    secondUnit.setRowIndex(right);
-                    secondUnit.setStatus("inBattle");
+            if (right < end) {
+                if(firstRow[right] == null){
+                    BattleUnit firstUnit = Battle.getUnit(type,sideUnits,status);
+                    if(firstUnit==null) break;
+                    firstRow[right] = firstUnit;
+                    firstUnit.setRowIndex(right);
+                    firstUnit.setStatus("inBattle");
+                }else{
+                    BattleUnit secondUnit = Battle.getUnit("art",sideUnits,status);
+                    if(secondRow[right] == null &&  secondUnit != null){
+                        secondRow[right] = secondUnit;
+                        secondUnit.setRowIndex(right);
+                        secondUnit.setStatus("inBattle");
+                    }
                 }
+
+
 
             }
             // Заполняем влево
-            if (left >= start && firstRow[left] == null){
-                BattleUnit firstUnit = Battle.getUnit(type,sideUnits,status);
-                if(firstUnit==null) break;
-                firstRow[left] = firstUnit;
-                firstUnit.setRowIndex(left);
-                firstUnit.setStatus("inBattle");
-                BattleUnit secondUnit = Battle.getUnit("art",sideUnits,status);
-                if(secondRow[left] == null &&  secondUnit != null){
-                    secondRow[left] = secondUnit;
-                    secondUnit.setRowIndex(left);
-                    secondUnit.setStatus("inBattle");
+            if (left >= start && left != right){
+                if(firstRow[left] == null){
+                    BattleUnit firstUnit = Battle.getUnit(type,sideUnits,status);
+                    if(firstUnit==null) break;
+                    firstRow[left] = firstUnit;
+                    firstUnit.setRowIndex(left);
+                    firstUnit.setStatus("inBattle");
+                }else{
+                    BattleUnit secondUnit = Battle.getUnit("art",sideUnits,status);
+                    if(secondRow[left] == null &&  secondUnit != null){
+                        secondRow[left] = secondUnit;
+                        secondUnit.setRowIndex(left);
+                        secondUnit.setStatus("inBattle");
+                    }
                 }
+
+
             }
         }
 

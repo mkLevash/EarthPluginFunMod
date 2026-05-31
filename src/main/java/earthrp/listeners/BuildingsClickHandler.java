@@ -218,7 +218,7 @@ public class BuildingsClickHandler implements Listener {
                         pmu.setBuilding(building);
                         switch (type) {
                             case "mineV1","mineV2","career","lumber","factory","pasture","farm","forge","plant" ->{
-                                new MiningBuildingMenu(pmu, this.earthPlugin).open();
+                                new MiningBuildingMenu(pmu).open();
                             }
                             case "school","university" ->{
                                 new ScienceBuildingMenu(pmu, this.earthPlugin).open();
@@ -263,7 +263,7 @@ public class BuildingsClickHandler implements Listener {
                         case "forge":
                         case "plant":
                         case "factory":
-                            new MiningBuildingMenu(menuUtility, this.earthPlugin).open();
+                            new MiningBuildingMenu(menuUtility).open();
                             break;
                         case "school":
                         case "university":

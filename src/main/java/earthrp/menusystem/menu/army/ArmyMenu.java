@@ -1,5 +1,6 @@
 package earthrp.menusystem.menu.army;
 
+import earthrp.customObjects.PlayerModifier;
 import earthrp.tools.Tools;
 import earthrp.customObjects.Army;
 import earthrp.Earth;
@@ -20,6 +21,7 @@ import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.inventory.meta.components.CustomModelDataComponent;
 import org.bukkit.persistence.PersistentDataType;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -55,7 +57,7 @@ public class ArmyMenu extends Menu {
             case BARRIER -> {
                 e.getWhoClicked().closeInventory();
                 menuUtility.setDeleteArmy(army);
-                new DeleteConfirmMenu(menuUtility,Earth.getInstance()).open();
+                new DeleteConfirmMenu(menuUtility).open();
             }
             case LEAD ->{
                 e.getWhoClicked().closeInventory();
@@ -103,7 +105,7 @@ public class ArmyMenu extends Menu {
             );
         }
         leader.setItemMeta(leaderMeta);
-        inventory.setItem(12,leader);
+        inventory.setItem(1,leader);
 
         List<String> infLore = List.of(
                 Tools.colorText("&fКоличество: &d" + army.getInfantry()),
@@ -128,6 +130,40 @@ public class ArmyMenu extends Menu {
         ItemStack cav = Tools.createItem(Material.ICE,"Кавалерия",cavLore,"cav");
         inventory.setItem(19,cav);
 
+
+
+        List<String> morLore = new ArrayList<>();
+
+        List<PlayerModifier> modifiers = army.getOwner().getData().attributeModifiers.get(EPlayerAttribute.MORALE_MOD);
+        morLore.add(Tools.colorText("&fСытость "+army.getOwner().getSatietyColor()));
+        if (modifiers != null && !modifiers.isEmpty()) {
+
+            for (PlayerModifier mod : modifiers){
+                morLore.add(Tools.colorText("&f" + mod.getName() + mod.getColorValue()));
+            }
+        }
+
+
+
+        ItemStack mor1 = Tools.createItem(Material.EGG,"Мораль " +  Tools.colorText( "&a" + army.getMorale() + "&f/&a" + army.getMaxMorale()),morLore,"land_morale-1");
+        inventory.setItem(9,mor1);
+        ItemStack mor2 = Tools.createItem(Material.EGG,"Мораль",null,"land_morale2");
+        //inventory.setItem(2,mor2);
+        ItemStack mor = Tools.createItem(Material.EGG,"Мораль",null,"land_morale");
+        //inventory.setItem(3,mor);
+        ItemStack morOld = Tools.createItem(Material.EGG,"Мораль",null,"land_moraleOld");
+        //inventory.setItem(4,morOld);
+        ItemStack dis = Tools.createItem(Material.EGG,"Дисциплина",null,"discipline");
+        inventory.setItem(10,dis);
+        ItemStack disOld = Tools.createItem(Material.EGG,"Дисциплина",null,"disciplineOld");
+        //inventory.setItem(6,disOld);
+        ItemStack tac = Tools.createItem(Material.EGG,"Тактика",null,"military_tactics");
+        inventory.setItem(11,tac);
+        ItemStack tacOld = Tools.createItem(Material.EGG,"Тактика",null,"military_tacticsOld");
+        //inventory.setItem(16,tacOld);
+
+
+
         List<String> artLore = List.of(
                 Tools.colorText("&fКоличество: &d" + army.getArtillery()),
                 Tools.colorText("&fБоевая мощь: &f" + army.getCA("art")),
@@ -148,14 +184,14 @@ public class ArmyMenu extends Menu {
 
         );
         ItemStack troops = Tools.createItem(Material.EGG,"Ваши войска", troopsLore,"manpower");
-        inventory.setItem(13,troops);
+        inventory.setItem(2,troops);
 
         Player player = menuUtility.getOwner();
         Chunk chunk = player.getLocation().getChunk();
         String status;
         String locOwner = "";
         String locName;
-        Town t = db.getTownAtChunk(chunk.getX(), chunk.getZ());
+        Town t = db.getTownAtChunk(chunk.getChunkKey());
 
         if(t!=null){
             if(t.getOwnerId().equals(army.getOwnerId())) status = "Союзная территория";

@@ -1,6 +1,7 @@
 package earthrp.battle;
 
 import earthrp.customObjects.Army;
+import earthrp.customObjects.EPlayer;
 import earthrp.customObjects.Unit;
 import earthrp.tools.Tools;
 import lombok.Getter;
@@ -13,6 +14,8 @@ import java.util.stream.Stream;
 @Getter
 @Setter
 public class Battle {
+
+
 
     public Battle(Army attacker, Army defender, int terrain, Location location){
         this.uuid = UUID.randomUUID();
@@ -34,6 +37,8 @@ public class Battle {
         aRow1 = new BattleUnit[cw];
         dRow1 = new BattleUnit[cw];
         round = 0;
+        phaseRound = 4;
+        fire = true;
         aCavDebuff = 0;
         dCavDebuff = 0;
 
@@ -43,17 +48,61 @@ public class Battle {
         attacker.setBattle(true);
         defender.setBattle(true);
 
-        this.attacker = attacker;
-        this.defender = defender;
+    }
+
+    public Battle(List<Army> attacker, EPlayer attackerCountry, List<Army> defender, EPlayer defenderCountry, Location location){
+        this.uuid = UUID.randomUUID();
+        att.addAll(attacker);
+        def.addAll(defender);
+        this.attacker.add(attackerCountry);
+        this.defender.add(defenderCountry);
+        prePhase = true;
+        loc = location;
+        cw = Stream.concat(att.stream(), def.stream())
+                .mapToInt(Army::getCW) // Превращаем поток армий в поток чисел (double или int)
+                .max()                    // Ищем максимум
+                .orElse(15);
+        for(Army a:att){
+            for (Unit u : a.getUnits()){
+                attUnits.add(new BattleUnit(u));
+            }
+        }
+        for(Army a:def){
+            for (Unit u : a.getUnits()){
+                defUnits.add(new BattleUnit(u));
+            }
+        }
+
+        aRow1 = new BattleUnit[cw];
+        dRow1 = new BattleUnit[cw];
+        round = 0;
+        phaseRound = 4;
+        fire = true;
+        aCavDebuff = 0;
+        dCavDebuff = 0;
+
+        aRow2 = new BattleUnit[cw];
+        dRow2 = new BattleUnit[cw];
+
+        for (Army a:attacker){
+            a.setBattle(true);
+        }
+        for (Army a:defender){
+            a.setBattle(true);
+        }
+
+
 
     }
 
-    private Army attacker;
-    private Army defender;
+    private List<EPlayer> attacker = new ArrayList<>();
+    private List<EPlayer> defender = new ArrayList<>();
+
     private final UUID uuid;
     private final Set<Army> att = new HashSet<>();
     private final Set<Army> def = new HashSet<>();
-    private final int ter;
+
+    private int ter;
     private final Location loc;
 
     private int roundACas;
@@ -69,6 +118,9 @@ public class Battle {
     private final int fr = 2;
 
     private int round;
+    private int phaseRound;
+    private boolean fire;
+    private boolean prePhase;
 
     private BattleUnit[] aRow1;
     private BattleUnit[] dRow1;
@@ -126,5 +178,27 @@ public class Battle {
         }
 
         return Tools.round(moraleSum/defUnits.size());
+    }
+
+    public void joinDef(EPlayer player){
+        this.getDefender().add(player);
+        this.getDef().addAll(player.getArmiesInHand());
+        for(Army a:player.getArmiesInHand()){
+            for(Unit u:a.getUnits()){
+                this.getDefUnits().add(new BattleUnit(u));
+            }
+        }
+        player.getData().setBattle(true);
+    }
+
+    public void joinAtt(EPlayer player){
+        this.getAttacker().add(player);
+        this.getAtt().addAll(player.getArmiesInHand());
+        for(Army a:player.getArmiesInHand()){
+            for(Unit u:a.getUnits()){
+                this.getAttUnits().add(new BattleUnit(u));
+            }
+        }
+        player.getData().setBattle(true);
     }
 }

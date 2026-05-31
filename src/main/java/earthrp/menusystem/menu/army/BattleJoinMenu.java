@@ -34,8 +34,6 @@ public class BattleJoinMenu extends Menu {
         for(Battle b:Earth.getInstance().getBattleManager().getBattles()){
             if(b.getAttacker().equals(join) || b.getDefender().equals(join)){
                 battle = b;
-                attacker = b.getAttacker();
-                defender = b.getDefender();
             }
         }
     }

@@ -59,19 +59,19 @@ public class ScienceBuildingMenu extends Menu {
             case REDSTONE_TORCH -> {
 
                 e.getWhoClicked().closeInventory();
-                new PaginatedItemMenu(menuUtility, this.earthPlugin).open();
+                new PaginatedItemMenu(menuUtility).open();
 
             }
             case BARRIER -> {
                 e.getWhoClicked().closeInventory();
                 menuUtility.setDeleteBuilding(b);
-                new DeleteConfirmMenu(menuUtility,this.earthPlugin).open();
+                new DeleteConfirmMenu(menuUtility).open();
             }
 
         }
         if (e.getCurrentItem().getType().equals(item)){
             e.getWhoClicked().closeInventory();
-            new PaginatedItemMenu(menuUtility, this.earthPlugin).open();
+            new PaginatedItemMenu(menuUtility).open();
         }
 
     }
