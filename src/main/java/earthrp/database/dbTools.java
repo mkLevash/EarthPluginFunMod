@@ -68,17 +68,13 @@ public class dbTools {
 
             st.execute("""
                 CREATE TABLE IF NOT EXISTS buildings (
-                town_name TEXT NOT NULL,
+                town_name TEXT,
                 uuid TEXT PRIMARY KEY,
-                town_id TEXT NOT NULL,
-                market_id TEXT NULL,
-                type TEXT NOT NULL,
-                status INTEGER NOT NULL DEFAULT 1,
+                town_id TEXT ,
                 world TEXT NOT NULL,
                 x REAL NOT NULL,
                 y REAL NOT NULL,
                 z REAL NOT NULL,
-                item TEXT NULL,
                 data TEXT)
                 """);
 
@@ -89,35 +85,13 @@ public class dbTools {
                 uuid TEXT PRIMARY KEY,
                 owner_id TEXT NOT NULL,
                 type TEXT NOT NULL,
-                blockade_status INTEGER NOT NULL DEFAULT 0,
-                status INTEGER NOT NULL DEFAULT 1,
-                core INTEGER NOT NULL DEFAULT 0,
-                infrastructure INTEGER NOT NULL DEFAULT 0,
-                bonusBuildSites INTEGER NOT NULL DEFAULT 0,
-                houses INTEGER NOT NULL,
                 world TEXT NOT NULL,
-                chunk_x INTEGER NOT NULL,
-                chunk_z INTEGER NOT NULL,
-                port INTEGER NOT NULL DEFAULT 0,
-                landHub INTEGER NOT NULL DEFAULT 0,
-                tradeTown TEXT NULL,
+                x REAL NOT NULL,
+                y REAL NOT NULL,
+                z REAL NOT NULL,
                 data TEXT)
                 """);
 
-            st.execute("""
-                CREATE TABLE IF NOT EXISTS markets (
-                town_name TEXT NOT NULL,
-                uuid TEXT PRIMARY KEY,
-                town_id TEXT NOT NULL,
-                trade_id TEXT DEFAULT NULL,
-                trade_distance INTEGER DEFAULT NULL,
-                status INTEGER NOT NULL DEFAULT 1,
-                goods INTEGER NOT NULL DEFAULT 0,
-                market_modifier INTEGER NOT NULL DEFAULT 0,
-                world TEXT NOT NULL,
-                chunk_x INTEGER NOT NULL,
-                chunk_z INTEGER NOT NULL)
-                """);
 
             st.execute("""
                 CREATE TABLE IF NOT EXISTS chunks (
@@ -136,7 +110,8 @@ public class dbTools {
                     maxMorale REAL,
                     disc REAL,
                     fire REAL,
-                    shock REAL)
+                    shock REAL,
+                    data TEXT)
                     """);
 
             st.execute("""
@@ -149,7 +124,8 @@ public class dbTools {
                     leaderName TEXT DEFAULT null,
                     leaderFire INT DEFAULT null,
                     leaderShock INT DEFAULT null,
-                    maxLvl INT NOT NULL DEFAULT 0)
+                    maxLvl INT NOT NULL DEFAULT 0,
+                    data TEXT)
                     """);
         } catch (SQLException e) {Earth.getInstance().getLogger().log(Level.SEVERE, "Критическая ошибка при создании таблиц базы данных!", e);}
         

@@ -1,25 +1,34 @@
 package earthrp.tools;
 
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Multimap;
 import earthrp.Earth;
 import earthrp.battle.Battle;
 import earthrp.customEnums.EPlayerAttribute;
 import earthrp.customEnums.EPlayerTech;
+import earthrp.customEnums.UnitTech;
 import earthrp.customObjects.*;
 import earthrp.database.ServerDatabase;
-import earthrp.files.CustomConfig;
+import earthrp.configs.CustomConfig;
 import earthrp.menusystem.MenuUtility;
-import me.clip.placeholderapi.libs.kyori.adventure.text.Component;
-import me.clip.placeholderapi.libs.kyori.adventure.text.format.TextColor;
+
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.TextColor;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.*;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.block.Block;
 import org.bukkit.block.ShulkerBox;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.*;
+import org.bukkit.inventory.EquipmentSlotGroup;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.components.CustomModelDataComponent;
+import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 
 import java.math.BigDecimal;
@@ -35,6 +44,8 @@ public class Tools {
     public Tools(){}
 
 
+    public static final UUID EMPTY_UUID = new UUID(0L, 0L);
+
     public static double round(double value){
         return BigDecimal
                 .valueOf(value)
@@ -48,19 +59,19 @@ public class Tools {
         return Math.sqrt(dx * dx + dz * dz);
     }
 
-    public static void addStat(UUID uuid, String statId, double value, String name){
-        ServerDatabase db = Earth.getInstance().getServerDatabase();
-        EPlayer player = db.getPlayer(uuid);
-        PlayerModifier mod = new PlayerModifier(name,name+statId,value, PlayerModifier.Operation.ADD);
-        player.getData().addModifier(EPlayerAttribute.fromString(statId),mod);
+    public static void addIdeaModifier(UUID ownerId, List<EPlayerAttribute> attributes, List<String> desc, List<Double> value, String name, String material){
+        ServerDatabase db = Earth.getInstance().getDatabase();
+        EPlayer player = db.getPlayer(ownerId);
+        PlayerModifier mod = new PlayerModifier(name,name+ownerId,desc,value, PlayerModifier.Operation.ADD,-1,attributes, material);
+        player.getData().addModifier(mod);
         //player.addAttribute(EPlayerAttribute.fromString(statId),value);
 
     }
 
-    public static void removeStat(UUID uuid, String statId, String name){
-        ServerDatabase db = Earth.getInstance().getServerDatabase();
-        EPlayer player = db.getPlayer(uuid);
-        player.getData().removeModifier(EPlayerAttribute.fromString(statId),name+statId);
+    public static void removeIdeaModifier(UUID ownerId, String name){
+        ServerDatabase db = Earth.getInstance().getDatabase();
+        EPlayer player = db.getPlayer(ownerId);
+        player.getData().removeModifier(player.getData().getModifier(name+ownerId));
         //player.addAttribute(EPlayerAttribute.fromString(statId),value);
 
     }
@@ -70,12 +81,33 @@ public class Tools {
         List<String> effectId = item.getItemMeta().getPersistentDataContainer().get(ideaEffectIdKey,PersistentDataType.LIST.strings());
         List<Double> effect = item.getItemMeta().getPersistentDataContainer().get(ideaEffectKey,PersistentDataType.LIST.doubles());
         UUID playerId = UUID.fromString(item.getItemMeta().getPersistentDataContainer().get(ideaOwnerKey, PersistentDataType.STRING));
-
-        if((effectId!= null && effect!=null) && effect.size() == effectId.size()){
-            for (int i = 0; i < effect.size(); i++) {
-                removeStat(playerId,effectId.get(i),name);
+        EPlayer country = Earth.getInstance().getDatabase().getPlayer(playerId);
+        if (country == null) return;
+        PlayerData data = country.getData();
+        if(name != null){
+            if(name.contains("Revanchism")){
+                switch (name.substring(name.length()-1)){
+                    case "1" ->{
+                        data.setRevanchism0(false);
+                    }
+                    case "2" ->{
+                        data.setRevanchism1(false);
+                    }
+                    case "3" ->{
+                        data.setRevanchism2(false);
+                    }
+                    case "4" ->{
+                        data.setRevanchism3(false);
+                    }
+                }
             }
+            if(name.contains("State Propaganda")){
+                country.setImperialism(false);
+            }
+
         }
+        removeIdeaModifier(playerId,name);
+
     }
 
     public static void investIdea(ItemStack item){
@@ -83,15 +115,64 @@ public class Tools {
         List<String> effectId = item.getItemMeta().getPersistentDataContainer().get(ideaEffectIdKey,PersistentDataType.LIST.strings());
         List<Double> effect = item.getItemMeta().getPersistentDataContainer().get(ideaEffectKey,PersistentDataType.LIST.doubles());
         UUID playerId = UUID.fromString(item.getItemMeta().getPersistentDataContainer().get(ideaOwnerKey, PersistentDataType.STRING));
+        EPlayer country = Earth.getInstance().getDatabase().getPlayer(playerId);
+        if (country == null) return;
+        PlayerData data = country.getData();
+        if(name != null){
+            if(name.contains("Revanchism")){
+                switch (name.substring(name.length()-1)){
+                    case "1" ->{
+                        data.setRevanchism0(true);
+
+                    }
+                    case "2" ->{
+                        data.setRevanchism1(true);
+                    }
+                    case "3" ->{
+                        data.setRevanchism2(true);
+                    }
+                    case "4" ->{
+                        data.setRevanchism3(true);
+                    }
+                }
+            }
+            if(name.contains("State Propaganda")){
+                country.setImperialism(true);
+            }
+
+        }
 
         if((effectId!= null && effect!=null) && effect.size() == effectId.size()){
+            List<EPlayerAttribute> attributes = new ArrayList<>();
+            List<Double> value = new ArrayList<>();
             for (int i = 0; i < effect.size(); i++) {
-                addStat(playerId,effectId.get(i),effect.get(i),name);
+                attributes.add(EPlayerAttribute.fromString(effectId.get(i)));
+                value.add(effect.get(i));
             }
+
+            List<String> lore = new ArrayList<>();
+            List<Component> loreComponents = item.lore();
+            if (loreComponents == null) return;
+
+            for (Component line : loreComponents) {
+                lore.add(Tools.serialize(line));
+            }
+            addIdeaModifier(playerId,attributes,lore,value,name,item.getType().toString());
         }
     }
 
-    public static ItemStack createIdeaItem(Material material,String name,List<String> effectId, List<String> lore, List<Double> effect, UUID ownerId){
+    public static ItemStack createIdeaItemLegacy(Material material, String name, List<String> effectId, List<String> lore, List<Double> effect, UUID ownerId){
+        ItemStack item = Tools.createItemLegacy(material,name,lore);
+        ItemMeta meta = item.getItemMeta();
+        meta.getPersistentDataContainer().set(ideaNameKey,PersistentDataType.STRING, name);
+        meta.getPersistentDataContainer().set(ideaEffectIdKey,PersistentDataType.LIST.strings(), effectId);
+        meta.getPersistentDataContainer().set(ideaEffectKey,PersistentDataType.LIST.doubles(), effect);
+        meta.getPersistentDataContainer().set(ideaOwnerKey,PersistentDataType.STRING, ownerId.toString());
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    public static ItemStack createIdeaItem(Material material, String name, List<String> effectId, List<String> lore, List<Double> effect, UUID ownerId){
         ItemStack item = createItem(material,name,lore);
         ItemMeta meta = item.getItemMeta();
         meta.getPersistentDataContainer().set(ideaNameKey,PersistentDataType.STRING, name);
@@ -116,7 +197,7 @@ public class Tools {
     }
 
     public static ItemStack createTownItem(Town town){
-        ItemStack item = createItem(Material.END_CRYSTAL,town.getName(),List.of(town.getOwnerName()));
+        ItemStack item = Tools.createItemLegacy(Material.END_CRYSTAL,town.getName(),List.of(town.getOwnerName()));
         ItemMeta meta = item.getItemMeta();
         meta.getPersistentDataContainer().set(townIdKey, PersistentDataType.STRING,town.getUniqueId().toString());
         item.setItemMeta(meta);
@@ -128,7 +209,7 @@ public class Tools {
             //lore.addFirst(colorText(" "));
             //lore.addFirst(colorText("&cНе изучено"));
         }
-        ItemStack building = createItem(material,colorText("&f" + name + " &6" + cost + "&f$"),lore);
+        ItemStack building = Tools.createItemLegacy(material,colorText("&f" + name + " &6" + cost + "&f$"),lore);
         ItemMeta meta = building.getItemMeta();
         meta.getPersistentDataContainer().set(buildingNameKey,PersistentDataType.STRING, name);
         meta.getPersistentDataContainer().set(buildingTypeKey,PersistentDataType.STRING, type);
@@ -152,7 +233,7 @@ public class Tools {
             lore.addFirst(colorText(" "));
             lore.addFirst(colorText("&cНе изучено"));
         }
-        ItemStack building = createItem(material,colorText("&f" + name + " &6" + cost + "&f$"),lore);
+        ItemStack building = Tools.createItemLegacy(material,colorText("&f" + name + " &6" + cost + "&f$"),lore);
         ItemMeta meta = building.getItemMeta();
         meta.getPersistentDataContainer().set(buildingNameKey,PersistentDataType.STRING, name);
         meta.getPersistentDataContainer().set(buildingTypeKey,PersistentDataType.STRING, type);
@@ -198,12 +279,13 @@ public class Tools {
         meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
 
 
+
         building.setItemMeta(meta);
         return building;
 
     }
 
-    public static String getColorMod(double modifier, boolean negative, boolean flat){
+    public static String getColorModLegacy(double modifier, boolean negative, boolean flat){
         if(flat){
             String s = "&f";
             if (negative){
@@ -229,8 +311,34 @@ public class Tools {
         return s+mod+"&f%";
     }
 
-    public static String getColorMod(double modifier, boolean negative){
-        int mod = (int) Math.round(modifier*100)-100;
+    public static String getColorModComponent(double modifier, boolean negative, boolean flat){
+        if(flat){
+            String s = "<white>";
+            if (negative){
+                if(modifier>0){s = "<red>+";}
+                if(modifier<0){s = "<green>";}
+            }else{
+                if(modifier>0){s = "<green>+";}
+                if(modifier<0){s = "<red>";}
+            }
+
+            return s+(int)modifier+"<white>";
+        }
+        int mod = (int) Math.round((modifier-1)*100);
+        String s = "<white>";
+        if (negative){
+            if(modifier>1){s = "<red>+";}
+            if(modifier<1){s = "<green>";}
+        }else{
+            if(modifier>1){s = "<green>+";}
+            if(modifier<1){s = "<red>";}
+        }
+
+        return s+mod+"<white>%";
+    }
+
+    public static String getColorModLegacy(double modifier, boolean negative){
+        int mod = (int) Math.round((modifier-1)*100);
         String s = "&f";
         if (negative){
             if(modifier>1){s = "&c+";}
@@ -243,79 +351,49 @@ public class Tools {
         return s+mod+"&f%";
     }
 
-    public static String getColorMod(double modifier){
-        int mod = (int) Math.round(modifier*100)-100;
-        String s = "&f";
+    public static String getColorModLegacy(double modifier){
+        int mod = (int) Math.round((modifier-1)*100);
+        String s = "&7";
         if(modifier>1){s = "&a+";}
         if(modifier<1){s = "&c";}
         return s+mod+"&f%";
     }
 
-    public static ItemStack createArmyCraftItem(
-            String displayName,List<String> lore, String type, int lvl, double disc, double fire, double shock, double morale){
+
+
+    public static ItemStack createArmyCraftItem(UnitTech type, double disc, double morale,boolean isLevies,boolean isMerc){
 
         ItemStack item = new ItemStack(Material.EGG);
         ItemMeta itemMeta = item.getItemMeta();
-        itemMeta.setDisplayName(colorText(displayName));
-        itemMeta.setLore(lore);
-        itemMeta.getPersistentDataContainer().set(unitTypeKey, PersistentDataType.STRING, type);
-        itemMeta.getPersistentDataContainer().set(unitLvlKey, PersistentDataType.INTEGER, lvl);
+        itemMeta.setDisplayName(colorText(type.getDisplayName()));
+        List<Component> lore = new ArrayList<>();
+        lore.add(deserialize("Мораль <dark_green>"+morale));
+        lore.add(deserialize("Дисциплина "+ (int) (disc * 100) + "<white>%") );
+        lore.add(deserialize("Урон <red>"+type.getFire() + "<white>/<gold>"+type.getShock()));
+        lore.add(deserialize("Очки <red>"+type.getFirePips() + "<white>/<gold>"+type.getShockPips() + "<white>/<dark_green>" + type.getMoralePips()));
+        itemMeta.lore(lore);
+        itemMeta.getPersistentDataContainer().set(unitTypeKey, PersistentDataType.STRING, type.toString());
         itemMeta.getPersistentDataContainer().set(unitDiscKey, PersistentDataType.DOUBLE, disc);
-        itemMeta.getPersistentDataContainer().set(unitFireKey, PersistentDataType.DOUBLE, fire);
-        itemMeta.getPersistentDataContainer().set(unitShockKey, PersistentDataType.DOUBLE, shock);
-        itemMeta.getPersistentDataContainer().set(unitMoraleKey, PersistentDataType.DOUBLE, morale);
+        itemMeta.getPersistentDataContainer().set(unitMoraleKey, PersistentDataType.DOUBLE, type.getMorale());
+        itemMeta.getPersistentDataContainer().set(unitIsLeviesKey, PersistentDataType.BOOLEAN, isLevies);
+        itemMeta.getPersistentDataContainer().set(unitIsMercKey, PersistentDataType.BOOLEAN, isMerc);
 
         CustomModelDataComponent cmd = itemMeta.getCustomModelDataComponent();
-        if(type.equals("art")) cmd.setStrings(List.of(type+(lvl-2)));
-        else cmd.setStrings(List.of(type+lvl));
+        cmd.setStrings(List.of(type.toString().toLowerCase(Locale.ROOT)));
         itemMeta.setCustomModelDataComponent(cmd);
 
         item.setItemMeta(itemMeta);
         return item;
     }
-    
-    public static ItemStack createArmyCraftItem(
-            String displayName,List<String> lore, String type, int lvl, double disc, double fire, double shock){
 
-        ItemStack item = new ItemStack(Material.EGG);
-        ItemMeta itemMeta = item.getItemMeta();
-        itemMeta.setDisplayName(colorText(displayName));
-        itemMeta.setLore(lore);
-        itemMeta.getPersistentDataContainer().set(unitTypeKey, PersistentDataType.STRING, type);
-        itemMeta.getPersistentDataContainer().set(unitLvlKey, PersistentDataType.INTEGER, lvl);
-        itemMeta.getPersistentDataContainer().set(unitDiscKey, PersistentDataType.DOUBLE, disc);
-        itemMeta.getPersistentDataContainer().set(unitFireKey, PersistentDataType.DOUBLE, fire);
-        itemMeta.getPersistentDataContainer().set(unitShockKey, PersistentDataType.DOUBLE, shock);
+    public static ItemStack createArmyCraftItem(UnitTech tech){
 
-        CustomModelDataComponent cmd = itemMeta.getCustomModelDataComponent();
-        if(type.equals("art")) cmd.setStrings(List.of(type+(lvl-2)));
-        else cmd.setStrings(List.of(type+lvl));
-        itemMeta.setCustomModelDataComponent(cmd);
-
-        item.setItemMeta(itemMeta);
-        return item;
-    }
-    
-    
-
-    public static ItemStack createDebtItem(int lvl){
-        int debtSize;
-        switch (lvl) {
-            case 1 -> debtSize = 11;
-            case 2 -> debtSize = 26;
-            default -> debtSize = 6;
-        };
-        ItemStack item = new ItemStack(Material.PAPER);
-        ItemMeta itemMeta = item.getItemMeta();
-        itemMeta.setDisplayName("Долг " + debtSize + " моры");
-        itemMeta.setLore(List.of(colorText("&fНажмите чтобы вернуть")));
-        itemMeta.getPersistentDataContainer().set(debtSizeKey,PersistentDataType.INTEGER,debtSize);
-        itemMeta.getPersistentDataContainer().set(debtLvlKey,PersistentDataType.INTEGER,lvl);
-        item.setItemMeta(itemMeta);
-        return item;
-
+        return createArmyCraftItem(tech,0.0,tech.getMorale(),false,false);
 
     }
+    
+    
+
 
     public static ItemStack createMora(int amount){
         ItemStack mora = new ItemStack(Material.GOLD_NUGGET, amount);
@@ -332,10 +410,52 @@ public class Tools {
         return mora;
     }
 
+    public static ItemStack createMoraIngot(int amount){
+        ItemStack mora = new ItemStack(Material.GOLD_INGOT, amount);
+        ItemMeta moraMeta = mora.getItemMeta();
+        assert moraMeta != null;
+        moraMeta.setDisplayName(ChatColor.YELLOW + "Горсть Моры");
+        moraMeta.setLore(Collections.singletonList("9 моры"));
+
+        CustomModelDataComponent cmd = moraMeta.getCustomModelDataComponent();
+        cmd.setStrings(List.of("moraIngot"));
+        moraMeta.setCustomModelDataComponent(cmd);
+
+        mora.setItemMeta(moraMeta);
+        return mora;
+    }
+
+    public static ItemStack createMoraBlock(int amount){
+        ItemStack mora = new ItemStack(Material.GOLD_BLOCK, amount);
+        ItemMeta moraMeta = mora.getItemMeta();
+        assert moraMeta != null;
+        moraMeta.setDisplayName(ChatColor.YELLOW + "Мора");
+        moraMeta.setLore(Collections.singletonList("81 мора"));
+
+        CustomModelDataComponent cmd = moraMeta.getCustomModelDataComponent();
+        cmd.setStrings(List.of("moraBlock"));
+        moraMeta.setCustomModelDataComponent(cmd);
+
+        mora.setItemMeta(moraMeta);
+        return mora;
+    }
+
     public static ItemStack createIdea(){
         ItemStack idea = new ItemStack(Material.SOUL_LANTERN);
         ItemMeta ideaMeta = idea.getItemMeta();
         ideaMeta.setDisplayName("Идея");
+        ideaMeta.addEnchant(Enchantment.INFINITY,1,true);
+        ideaMeta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
+        ideaMeta.getPersistentDataContainer().set(techIdKey,PersistentDataType.STRING,"idea");
+        idea.setItemMeta(ideaMeta);
+
+        return idea;
+    }
+
+    public static ItemStack createMilitaryIdea(){
+        ItemStack idea = new ItemStack(Material.LANTERN);
+        ItemMeta ideaMeta = idea.getItemMeta();
+        ideaMeta.setDisplayName("Военная реформа");
         ideaMeta.addEnchant(Enchantment.INFINITY,1,true);
         ideaMeta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
         ideaMeta.getPersistentDataContainer().set(techIdKey,PersistentDataType.STRING,"idea");
@@ -382,7 +502,26 @@ public class Tools {
         }
     }
 
-    public static void spawnHologram(Location loc, String customName, String type, boolean visible) {
+    public static void spawnHologram(Location loc, String customName, String type) {
+
+        TextDisplay textDisplay = loc.getWorld().spawn(loc, TextDisplay.class, display ->{
+            display.text(deserialize(customName));
+            display.setBackgroundColor(Color.fromARGB(255, 0, 0, 0));
+
+            display.getPersistentDataContainer().set(holoKey, PersistentDataType.STRING, type);
+
+            // Можно также включить/выключить тень текста
+            display.setShadowed(true);
+
+            // Настройка яркости (чтобы текст не темнел ночью)
+            display.setBrightness(new Display.Brightness(15, 15));
+
+            display.setBillboard(Display.Billboard.VERTICAL);
+        });
+
+    }
+
+    public static void spawnHologramLegacy(Location loc, String customName, String type, boolean visible) {
 
 
 
@@ -397,7 +536,7 @@ public class Tools {
         hologram.setInvulnerable(true); // Защита от случайного удаления
     }
 
-    public static void spawnHologram(Location loc, String customName, String type) {
+    public static void spawnHologramLegacy(Location loc, String customName, String type) {
 
         TextDisplay textDisplay = loc.getWorld().spawn(loc, TextDisplay.class, display ->{
             display.setText(customName);
@@ -416,36 +555,38 @@ public class Tools {
 
     }
 
+
+
     public static void spawnPreBattleHologram(Location location, EPlayer attacker, EPlayer defender){
 
         Location spawnLoc = location.clone().add(0,2,0);
 
-        spawnHologram(spawnLoc, attacker.getCountryName() + " vs " + defender.getCountryName(),"preBattleTitle");
+        spawnHologramLegacy(spawnLoc, attacker.getCountryName() + " vs " + defender.getCountryName(),"preBattleTitle");
 
-        spawnHologram(spawnLoc.clone().add(0,-0.50,0), "Введите модификатор местности при помощи /battle","preBattleDesc");
+        spawnHologramLegacy(spawnLoc.clone().add(0,-0.50,0), "Введите модификатор местности при помощи /battle","preBattleDesc");
 
     }
 
     public static void spawnBattleHologram(Battle battle){
 
         Location spawnLoc = battle.getLoc().add(0,2,0);
-        EPlayer att = battle.getAttacker().getFirst();
-        EPlayer def = battle.getDefender().getFirst();
-        spawnHologram(spawnLoc, att.getCountryName() + " vs " + def.getCountryName(),"battleTitle");
+        EPlayer att = battle.getAttacker();
+        EPlayer def = battle.getDefender();
+        spawnHologramLegacy(spawnLoc, att.getCountryName() + " vs " + def.getCountryName(),"battleTitle");
         int i = 0;
-        spawnHologram(spawnLoc.clone().add(0,-0.25*++i,0), String.valueOf(Component.text("████ Привет ████").color(TextColor.color(0x555555))),"battlePhase");
-        spawnHologram(spawnLoc.clone().add(0,-0.25*++i,0),"бросок кубика", "battleDice" );
+        spawnHologramLegacy(spawnLoc.clone().add(0,-0.25*++i,0), String.valueOf(Component.text("████ Привет ████").color(TextColor.color(0x555555))),"battlePhase");
+        spawnHologramLegacy(spawnLoc.clone().add(0,-0.25*++i,0),"бросок кубика", "battleDice" );
         //spawnHologram(spawnLoc.clone().add(0,-0.25*++i,0),"урон", "battleCas" );
-        spawnHologram(spawnLoc.clone().add(0,-0.25*++i,0),"0 в бою 0", "battleTroops" );
+        spawnHologramLegacy(spawnLoc.clone().add(0,-0.25*++i,0),"0 в бою 0", "battleTroops" );
         //spawnHologram(spawnLoc.clone().add(0,-0.25*++i,0),"0 отступили 0", "battleRetreat");
         //spawnHologram(spawnLoc.clone().add(0,-0.25*++i,0),att.getSize() + "резервы" + def.getSize(), "battleReserve");
-        spawnHologram(spawnLoc.clone().add(0,-0.25*++i,0),att.getMoraleMod() + "мораль" + def.getMoraleMod(), "battleMorale" );
+        spawnHologramLegacy(spawnLoc.clone().add(0,-0.25*++i,0),att.getMoraleMod() + "мораль" + def.getMoraleMod(), "battleMorale" );
         //spawnHologram(spawnLoc.clone().add(0,-0.25*++i,0),att.getTactic() + "тактика" +def.getTactic() , "battleTac" );
 
 
     }
 
-    public static void editHologram(Location location, String type, String newValue ){
+    public static void editHologramLegacy(Location location, String type, String newValue ){
         for (Entity entity : location.getChunk().getEntities()) {
             if (entity instanceof TextDisplay display) {
                 if (display.getPersistentDataContainer().has(holoKey) && display.getPersistentDataContainer().get(holoKey, PersistentDataType.STRING).equals(type) ) {
@@ -455,14 +596,66 @@ public class Tools {
         }
     }
 
-    public static void deleteHologram(Location location, String type){
-        for (Entity entity : location.getChunk().getEntities()) {
+    public static void editHologram(Location location, String type, String newValue ){
+        editHologram(location.getChunk(),type,newValue);
+    }
+    public static void editHologram(long location, String type, String newValue){
+        editHologram(Bukkit.getWorlds().getFirst().getChunkAt(location),type, newValue);
+    }
+
+
+
+    public static TextDisplay findHologram(Chunk chunk, String type){
+        for (Entity entity : chunk.getEntities()) {
             if (entity instanceof TextDisplay display) {
                 if (display.getPersistentDataContainer().has(holoKey) && display.getPersistentDataContainer().get(holoKey, PersistentDataType.STRING).equals(type) ) {
-                    display.remove();
+                   return display;
                 }
             }
         }
+        return null;
+    }
+
+    public static void editHologram(Chunk chunk, String type, String newValue ){
+        if(chunk.isLoaded()){
+            TextDisplay holo = findHologram(chunk,type);
+            if(holo != null){
+                holo.text(Tools.deserialize(newValue));
+            }
+        }else{
+            Long chunkKey = chunk.getChunkKey();
+            ServerDatabase.PendingTask task = new ServerDatabase.PendingTask(ServerDatabase.TaskType.EDIT,type,newValue);
+            ServerDatabase db = Earth.getInstance().getDatabase();
+            Set< ServerDatabase.PendingTask > tasks = db.getHoloTasks(chunkKey);
+            tasks.add(task);
+            db.putHoloTasks(chunkKey,tasks);
+        }
+
+    }
+
+    public static void deleteHologram(Chunk chunk, String type){
+        if(chunk.isLoaded()){
+            TextDisplay holo = findHologram(chunk,type);
+            if(holo != null){
+                holo.remove();
+            }
+        }else{
+            Long chunkKey = chunk.getChunkKey();
+            ServerDatabase.PendingTask task = new ServerDatabase.PendingTask(ServerDatabase.TaskType.DELETE,type,"");
+            ServerDatabase db = Earth.getInstance().getDatabase();
+            Set< ServerDatabase.PendingTask > tasks = db.getHoloTasks(chunkKey);
+            tasks.add(task);
+            db.putHoloTasks(chunkKey,tasks);
+        }
+
+    }
+
+    public static void deleteHologram(long location, String type){
+        deleteHologram(Bukkit.getWorlds().getFirst().getChunkAt(location),type);
+    }
+
+    public static void deleteHologram(Location location, String type){
+        deleteHologram(location.getChunk(),type);
     }
 
 
@@ -482,7 +675,7 @@ public class Tools {
                 ItemMeta meta = item.getItemMeta();
                 if (meta.getPersistentDataContainer().has(armyIdKey, PersistentDataType.STRING)) {
                     UUID armyId = UUID.fromString(Objects.requireNonNull(meta.getPersistentDataContainer().get(armyIdKey, PersistentDataType.STRING)));
-                    return(Earth.getInstance().getServerDatabase().getArmy(armyId));
+                    return(Earth.getInstance().getDatabase().getArmy(armyId));
                 };
             }
         }
@@ -491,7 +684,7 @@ public class Tools {
 
 
 
-    public static ItemStack createItem(Material material, String displayName, List<String> lore, String customModel){
+    public static ItemStack createItemLegacy(Material material, String displayName, List<String> lore, String customModel){
         ItemStack item = new ItemStack(material);
         ItemMeta meta = item.getItemMeta();
         meta.setDisplayName(displayName);
@@ -505,17 +698,80 @@ public class Tools {
         return item;
     }
 
-    public static ItemStack createItem(Material material, String displayName, List<String> lore){
+    public static ItemStack createItemLegacy(Material material, String displayName, List<String> lore){
         ItemStack item = new ItemStack(material);
         ItemMeta meta = item.getItemMeta();
         meta.setDisplayName(displayName);
         meta.setLore(lore);
+
+        meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
+        meta.addItemFlags(ItemFlag.HIDE_ADDITIONAL_TOOLTIP);
+        meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
+
+        Multimap<Attribute, AttributeModifier> modifiers = ArrayListMultimap.create();
+
+        // 2. Добавляем фейковый модификатор (+0.0 к урону)
+        // Так как он равен 0, он не изменит стандартный урон меча (он останется 7.0)
+        modifiers.put(Attribute.ATTACK_DAMAGE, new AttributeModifier(
+                NamespacedKey.minecraft("fake_hidden_modifier"),
+                0.0,
+                AttributeModifier.Operation.ADD_NUMBER,
+                EquipmentSlotGroup.MAINHAND
+        ));
+
+        // 3. Записываем этот модификатор в мету
+        meta.setAttributeModifiers(modifiers);
+
         item.setItemMeta(meta);
         return item;
     }
 
+    public static ItemStack createItem(Material material, String displayName, List<String> lore,String customModel){
+        ItemStack item = new ItemStack(material);
+        ItemMeta meta = item.getItemMeta();
+        meta.displayName(deserialize(displayName));
+        List<Component> cLore = new ArrayList<>();
+        if(lore!=null){
+            for(String s:lore){
+                cLore.add(deserialize(s));
+            }
+        }
+
+        meta.lore(cLore);
+
+        meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
+        meta.addItemFlags(ItemFlag.HIDE_ADDITIONAL_TOOLTIP);
+        meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
+
+        Multimap<Attribute, AttributeModifier> modifiers = ArrayListMultimap.create();
+
+        // 2. Добавляем фейковый модификатор (+0.0 к урону)
+        // Так как он равен 0, он не изменит стандартный урон меча (он останется 7.0)
+        modifiers.put(Attribute.ATTACK_DAMAGE, new AttributeModifier(
+                NamespacedKey.minecraft("fake_hidden_modifier"),
+                0.0,
+                AttributeModifier.Operation.ADD_NUMBER,
+                EquipmentSlotGroup.MAINHAND
+        ));
+
+        // 3. Записываем этот модификатор в мету
+        meta.setAttributeModifiers(modifiers);
+
+        CustomModelDataComponent cmd = meta.getCustomModelDataComponent();
+        cmd.setStrings(List.of(customModel));
+        meta.setCustomModelDataComponent(cmd);
+
+
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    public static ItemStack createItem(Material material, String displayName, List<String> lore){
+        return createItem(material,displayName,lore,"");
+    }
+
     public static ItemStack doomStick(){
-        ItemStack item = createItem(Material.STICK,colorText("&4DoomStick"),List.of("earth debug stick"));
+        ItemStack item = Tools.createItemLegacy(Material.STICK,colorText("&4DoomStick"),List.of("earth debug stick"));
         ItemMeta meta = item.getItemMeta();
         meta.getPersistentDataContainer().set(debugStickKey,PersistentDataType.BOOLEAN,true);
         item.setItemMeta(meta);
@@ -530,7 +786,7 @@ public class Tools {
                 colorText("&fКоличество: &d" + troops[0]),
                 colorText("&fЗаполненность: &a"+ troops[1])
         );
-        return createItem(material,displayName,lore,customModel);
+        return createItemLegacy(material,displayName,lore,customModel);
 
     }
 
@@ -648,7 +904,7 @@ public class Tools {
     }
 
     public static ItemStack createMainMenuItem(String name, String customModel, String mainMenuId){
-        ItemStack item = createItem(Material.EGG,name,null,customModel);
+        ItemStack item = createItemLegacy(Material.EGG,name,null,customModel);
         ItemMeta meta = item.getItemMeta();
         meta.getPersistentDataContainer().set(menuIdKey,PersistentDataType.STRING, mainMenuId);
         item.setItemMeta(meta);
@@ -850,17 +1106,33 @@ public class Tools {
 //        return itemCost * (mod);
 //    }
 
-    public static int getBalance(EPlayer p){
 
-        double inflation = Tools.round(1 - (p.getAttribute(EPlayerAttribute.INFLATION)*0.01));
-        int income = (int) Math.round(p.getIncome() * inflation);
-        double corruption = Tools.round(1 - p.getAttribute(EPlayerAttribute.CORRUPTION) * 0.1);
-        return (int) Math.round( (income - p.getExpense()) * corruption );
-    }
 
     public static String colorText(String text){
         return ChatColor.translateAlternateColorCodes('&', text);
     }
 
+    public static Component deserialize(String text){
+        return MiniMessage.miniMessage().deserialize("<!italic><white>" + text);
+    }
 
+    public static String serialize(Component text){
+        return MiniMessage.miniMessage().serialize(text);
+    }
+
+
+    public static ItemStack createDebtItem(EPlayer player, UUID debtId) {
+        double debtSize = player.getData().getDebtMap().get(debtId);
+        double interest = 1.0 + player.getData().getInterestMap().get(debtId);
+        int size = (int) Math.ceil(debtSize * interest);
+
+        List<String> lore = List.of("Процентная ставка <yellow>" +( (int)Math.round(interest * 100) - 100 )+ "%","Нажмите чтобы вернуть <red>" + size + "<white>$");
+        ItemStack debt = createItem(Material.PAPER,"Долг " + debtSize + "$",lore);
+        ItemMeta meta = debt.getItemMeta();
+        PersistentDataContainer data = meta.getPersistentDataContainer();
+        data.set(debtIdKey,PersistentDataType.STRING,debtId.toString());
+        data.set(debtSizeKey,PersistentDataType.INTEGER,size);
+        debt.setItemMeta(meta);
+        return debt;
+    }
 }

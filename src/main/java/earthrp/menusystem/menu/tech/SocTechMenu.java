@@ -49,6 +49,7 @@ public class SocTechMenu extends Menu {
 
     @Override
     public void setMenuItems() {
+        inventory.clear();
 
         // Эпоха 2: Ренессанс
         ItemStack university = makeTech("university",player);

@@ -115,6 +115,7 @@ public class ReusTechMenu extends Menu {
 
     @Override
     public void setMenuItems() {
+        inventory.clear();
 
         ItemStack tech40 = new ItemStack(Material.PRISMARINE_CRYSTALS, 1);
         ItemMeta tech40Meta = tech40.getItemMeta();

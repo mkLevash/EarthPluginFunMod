@@ -1,7 +1,11 @@
 package earthrp.customObjects;
 
+import com.google.gson.Gson;
 import earthrp.Earth;
+import earthrp.battle.Battle;
 import earthrp.customEnums.EPlayerTech;
+import earthrp.customEnums.UnitTech.UnitType;
+import earthrp.events.ArmyMoveEvent;
 import earthrp.tools.Tools;
 import earthrp.customEnums.EPlayerAttribute;
 import earthrp.database.ServerDatabase;
@@ -14,95 +18,155 @@ import org.bukkit.*;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.SkullMeta;
+import org.bukkit.persistence.PersistentDataType;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 import java.util.stream.Collectors;
+
+import static earthrp.customEnums.UnitTech.UnitType.*;
+import static earthrp.tools.PDCKeys.*;
 
 
 @Getter
 @Setter
 public class Army implements Comparable<Army>{
+
     @Getter(AccessLevel.NONE) // <--- не сгенерирует getter
     private final ServerDatabase db;
 
     private final UUID uuid;
 
-    public Army(UUID uuid, UUID ownerId){
+    //data
+    private static final Gson gson = new Gson();
+    private ArmyData data;
+    private String rawJson;    // То, что пришло из БД
+
+
+    public void loadData(String json) {
+        if (json == null || json.isEmpty()) {
+            this.data = new ArmyData();
+        } else {
+            this.data = gson.fromJson(json, ArmyData.class);
+        }
+    }
+
+    // Вызываем перед сохранением в БД
+    public String serializeData() {
+        return gson.toJson(this.data);
+    }
+
+    public ArmyData getData() {
+        if (this.data == null) this.data = new ArmyData();
+        return this.data;
+    }
+    //data
+
+    public Army(UUID uuid, UUID ownerId, String data){
         this.uuid = uuid;
         this.ownerId = ownerId;
-        infantry = 0;
-        cavalry = 0;
-        artillery = 0;
-        db = Earth.getInstance().getServerDatabase();
+        if (data == null) data = "";
+        loadData(data);
+        db = Earth.getInstance().getDatabase();
+    }
+
+    public Army(UUID uuid, UUID ownerId,Location loc){
+        this.uuid = uuid;
+        this.ownerId = ownerId;
+        loadData("");
+        db = Earth.getInstance().getDatabase();
+        setLocation(loc);
     }
 
 
-    private int techLvl;
+
+
     private UUID ownerId;
-    private int infantry;
-    private int cavalry;
-    private int artillery;
+
     private String leaderName;
     private int leaderFire;
     private int leaderShock;
-    private boolean battle = false;
 
-    private final Set<Unit> units = new HashSet<>();
+    public void setLeaderMove(int value){
+        data.setLeaderMovement(value);
+    }
 
-    public Set<Unit> getUnits() {
+    public int getLeaderMove(){
+        return data.getLeaderMovement();
+    }
+
+    public void setLeaderSiege(int value){
+        data.setLeaderSiege(value);
+    }
+
+    public int getLeaderSiege(){
+        return data.getLeaderSiege();
+    }
+
+
+    private final Set<ArmyUnit> units = new HashSet<>();
+
+    public Set<ArmyUnit> getUnits() {
         return Collections.unmodifiableSet(units);
     }
 
-    public void addUnit(Unit unit) {
-        this.units.add(unit);
-        switch (unit.getType()){
-            case "inf" -> infantry++;
-            case "cav" -> cavalry++;
-            case "art" -> artillery++;
-        }
+    public void addUnit(ArmyUnit unit) {
+        units.add(unit);
+        db.addUnit(unit);
+
     }
 
-    public void removeUnit(Unit unit) {
+    public void removeUnit(ArmyUnit unit) {
         this.units.remove(unit);
-        switch (unit.getType()){
-            case "inf" -> infantry--;
-            case "cav" -> cavalry--;
-            case "art" -> artillery--;
+    }
+
+    public int getInfantry(){
+        int amount = 0;
+        for (ArmyUnit u:units){
+            if(u.getType().equals(INF)) amount++;
         }
+        return amount;
+    }
+    public int getCavalry(){
+        int amount = 0;
+        for (ArmyUnit u:units){
+            if(u.getType().equals(CAV)) amount++;
+        }
+        return amount;
+    }
+
+    public int getArtillery(){
+        int amount = 0;
+        for (ArmyUnit u:units){
+            if(u.getType().equals(ART)) amount++;
+        }
+        return amount;
+    }
+
+    public int getArtilleryTroops(){
+        int amount = 0;
+        for (ArmyUnit u:units){
+            if(u.getType().equals(ART)) amount+= u.getHp();
+        }
+        return amount;
     }
 
 
-    private Location staticLocation;
-    private UUID playerUUID = null;
-    private boolean playerOffline = false; // Новый флаг
 
-    public Location getLocation() {
-        // Если игрок оффлайн, возвращаем точку, где он вышел из игры
-        if (playerOffline) {
-            return staticLocation;
-        }
-
-        if (playerUUID != null) {
-            Player player = Bukkit.getPlayer(playerUUID);
-            if (player != null && player.isOnline()) {
-                return player.getLocation();
-            }
-        }
-        return staticLocation;
-    }
-
-
-    public void setPlayerOffline(boolean offline, Location logoutLoc) {
-        this.playerOffline = offline;
-        if (offline) {
-            this.staticLocation = logoutLoc; // Замораживаем на месте выхода
-        }
-    }
 
 
     public EPlayer getOwner(){
         return db.getPlayer(ownerId);
     }
+    
+    
+    public boolean isSieging(){
+        return !getData().getSiegeTown().equals(Tools.EMPTY_UUID);
+    }
+
+
+
 
 
 
@@ -110,18 +174,12 @@ public class Army implements Comparable<Army>{
     public String getCA(String type){
         double ca = 0.0;
         switch (type){
-            case "inf" ->{
-                ca = getOwner().getAttribute(EPlayerAttribute.INF_COMBAT_ABILITY);
-            }
-            case "cav" ->{
-                ca = getOwner().getAttribute(EPlayerAttribute.CAV_COMBAT_ABILITY);
-            }
-            case "art" ->{
-                ca = getOwner().getAttribute(EPlayerAttribute.ART_COMBAT_ABILITY);
-            }
+            case "inf" -> ca = getOwner().getAttribute(EPlayerAttribute.INF_COMBAT_ABILITY);
+            case "cav" -> ca = getOwner().getAttribute(EPlayerAttribute.CAV_COMBAT_ABILITY);
+            case "art" -> ca = getOwner().getAttribute(EPlayerAttribute.ART_COMBAT_ABILITY);
         }
 
-        return Tools.colorText(Tools.getColorMod(ca));
+        return Tools.colorText(Tools.getColorModLegacy(ca));
     }
 
     public String getTroopsCost(String type){
@@ -133,27 +191,108 @@ public class Army implements Comparable<Army>{
         return ChatColor.translateAlternateColorCodes('&', color + (int) Math.round(cost*100-100) + "%");
     }
 
+    public void cancelSiege(){
+        Town town = db.getTown(getData().getSiegeTown());
+        town.getData().getSiegeArmy().remove(this.getUuid());
+        Earth.getInstance().getBlueMapManager().updateTownMarker(town);
+        getData().setSiegeTown(Tools.EMPTY_UUID);
+    }
+
     public double getCavRatio(){
         return getOwner().getAttribute(EPlayerAttribute.CAV_RATIO);
     }
 
-    public int getMaxLvl(String type){
-        Set<Unit> units = getUnits();
-        int max = 0;
-        for(Unit u:units){
-            if(u.getType().equals(type))max = Math.max(max,u.getLvl());
-        }
-        return max;
+    public boolean isRetreat(){
+        return data.isRetreat();
     }
 
+    public void setRetreat(boolean b){
+        data.setRetreat(b);
+    }
+
+    public boolean isBattle(){
+        return battle != null;
+    }
+
+    private Battle battle;
+    public void setBattle(Battle b){
+        battle = b;
+    }
+
+    public String getCavRatioColor(){
+
+        int inf = getInfantry();
+        int cav = getCavalry();
+        String color = "&a";
+        int troops = inf + cav;
+        if (troops == 0) return  color + 0 + "&f%/&e" + (int) (getCavRatio() * 100) + "&f%";
+
+        double cavRatio = (double) cav / troops;
+        if(cavRatio>getCavRatio()) color = "&c";
+
+        return color + (int) (cavRatio*100) + "&f%/&e" + (int) (getCavRatio() * 100) + "&f%";
+
+    }
+
+    public String getCavRatioColored(){
+
+        int inf = getInfantry();
+        int cav = getCavalry();
+        String color = "<green>";
+        int troops = inf + cav;
+        if (troops == 0) return  color + 0 + "<white>%/<yellow>" + (int) (getCavRatio() * 100) + "<white>%";
+
+        double cavRatio = (double) cav / troops;
+        if(cavRatio>getCavRatio()) color = "<red>";
+
+        return color + (int) (cavRatio*100) + "<white>%/<yellow>" + (int) (getCavRatio() * 100) + "<white>%";
+
+    }
+
+
+
     public void disband(Inventory inventory){
-        for(Unit u:units){
-            List<String> uDesc = List.of(
-                    Tools.colorText("&fᠩ&4"+0.0 + "&f/&2" + u.getBaseMorale()),
-                    Tools.colorText("&fᠧ&f" + Tools.getColorMod( u.getDisc() + 1.0))
-                    );
-            ItemStack unit = Tools.createArmyCraftItem(u.getName(),uDesc,u.getType(),u.getLvl(),u.getDisc(),u.getFire(),u.getShock(),0.0);
-            inventory.addItem(unit);
+        for(ArmyUnit u:units){
+            if(u.getData().isMerc()) continue;
+            if(u.getData().isLevies()) continue;
+            ItemStack unit = Tools.createArmyCraftItem(u.getTech(),u.getData().getDisc(),u.getMorale(),false,false);
+
+            Map<Integer, ItemStack> overflow = inventory.addItem(unit);
+
+            if (!overflow.isEmpty()) {
+                // Если карта не пуста, значит, часть предметов не влезла
+                for (ItemStack remaining : overflow.values()) {
+                    // Спавним не поместившиеся предметы на землю рядом с игроком
+                    inventory.getLocation().getWorld().dropItemNaturally(inventory.getLocation(), remaining);
+                }
+
+            }
+        }
+        if(leaderName!=null){
+            int fire =getLeaderFire();
+            int shock = getLeaderShock();
+            int move = getLeaderMove();
+            int siege = getLeaderSiege();
+
+            ItemStack leader = new ItemStack(Material.PLAYER_HEAD);
+            SkullMeta leaderMeta = (SkullMeta) leader.getItemMeta();
+            leaderMeta.setDisplayName(leaderName);
+            leaderMeta.getPersistentDataContainer().set(leaderShockKey, PersistentDataType.INTEGER,shock);
+            leaderMeta.getPersistentDataContainer().set(leaderFireKey,PersistentDataType.INTEGER,fire);
+            leaderMeta.getPersistentDataContainer().set(leaderMoveKey,PersistentDataType.INTEGER,move);
+            leaderMeta.getPersistentDataContainer().set(leaderSiegeKey,PersistentDataType.INTEGER,siege);
+            leader.setItemMeta(leaderMeta);
+
+            Map<Integer, ItemStack> overflow = inventory.addItem(leader);
+
+            if (!overflow.isEmpty()) {
+                // Если карта не пуста, значит, часть предметов не влезла
+                for (ItemStack remaining : overflow.values()) {
+                    // Спавним не поместившиеся предметы на землю рядом с игроком
+                    inventory.getLocation().getWorld().dropItemNaturally(inventory.getLocation(), remaining);
+                }
+
+            }
         }
     }
 
@@ -195,6 +334,8 @@ public class Army implements Comparable<Army>{
     }
 
     public void upgradeUnits(Player player){
+
+
         int maxInf = 1;
         double infFire= 0 ;
         double infShock= 0 ;
@@ -255,9 +396,9 @@ public class Army implements Comparable<Army>{
             artMaterials = Map.of(Material.IRON_BLOCK,1,Material.AMETHYST_BLOCK,1,Material.DIAMOND_BLOCK,1,Material.FIRE_CHARGE,2,Material.GUNPOWDER,2);
         }
         int c = 0;
-        for(Unit u : units){
+        for(ArmyUnit u : units){
             switch (u.getType()){
-                case "inf" ->{
+                case INF ->{
                     if (u.getLvl() < maxInf && u.getLvl()!=0 && tryPayment(player,infMaterials)) {
                         u.setLvl(maxInf);
                         u.setMorale(u.getMaxMorale());
@@ -269,7 +410,7 @@ public class Army implements Comparable<Army>{
                         c++;
                     }
                 }
-                case "cav" ->{
+                case CAV ->{
                     if (u.getLvl() < maxCav && u.getLvl()!=0 && tryPayment(player,cavMaterials)) {
                         u.setLvl(maxCav);
                         u.setMorale(u.getMaxMorale());
@@ -281,7 +422,7 @@ public class Army implements Comparable<Army>{
                         c++;
                     }
                 }
-                case "art" ->{
+                case ART ->{
                     if (u.getLvl() < maxArt && u.getLvl()!=0 && tryPayment(player,artMaterials)) {
                         u.setLvl(maxArt);
                         u.setMorale(u.getMaxMorale());
@@ -300,27 +441,27 @@ public class Army implements Comparable<Army>{
     }
 
 
-    public void mergeUnits() {
+    public void mergeUnits(boolean shift) {
         // 1. Сначала удаляем всех, у кого HP <= 0
         units.removeIf(u -> u.getHp() <= 0);
 
         // 2. Группируем юнитов по типу и уровню, чтобы не смешать кавалерию с пехотой
         // Ключ: "type_lvl", Значение: список подходящих юнитов
-        Map<String, List<Unit>> groups = units.stream()
-                .collect(Collectors.groupingBy(u -> u.getType() + "_" + u.getLvl()));
+        Map<String, List<ArmyUnit>> groups = units.stream()
+                .collect(Collectors.groupingBy(u -> u.getTech() + "_" + u.getLvl()));
 
-        for (List<Unit> squad : groups.values()) {
+        for (List<ArmyUnit> squad : groups.values()) {
             if (squad.size() < 2) continue;
 
             for (int i = 0; i < squad.size(); i++) {
-                Unit target = squad.get(i);
+                ArmyUnit target = squad.get(i);
 
                 // Если этот юнит уже ранен (не полный HP)
                 if (target.getHp() < 1000) {
 
                     // Ищем, у кого забрать HP (начиная со следующих в списке)
                     for (int j = i + 1; j < squad.size(); j++) {
-                        Unit source = squad.get(j);
+                        ArmyUnit source = squad.get(j);
 
                         int needed = target.getDamageTaken();
                         int available = source.getHp();
@@ -343,57 +484,43 @@ public class Army implements Comparable<Army>{
         }
 
         // 3. Финальная чистка: удаляем тех, кто отдал всё здоровье
-        units.removeIf(u -> u.getHp() <= 0);
-        infantry = 0;
-        cavalry = 0;
-        artillery = 0;
-        for(Unit u:units){
-            switch (u.getType()){
-                case "inf" -> infantry++;
-                case "cav" -> cavalry++;
-                case "art" -> artillery++;
-            }
+        if(!shift){
+            units.removeIf(u -> u.getHp() <= 0);
         }
+
+
     }
+
+    public Town getTownAt(){
+        return db.getTownAtChunk(getData().getLocation());
+    }
+
+    public boolean isAllyLoc(){
+        if(getTownAt() == null) return false;
+        UUID controllerId = getTownAt().getController().getUniqueId();
+        return (controllerId.equals(getOwnerId()) || getOwner().getData().getAlly().contains(controllerId));
+    }
+
+    public boolean isEnemyLoc(){
+        if(getTownAt() == null) return false;
+        UUID controllerId = getTownAt().getController().getUniqueId();
+        return getOwner().getData().getEnemies().contains(controllerId);
+    }
+
+    public boolean isBarbarianLoc(){
+
+        return getTownAt() == null;
+    }
+
+
+
+
 
     public int getCW(){
-        switch (techLvl){
-            case 0 ->{
-                return 15;
-            }
-            case 1 ->{
-                return 20;
-            }
-            case 2 ->{
-                return 25;
-            }
-            case 3 ->{
-                return 30;
-            }
-            case 4 ->{
-                return 35;
-            }
-        }
-        return 15;
+        return (int) getOwner().getAttribute(EPlayerAttribute.CW);
     }
 
-    public int getFR(){
-        switch (techLvl){
-            case 0 ->{
-                return 1;
-            }
-            case 1, 2 ->{
-                return 2;
-            }
-            case 3 ->{
-                return 3;
-            }
-            case 4 ->{
-                return 4;
-            }
-        }
-        return 2;
-    }
+
 
 //    public List<Unit> getUnits(){
 //        List<Unit> units = db.getUnits();
@@ -416,30 +543,31 @@ public class Army implements Comparable<Army>{
 //    }
 
     public double getMorale(){
-
+        if(units.isEmpty()) return 0;
         double moraleSum = 0;
-        for(Unit u : units){
+        for(ArmyUnit u : units){
             moraleSum += u.getMorale();
         }
 
-        return Tools.round(moraleSum/getSize());
+        return Tools.round(moraleSum/ units.size());
     }
 
     public double getMaxMorale(){
+        if(units.isEmpty()) return 0;
         double moraleSum = 0;
-        for(Unit u : units){
+        for(ArmyUnit u : units){
             moraleSum += u.getMaxMorale();
         }
 
-        return Tools.round(moraleSum/getSize());
+        return Tools.round(moraleSum/ units.size());
     }
 
     public int[] getLvlTroops(String type, int lvl){
         int[] res = new int[2];
         int hp = 0;
         int amount = 0;
-        for (Unit u : units) {
-            if (u.getType().equals(type) && u.getLvl() == lvl) {
+        for (ArmyUnit u : units) {
+            if (u.getTech().toString().toLowerCase(Locale.ROOT).equals(type) && u.getLvl() == lvl) {
                 hp += u.getHp();
                 amount++;
             }
@@ -449,9 +577,9 @@ public class Army implements Comparable<Army>{
         return res;
     }
 
-    public int getTypeTroops(String type){
+    public int getTypeTroops(UnitType type){
         int hp = 0;
-        for (Unit u : units) {
+        for (ArmyUnit u : units) {
             if (u.getType().equals(type)) hp += u.getHp();
         }
         return hp;
@@ -459,14 +587,26 @@ public class Army implements Comparable<Army>{
 
     public int getTroops(){
         int hp = 0;
-        for (Unit u : units) {
+        for (ArmyUnit u : units) {
             hp += u.getHp();
         }
         return hp;
     }
 
+    public void killInfantry(int amount){
+        for(ArmyUnit u:units){
+            if (u.getHp() < amount ){
+                amount -= u.getHp();
+                u.setHp(0);
+            }else{
+                u.setHp(u.getHp()-amount);
+                amount = 0;
+            }
+        }
+    }
+
     public double getTactic(){
-        return Tools.round(getOwner().getAttribute(EPlayerAttribute.TACTIC)*getDisc());
+        return Tools.round(getOwner().getAttribute(EPlayerAttribute.TACTIC)*getDisciple());
     }
 
 
@@ -474,17 +614,122 @@ public class Army implements Comparable<Army>{
         return getOwner().getAttribute(EPlayerAttribute.DISCIPLE);
     }
 
-    public String getDisciple(){
-        int d = (int) Math.round(getDisc()*100);
+    public double getDisciple(){
+        if(getArmySize()==0) return getDisc();
+        double disSum = 0;
+        for(ArmyUnit u:units){
+            disSum += getDisc() + u.getDisc() + u.getData().getDisc();
+        }
+
+        return Tools.round(disSum/ getArmySize());
+    }
+
+
+
+    public String getDiscipleColor(){
+        int d = (int) Math.round(getDisciple()*100);
         String c = "&f";
         if(d>100)c = "&a";
         if(d<100)c = "&c";
         return c+d+"&f%";
     }
 
-    public int getSize(){
-        return Math.max(1,infantry+cavalry+artillery);
+    public String getDiscipleColored(){
+        int d = (int) Math.round(getDisciple()*100);
+        String c = "<white>";
+        if(d>100)c = "<green>";
+        if(d<100)c = "<red>";
+        return c+d+"<white>%";
     }
+
+    public String getDiscipleMod(){
+        int d = (int) Math.round((getDisciple()-1)*100);
+        String c = "&f";
+        if(d>0)c = "&a+";
+        if(d<0)c = "&c";
+        return c+d+"&f%";
+    }
+
+    public int getArmySize(){
+        return units.size();
+    }
+
+
+
+    public boolean isBarbarian(){
+        return getOwner().getDisplayName().equals("barbarian");
+    }
+
+    public void setLocation(@NotNull Location loc, long time){
+        setLocation(loc.getChunk(),time);
+    }
+
+
+    public void setLocation(@NotNull Location loc){
+        setLocation(loc.getChunk());
+    }
+
+    public void setLocation(@NotNull Chunk chunk, long time){
+        Chunk fromChunk = chunk.getWorld().getChunkAt(data.getLocation());
+        if(data.getLocation()!=chunk.getChunkKey()){
+            data.setLocation(chunk.getChunkKey());
+            data.setLocationTime(time);
+            Bukkit.getServer().getPluginManager().callEvent(new ArmyMoveEvent(this,chunk,fromChunk));
+        }
+    }
+
+    public void setLocation(@NotNull Chunk chunk){
+        setLocation(chunk,System.currentTimeMillis());
+    }
+
+    public long getChunkKey(){
+        return data.getLocation();
+    }
+
+    public long getChunkTime(){
+        return data.getLocationTime();
+    }
+
+    public void setShulkerLoc(Location loc){
+        if(loc == null){
+            data.setShulkerX(null);
+            data.setShulkerY(null);
+            data.setShulkerZ(null);
+        }else{
+            data.setShulkerX(loc.getX());
+            data.setShulkerY(loc.getY());
+            data.setShulkerZ(loc.getZ());
+        }
+    }
+
+    public Location getShulkerLoc(){
+        Double x = data.getShulkerX();
+        Double y = data.getShulkerY();
+        Double z = data.getShulkerZ();
+        if(x==null){
+            return null;
+        }else{
+            return new Location(Bukkit.getWorlds().get(0),x,y,z);
+        }
+    }
+
+
+
+    @Getter
+    @Setter
+    private Town barbarianTown;
+
+    @Getter
+    @Setter
+    private Inventory barbarianChest;
+
+    @Getter
+    @Setter
+    private ItemStack barbarianTownItem;
+
+    @Getter
+    @Setter
+    private ItemStack barbarianOwnerItem;
 
 
     @Override
@@ -502,7 +747,7 @@ public class Army implements Comparable<Army>{
 
     @Override
     public String toString() {
-        return "Army{owner = '" + getOwner().getDisplayName() + "', size='" + getSize() + "', uuid=" + uuid.toString().substring(0,5) + "}";
+        return "Army{owner = '" + getOwner().getDisplayName() + "', size='" + getArmySize() + "', uuid=" + uuid.toString().substring(0,5) + "}";
     }
 
     @Override

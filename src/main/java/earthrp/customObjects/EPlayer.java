@@ -1,17 +1,20 @@
 package earthrp.customObjects;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 
 import com.google.gson.Gson;
 import earthrp.Earth;
+import earthrp.customEnums.*;
 import earthrp.tools.Tools;
-import earthrp.customEnums.EPlayerAttribute;
-import earthrp.customEnums.EPlayerTech;
 import earthrp.database.ServerDatabase;
-import earthrp.files.CustomConfig;
+import earthrp.configs.CustomConfig;
 import lombok.Getter;
 import lombok.Setter;
+import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 
 
 @Getter
@@ -21,7 +24,7 @@ public class EPlayer implements Comparable<EPlayer> {
 
     public EPlayer(UUID playerUniqueId){
         this.uniqueId = playerUniqueId;
-        db = Earth.getInstance().getServerDatabase();
+        db = Earth.getInstance().getDatabase();
     }
 
     private static final Gson gson = new Gson();
@@ -29,9 +32,9 @@ public class EPlayer implements Comparable<EPlayer> {
 
     private PlayerData data;
 
-    private String rawJson;    // То, что пришло из БД
+    private String rawJson;
 
-    // Вызываем при загрузке из БД
+
     public void loadData(String json) {
         if (json == null || json.isEmpty()) {
             this.data = new PlayerData();
@@ -40,12 +43,12 @@ public class EPlayer implements Comparable<EPlayer> {
         }
     }
 
-    // Вызываем перед сохранением в БД
+
     public String serializeData() {
         return gson.toJson(this.data);
     }
 
-    // Удобный геттер
+
     public PlayerData getData() {
         if (this.data == null) this.data = new PlayerData();
         return this.data;
@@ -62,7 +65,7 @@ public class EPlayer implements Comparable<EPlayer> {
 
     public double getAttribute(EPlayerAttribute attribute) {
         double baseValue = getAttributeValue(attribute); // Твое дефолтное значение из Enum
-        List<PlayerModifier> modifiers = this.data.attributeModifiers.get(attribute);
+        Set<PlayerModifier> modifiers = getAttributeModifiers(attribute);
 
         if (modifiers == null || modifiers.isEmpty()) {
             return baseValue;
@@ -71,21 +74,18 @@ public class EPlayer implements Comparable<EPlayer> {
         // 1. Сначала применяем все операции ADD
         double totalAdd = 0;
         for (PlayerModifier mod : modifiers) {
-            if (mod.getOperation() == PlayerModifier.Operation.ADD) {
-                totalAdd += mod.getValue();
-            }
+            totalAdd += mod.getAttributes().get(attribute);
         }
         double result = baseValue + totalAdd;
 
-        // 2. Затем применяем MULTIPLY (например, если бафф дает 0.2, это +20% к итогу)
-        double totalMultiply = 1.0;
-        for (PlayerModifier mod : modifiers) {
-            if (mod.getOperation() == PlayerModifier.Operation.MULTIPLY) {
-                totalMultiply += mod.getValue(); // 1.0 + 0.2 = 1.2
-            }
-        }
 
-        return Tools.round(result * totalMultiply);
+        return Tools.round(result);
+    }
+
+    public Set<PlayerModifier> getAttributeModifiers(EPlayerAttribute attribute){
+        return data.getModifiers().stream()
+                .filter(modifier -> modifier.getAttributes().containsKey(attribute))
+                .collect(Collectors.toSet());
     }
 
     public void setTech(EPlayerTech type, boolean newValue) {
@@ -106,27 +106,92 @@ public class EPlayer implements Comparable<EPlayer> {
 
     private final Set<Town> towns = new HashSet<>();
     public Set<Town> getTowns() {return Collections.unmodifiableSet(towns);}
-    public void addTown(Town town) {this.towns.add(town);}
-    public void removeTown(Town town) {this.towns.remove(town);}
+    public void addTown(Town town) {
+        this.towns.add(town);
+        townsControlled.add(town);
+    }
+    public void removeTown(Town town) {
+        this.towns.remove(town);
+        townsControlled.remove(town);
+    }
+
+    private final Set<Town> townsControlled = new HashSet<>();
+    public Set<Town> getTownsControlled() {return Collections.unmodifiableSet(townsControlled);}
+
+
+    public void annexTown(Town town){
+        controlTown(town);
+        town.getOwner().removeTown(town);
+        town.setType("townHall");
+        town.setCore(false);
+        town.setOwnerId(uniqueId);
+        addTown(town);
+    }
+
+    public void controlTown(Town town) {
+        townsControlled.add(town);
+        town.getController().deControlTown(town);
+        town.getData().setController(uniqueId);
+
+    }
+    public void deControlTown(Town town) {this.townsControlled.remove(town);}
 
     public int getOiIncome(){
         double oi = 0;
-        double bMod = 1 + getAttribute(EPlayerAttribute.OI_FROM_BUILDING);
+        double bMod = getAttribute(EPlayerAttribute.OI_FROM_BUILDING);
+        for(Town town:getTowns()){
+            if(town.isCapital()){
+                oi += 5;
+            }
+        }
         for (Building building:getBuildings()){
-            if(building.getType().equals("school")){
+            if(building.getData().getType().equals(BuildingType.LIBRARY)){
                 oi += Tools.round(1 * bMod);
             }
-            if(building.getType().equals("university")){
-                oi += Tools.round(3 * bMod);
+            if(building.getData().getType().equals(BuildingType.UNIVERSITY)){
+                oi += Tools.round(5 * bMod);
             }
         }
 
-        return (int) (getAttribute(EPlayerAttribute.OI_INCOME) + oi);
+        return (int) Math.round(getAttribute(EPlayerAttribute.OI_INCOME) + oi);
 
     }
 
-    public List<Unit> getUnits(){
-        List<Unit> units = new ArrayList<>();
+    public void takeArmy(Army army){
+        data.armiesInHand.add(army.getUuid());
+        army.getData().setInHand(uniqueId);
+
+    }
+
+    public void placeArmy(Army army){
+        data.armiesInHand.remove(army.getUuid());
+        army.getData().setInHand(Tools.EMPTY_UUID);
+        if(data.armiesInHand.isEmpty()){
+            Player player = Bukkit.getPlayer(uniqueId);
+            if(player!=null) player.clearActivePotionEffects();
+        }
+
+
+    }
+
+    public int getMaxLeaderMovement(){
+        int move = 0;
+        for(UUID armyId : getData().armiesInHand){
+            int lm = db.getArmy(armyId).getData().getLeaderMovement();
+            if(lm>move){
+                move = lm;
+            }
+        }
+        return move;
+    }
+
+    public void addBarbariansAmount(int amount){
+        int old = data.getBarbarians();
+        data.setBarbarians(old + amount);
+    }
+
+    public List<ArmyUnit> getUnits(){
+        List<ArmyUnit> units = new ArrayList<>();
         for(Army a:armies){
             units.addAll(a.getUnits());
         }
@@ -137,6 +202,11 @@ public class EPlayer implements Comparable<EPlayer> {
         return (int) Math.min(3,Math.round(getAttribute(EPlayerAttribute.REVANCHISM)));
     }
 
+
+    public double getLivingBuildingCost(){
+        return Math.max( 0.1, Tools.round(getAttribute(EPlayerAttribute.BUILDING_COST) - (1 - getAttribute(EPlayerAttribute.LIVING_BUILDING_COST)) ));
+    }
+
     public double getWarBuildingCost(){
         return Math.max( 0.1, Tools.round(getAttribute(EPlayerAttribute.BUILDING_COST) - (1 - getAttribute(EPlayerAttribute.WAR_BUILDING_COST))));
     }
@@ -144,46 +214,191 @@ public class EPlayer implements Comparable<EPlayer> {
         return Math.max(0.1, Tools.round(getAttribute(EPlayerAttribute.BUILDING_COST) - (1 - getAttribute(EPlayerAttribute.SCIENCE_BUILDING_COST))));
     }
 
-    public int getTribute(){
-        return (int) Math.round(getAttribute(EPlayerAttribute.TRIBUTE)*getAttribute(EPlayerAttribute.TRIBUTE_MOD));
+    public double getTribute(){
+
+
+        double tribute = getAttribute(EPlayerAttribute.TRIBUTE) + ( getIncome() * getAttribute(EPlayerAttribute.TRIBUTE_PERCENTAGE));
+        return Tools.round( tribute * getAttribute(EPlayerAttribute.TRIBUTE_MOD));
     }
 
     public double getMoraleMod(){
-        return Tools.round(getAttribute(EPlayerAttribute.MORALE_MOD) + (getAttribute(EPlayerAttribute.TRADITION)*0.005) + (getRevanchism() * getAttribute(EPlayerAttribute.REVANCHISM_MOD) * 0.1));
+        return Tools.round(getAttribute(EPlayerAttribute.MORALE_MOD) + (getAttribute(EPlayerAttribute.TRADITION)*getAttribute(EPlayerAttribute.MORALE_TRADITION)) + (getRevanchism() * getAttribute(EPlayerAttribute.REVANCHISM_MOD) * 0.1));
     }
 
     public String getSatietyColor(){
         if(getAttribute(EPlayerAttribute.ARMY_SATIETY) < 1){
-            return "&cx"+getAttribute(EPlayerAttribute.ARMY_SATIETY);
+            return "&c"+ (int) (getAttribute(EPlayerAttribute.ARMY_SATIETY) * 100) + "&f%";
         }else{
-            return "&ax"+getAttribute(EPlayerAttribute.ARMY_SATIETY);
+            return "&a"+ (int) (getAttribute(EPlayerAttribute.ARMY_SATIETY) * 100) + "&f%";
         }
     }
 
-    public int getPeople(){
+    public String getSupplyColor(){
+        if(getAttribute(EPlayerAttribute.ARMY_SUPPLY) < 1){
+            return "&c"+ (int) (getAttribute(EPlayerAttribute.ARMY_SUPPLY) * 100) + "&f%";
+        }else{
+            return "&a"+ (int) (getAttribute(EPlayerAttribute.ARMY_SUPPLY) * 100) + "&f%";
+        }
+    }
+
+
+
+    public int getPeasant(){
         int people = 0;
         for(Town t: towns){
-            if(t.isCore()&&t.isStatus()) people+=t.getPeople();
+
+            if(t.isCore() && !t.isOccupied()) {
+                people += t.getPeasant();
+            };
         }
         return people;
     }
 
-    public boolean isWar(){
-        return getAttribute(EPlayerAttribute.WAR_STATUS)==1;
+    public void breakAlly(EPlayer target){
+        int date = (int) (Earth.getInstance().getDatabase().getStatusDay() + Math.max(1,3-getAttribute(EPlayerAttribute.TRUCE_LENGTH)));
+        UUID targetId = target.getUniqueId();
+
+        data.getAlly().remove(targetId);
+        target.getData().getAlly().remove(uniqueId);
+
+        data.getTruceMap().put(targetId,date);
+        target.getData().getTruceMap().put(uniqueId,date);
+
     }
+
+
+    public int getIdeaCost(){
+
+        var config = Earth.getInstance().getConfig();
+        return config.getInt("ideaCostBase") + (config.getInt("ideaIncMod") * data.getIdeas());
+    }
+
+    public void mergeLevies(){
+        for(var u : getUnits()){
+            if(u.getData().isLevies()){
+                Earth.getInstance().getDatabase().deleteUnit(u);
+            }
+        }
+        data.setLevies(false);
+    }
+
+    public void declareTruce(EPlayer target){
+        int date = (int) (Earth.getInstance().getDatabase().getStatusDay() + Math.max(1,3-getAttribute(EPlayerAttribute.TRUCE_LENGTH)));
+        UUID targetId = target.getUniqueId();
+
+        data.getTruceMap().put(targetId,date);
+        data.getEnemies().remove(targetId);
+        removeTruceBroken(target);
+        if(!isWar()) mergeLevies();
+
+
+        target.getData().getTruceMap().put(uniqueId,date);
+        target.getData().getEnemies().remove(uniqueId);
+        target.removeTruceBroken(this);
+        if(!target.isWar()) target.mergeLevies();
+
+    }
+
+
+
+    public void truceBreak(EPlayer target){
+        if(!isImperialism()){
+            truceBreak(target.getUniqueId());
+        }
+        getData().getTruceMap().remove(target.getUniqueId());
+        target.getData().getTruceMap().remove(uniqueId);
+    }
+
+    public void truceBreak(UUID targetId){
+        addAttribute(EPlayerAttribute.STABILITY,-getAttribute(EPlayerAttribute.TRUCE_BREAK_COST));
+        if(getAttribute(EPlayerAttribute.STABILITY)<-3) setAttribute(EPlayerAttribute.STABILITY,-3);
+        data.getTruceBroken().add(targetId);
+
+    }
+
+    public void removeTruceBroken(EPlayer target){
+        removeTruceBroken(target.getUniqueId());
+    }
+
+    public void removeTruceBroken(UUID targetId){
+        data.getTruceBroken().remove(targetId);
+    }
+
+
+
+    public long getMercAmount(){
+        int amount = 0;
+        for(ArmyUnit u: getUnits()){
+            if (u.getData().isMerc()) amount++;
+        }
+        return amount;
+    }
+
+    public long getMercLimit(){
+        return Math.round(getPeasant() * getAttribute(EPlayerAttribute.MERC_LIMIT));
+    }
+
+
+
+    public Map<EarthItem, Integer> getArmySupply() {
+        Map<EarthItem, Integer> supply = new HashMap<>();
+
+        for (ArmyUnit u : getUnits()) {
+            if (u.getTech().equals("inf") || u.getTech().equals("cav")) {
+                switch (u.getLvl()) {
+                    case 1, 2 -> supply.merge(EarthItem.IRON_SWORD, 1, Integer::sum);
+                    case 3, 4, 5 -> supply.merge(EarthItem.GUN, 1, Integer::sum);
+                }
+            } else {
+                supply.merge(EarthItem.FIRE_CHARGE, 1, Integer::sum);
+            }
+        }
+        return supply;
+    }
+
+    public boolean isWar(){
+        return !data.getEnemies().isEmpty();
+    }
+
+    public boolean isImperialism(){
+        return data.isImperialismWar();
+    }
+
 
     public boolean isLevies(){
-        return getAttribute(EPlayerAttribute.LEVIES_STATUS)==1;
+        return getData().isLevies();
+    }
+
+    public void setLevies(boolean bool){
+        data.setLevies(bool);
+    }
+
+    public void setImperialism(boolean bool){
+        data.setImperialismWar(bool);
+    }
+
+
+    public int getStabCost(){
+        return (int) Math.round((5 + getAttribute(EPlayerAttribute.STABILITY)) * getAttribute(EPlayerAttribute.STAB_COST));
     }
 
 
 
+    public int getAdminEff(){
+        if(data.getTruceBroken().isEmpty()){
+            return (int) getAttribute(EPlayerAttribute.ADMIN_EFFICIENCY);
+        }else{
+            return (int) Math.max(0,getAttribute(EPlayerAttribute.ADMIN_EFFICIENCY)-3);
+        }
+    }
+
     public double getCoreCost(){
-        return Math.max(0.1, Tools.round(getAttribute(EPlayerAttribute.CORE_CREATION_COST) - (getAttribute(EPlayerAttribute.ADMIN_EFFICIENCY)*0.05) ));
+        return Math.max(0.1, Tools.round(getAttribute(EPlayerAttribute.CORE_CREATION_COST) - (getAdminEff()*0.05) ));
     }
 
     public int getManpowerLimit(){
-        return (int) Math.floor(getPeople()*getAttribute(EPlayerAttribute.MANPOWER_LIMIT_MOD));
+
+        return (int) Math.floor(getPeasant()*getAttribute(EPlayerAttribute.MANPOWER_LIMIT_MOD)*1000);
     }
 
     public int getPolitIncome(){
@@ -198,13 +413,122 @@ public class EPlayer implements Comparable<EPlayer> {
         return buildings;
     }
 
+    public double getManpowerIncreaseMod(){
+        return  Math.max(0.0 , getAttribute(EPlayerAttribute.MANPOWER_REC_MOD) + (getAttribute(EPlayerAttribute.WAR_SUPPORT) * 0.1 ));
+    }
 
-    public int getTaxIncome(){
+    public String getMPIncreaseModColor(){
+        double mod = getManpowerIncreaseMod();
+        String modifier = Tools.round(mod * 100) + "<white>%";
+        if(mod <= 0){
+            return "<red>"+modifier;
+        }
+        return "<green>" + modifier;
+    }
+
+    public long getManpowerIncrease(){
+
+        return Math.round(1000 + (getManpowerLimit()*getManpowerIncreaseMod()));
+    }
+
+    public Set<EPlayer> getTraders(){
+        Set<EPlayer> traders = new HashSet<>();
+        Set<UUID> trade = data.getTrade();
+        if(trade.isEmpty()) return traders;
+        else{
+            for(UUID id : trade){
+                EPlayer trader = db.getPlayer(id);
+                if (trader != null) traders.add(trader);
+            }
+        }
+        return traders;
+    }
+
+    public boolean haveMarket(){
+        if(!data.isMarket() && !getTraders().isEmpty()){
+            for(EPlayer trader : getTraders()){
+                if(trader.getData().isMarket()){
+                    return true;
+                }
+            }
+        }
+        return data.isMarket();
+    }
+
+
+    public double getTaxIncome(){
         double tax = getAttribute(EPlayerAttribute.TAX_INCOME);
         for(Town t: getTowns()){
+            if (t.isOccupied()) continue;
             tax += t.getTaxIncome();
         }
-        return (int) Math.floor(tax * getAttribute(EPlayerAttribute.TAX_MOD));
+        return Tools.round(tax * getTaxMod());
+    }
+
+    public double getTaxMod(){
+        double mod = getAttribute(EPlayerAttribute.TAX_MOD);
+        if(isLevies()) mod *= 0.75;
+        return mod;
+    }
+
+    public String getTaxModColor(){
+        double mod = getTaxMod();
+        String modifier = Tools.round((getTaxMod() - 1) * 100) + "<white>%";
+        if(mod < 1){
+            return "<red>" + modifier;
+        }
+        if(mod > 1){
+            return "<green>" + modifier;
+        }
+        return "<gray>" + modifier;
+
+
+
+
+
+    }
+
+
+    public String getMPLimitModColor(){
+        double mod = getAttribute(EPlayerAttribute.MANPOWER_LIMIT_MOD);
+        String modifier = Tools.round((mod - 1) * 100) + "<white>%";
+        if(mod < 1){
+            return "<red>" + modifier;
+        }
+        if(mod > 1){
+            return "<green>" + modifier;
+        }
+        return "<gray>" + modifier;
+    }
+
+    public String getMercLimitModColor(){
+        double mod = getAttribute(EPlayerAttribute.MERC_LIMIT);
+        String modifier = Tools.round((mod - 1) * 100) + "<white>%";
+        if(mod < 1){
+            return "<red>" + modifier;
+        }
+        if(mod > 1){
+            return "<green>" + modifier;
+        }
+        return "<gray>" + modifier;
+    }
+
+    public String getMPRecModColor(){
+        double mod = getTaxMod();
+        String modifier = Tools.round((mod - 1) * 100) + "<white>%";
+        if(mod < 1){
+            return "<red>" + modifier;
+        }
+        if(mod > 1){
+            return "<green>" + modifier;
+        }
+        return "<gray>" + modifier;
+    }
+
+    public double getProdMod(){
+        double mod = getAttribute(EPlayerAttribute.PROD_MOD);
+        if(isLevies()) mod *= 0.75;
+        return mod;
     }
 
     public int getMaxPolit(){
@@ -212,49 +536,193 @@ public class EPlayer implements Comparable<EPlayer> {
         return (int) Math.floor(max*getAttribute(EPlayerAttribute.POLIT_MAX_MOD));
     }
 
-    public int getTradeIncome(){
-        double income = 0;
-        for (Town t : towns) {
-            income += t.getTradeIncome();
+    public double getTradeMod(){
+        double mod = getAttribute(EPlayerAttribute.TRADE_MOD);
+        for(Town t:getTowns()){
+            mod += t.getTradeMod();
         }
-        return (int) Math.floor(income *  getAttribute(EPlayerAttribute.TRADE_MOD));
+        if(!getTraders().isEmpty()){
+            for(EPlayer trader:getTraders()){
+                for(Town t:trader.getTowns()){
+                    mod += t.getTradeMod();
+                }
+            }
+        }
+        return mod;
     }
 
-    public int getProdIncome(){
+    public String getTradeModColor(){
+        double mod = getTradeMod();
+        String modifier = Tools.round((mod - 1) * 100) + "<white>%";
+        if(mod < 1){
+            return "<red>" + modifier;
+        }
+        if(mod > 1){
+            return "<green>" + modifier;
+        }
+        return "<gray>" + modifier;
+    }
+
+    public String getMercMaintenanceColor(){
+        double mod = getAttribute(EPlayerAttribute.MERC_COST);
+        String modifier = Tools.round((mod - 1) * 100) + "<white>%";
+        if(mod < 1){
+            return "<green>" + modifier;
+        }
+        if(mod > 1){
+            return "<red>" + modifier;
+        }
+        return "<gray>" + modifier;
+    }
+
+    public String getArmyMaintenanceColor(){
+        double mod = getAttribute(EPlayerAttribute.ARMY_EXPENSE_MOD);
+        String modifier = Tools.round((mod - 1) * 100) + "<white>%";
+        if(mod < 1){
+            return "<green>" + modifier;
+        }
+        if(mod > 1){
+            return "<red>" + modifier;
+        }
+        return "<gray>" + modifier;
+    }
+    public String getArmyMaintenanceColor(UnitTech.UnitType type){
+        double mod;
+        switch (type){
+            case ART -> {
+                mod = getAttribute(EPlayerAttribute.ART_COST);
+            }
+            case INF -> {
+                mod = getAttribute(EPlayerAttribute.INF_COST);
+            }
+            case CAV -> {
+                mod = getAttribute(EPlayerAttribute.CAV_COST);
+            }
+            default -> {
+                mod = getAttribute(EPlayerAttribute.ARMY_EXPENSE_MOD);
+            }
+        }
+
+        String modifier = Tools.round((mod - 1) * 100) + "<white>%";
+        if(mod < 1){
+            return "<green>" + modifier;
+        }
+        if(mod > 1){
+            return "<red>" + modifier;
+        }
+        return "<gray>" + modifier;
+    }
+
+
+
+    public double getTradeIncome(){
+        double income = 0;
+        Set<EarthItem> world = new HashSet<>();
+        for (Building b:db.getBuildings()){
+
+            if(b.getData().getItem()!=null && b.getOwner()!=this && !getTraders().contains(b.getOwner())  ) world.add(b.getData().getItem());
+        }
+
+        for (Town t : towns) {
+            income += t.getTradeIncome(world);
+        }
+
+        return income;
+
+    }
+
+    public int getNavalLimit(){
+        int limit = 0;
+        for(var t : getTowns()){
+            if(t.isCore() && !t.isOccupied()){
+                if(t.isShipyard()) limit += 5;
+            }
+        }
+        return limit;
+    }
+
+
+
+    public double getProdIncome(){
         double income = 0;
         for (Town t : towns) {
             income += t.getProdIncome();
         }
-        return (int) Math.floor(income * getAttribute(EPlayerAttribute.PROD_MOD));
+        return  Tools.round(income * getProdMod());
     }
 
-    public int getIncome(){
-        return getProdIncome() + getTradeIncome() + getTaxIncome() + (int) getAttribute(EPlayerAttribute.INCOME);
+    public double getIncome(){
+        return  Tools.round(getTradeIncome() + getTaxIncome() + getAttribute(EPlayerAttribute.INCOME));
     }
 
-    public int getExpense(){
-        return getArmyExpense()+getDebtExpense() + getTribute() + (int) getAttribute(EPlayerAttribute.EXPENSE);
+//    public int getIncome(){
+//
+//        return (int) Math.round(getFlatIncome() * inflation);
+//    }
+
+    public double getExpense(){
+        double inflation = Tools.round(1 + (getAttribute(EPlayerAttribute.INFLATION)*0.01));
+        double exp = getMercExpense() + getLandArmyExpense() + getDebtExpense() + getTribute() + getAttribute(EPlayerAttribute.EXPENSE);
+
+        return Tools.round(exp * inflation);
     }
 
-    public HashMap<String, List<Unit>> getTroops(){
-        HashMap<String, List<Unit>> res = new HashMap<>();
-        List<Unit> inf = new ArrayList<>();
-        List<Unit> cav = new ArrayList<>();
-        List<Unit> art = new ArrayList<>();
+
+
+    public long getBalance(){
+
+
+        double corruption = Tools.round(1 - getAttribute(EPlayerAttribute.CORRUPTION) * 0.1);
+
+        return Math.round( (getIncome() - getExpense()) * corruption );
+    }
+
+    public void payDay(){
+        addAttribute(EPlayerAttribute.TREASURY,getBalance());
+
+        while (getAttribute(EPlayerAttribute.TREASURY) < 0 && canDebt()){
+            UUID debtId = UUID.randomUUID();
+            getData().getDebtMap().put(debtId, getDebtSize());
+            getData().getInterestMap().put(debtId,getInterest());
+            addAttribute(EPlayerAttribute.TREASURY, getDebtSize());
+        }
+        if(getAttribute(EPlayerAttribute.TREASURY) < 0){
+            declareBankruptcy();
+        }
+
+    }
+
+    public void declareBankruptcy(){
+        setAttribute(EPlayerAttribute.TREASURY,0);
+        for(Army a : getArmies()){
+            db.deleteArmy(a);
+        }
+        getData().getDebtMap().clear();
+        getData().getInterestMap().clear();
+        //getData().addModifier(EPlayerAttribute.CORRUPTION,);
+
+
+    }
+
+    public HashMap<String, List<ArmyUnit>> getTroops(){
+        HashMap<String, List<ArmyUnit>> res = new HashMap<>();
+        List<ArmyUnit> inf = new ArrayList<>();
+        List<ArmyUnit> cav = new ArrayList<>();
+        List<ArmyUnit> art = new ArrayList<>();
         for (Army a:armies){
             if(a.getOwnerId().equals(uniqueId)){
-                Set<Unit> units = a.getUnits();
-                for(Unit u:units){
+                Set<ArmyUnit> units = a.getUnits();
+                for(ArmyUnit u:units){
                     switch (u.getType()){
-                        case "inf"->{
+                        case INF->{
                             inf.add(u);
                             //expense += Tools.round(u.getLvl()*getArmyStats().getInfCost());
                         }
-                        case "cav" ->{
+                        case CAV ->{
                             cav.add(u);
                             //expense += Tools.round(u.getLvl()*2.5*getArmyStats().getCavCost());
                         }
-                        case "art" ->{
+                        case ART ->{
                             art.add(u);
                             //expense += Tools.round(u.getLvl()*3*getArmyStats().getArtCost());
                         }
@@ -285,102 +753,163 @@ public class EPlayer implements Comparable<EPlayer> {
     }
 
     public double getInfExpense(){
-        List<Unit> inf = getTroops().get("inf");
+        List<ArmyUnit> inf = getTroops().get("inf");
         double expense = 0.0;
-        for(Unit u:inf){
+        for(ArmyUnit u:inf){
             expense += Tools.round(u.getLvl() * getAttribute(EPlayerAttribute.INF_COST));
         }
         return expense;
     }
     public double getCavExpense(){
-        List<Unit> inf = getTroops().get("cav");
+        List<ArmyUnit> inf = getTroops().get("cav");
         double expense = 0.0;
-        for(Unit u:inf){
+        for(ArmyUnit u:inf){
             expense += Tools.round(u.getLvl() * 2.5 * getAttribute(EPlayerAttribute.CAV_COST));
         }
         return expense;
     }
     public double getArtExpense(){
-        List<Unit> inf = getTroops().get("art");
+        List<ArmyUnit> inf = getTroops().get("art");
         double expense = 0.0;
-        for(Unit u:inf){
+        for(ArmyUnit u:inf){
             expense += Tools.round(u.getLvl()*3 * getAttribute(EPlayerAttribute.ART_COST));
         }
         return expense;
     }
 
-    public int getArmyExpense(){
+    public double getLandArmyExpense(){
         double expense=0;
 
-        for(Unit u:getUnits()){
-            switch (u.getType()){
-                case "inf"->{
-                    expense += Tools.round(u.getLvl()*getAttribute(EPlayerAttribute.INF_COST));
-                }
-                case "cav" ->{
-                    expense += Tools.round(u.getLvl()*2.5* getAttribute(EPlayerAttribute.CAV_COST));
-                }
-                case "art" ->{
-                    expense += Tools.round(u.getLvl()*3* getAttribute(EPlayerAttribute.ART_COST));
-                }
-            }
-        }
-        return (int) Math.ceil(expense*getAttribute(EPlayerAttribute.ARMY_EXPENSE_MOD));
-    }
-
-    public int getDebtLvl(){
-        int oneDebt = getOneDebt();
-        return switch (oneDebt) {
-            case 10 -> 1;
-            case 25 -> 2;
-            default -> 0;
-        };
-    }
-
-    public int getOneDebt(){
-        int oneDebt = 5;
-        if(getTech(EPlayerTech.BANK_BASE)){
-            for(Building b:getBuildings()){
-                if (b.getType().equals("bank")) {
-                    oneDebt = 10;
-                    if(getTech(EPlayerTech.BANK_UP)) oneDebt = 25;
-                    break;
+        for(ArmyUnit u:getUnits()){
+            if(u.getData().isLevies()) continue;
+            if(!u.getData().isMerc()){
+                switch (u.getType()){
+                    case INF->{
+                        expense += Tools.round(1*getAttribute(EPlayerAttribute.INF_COST));
+                    }
+                    case CAV ->{
+                        expense += Tools.round(2.5* getAttribute(EPlayerAttribute.CAV_COST));
+                    }
+                    case ART ->{
+                        expense += Tools.round(3* getAttribute(EPlayerAttribute.ART_COST));
+                    }
                 }
             }
 
         }
-        return oneDebt;
+        return Tools.round(expense*getAttribute(EPlayerAttribute.ARMY_EXPENSE_MOD));
     }
 
-    public int[] getDebts(){
-        int[] debts = new int[3];
-        String path = "debt."+displayName+".lvl";
-        for (int i = 0; i < 3; i++) {
-            debts[i] = CustomConfig.get().getInt(path+i);
+    public double getMercExpense(){
+
+        double expense=0;
+
+        for(ArmyUnit u:getUnits()){
+            if(u.getData().isLevies()) continue;
+            if(u.getData().isMerc()){
+                switch (u.getType()){
+                    case INF->{
+                        expense += Tools.round((1+u.getLvl())*(getAttribute(EPlayerAttribute.INF_COST) - (1 - getAttribute(EPlayerAttribute.MERC_COST) ) ));
+                    }
+                    case CAV ->{
+                        expense += Tools.round((2.5+u.getLvl())* (getAttribute(EPlayerAttribute.CAV_COST) - (1 - getAttribute(EPlayerAttribute.MERC_COST) )));
+                    }
+                    case ART ->{
+                        expense += Tools.round((3+u.getLvl())* (getAttribute(EPlayerAttribute.ART_COST)  - (1 - getAttribute(EPlayerAttribute.MERC_COST) )));
+                    }
+                }
+            }
+
+        }
+        return Tools.round(expense*getAttribute(EPlayerAttribute.MERC_COST));
+
+    }
+
+    public String getMercMoraleColor(){
+        double mod = getAttribute(EPlayerAttribute.MERC_MORALE);
+        String modifier = Tools.round(mod * 100) + "<white>%";
+        if(mod < 0){
+            return "<red>" + modifier;
+        }
+        if(mod > 0){
+            return "<green>" + modifier;
+        }
+        return "<gray>" + modifier;
+    }
+    public String getMercDiscColor(){
+        double mod = getAttribute(EPlayerAttribute.MERC_DISC);
+        String modifier = Tools.round(mod * 100) + "<white>%";
+        if(mod < 0){
+            return "<red>" + modifier;
+        }
+        if(mod > 0){
+            return "<green>" + modifier;
+        }
+        return "<gray>" + modifier;
+    }
+
+
+
+    public double getInterest(){
+        double interest = getAttribute(EPlayerAttribute.INTEREST);
+        interest -= (0.02 * getAttribute(EPlayerAttribute.STABILITY));
+        return interest;
+    }
+
+    public boolean haveBank(){
+        for(Building b: getBuildings()){
+            if (b.getData().getType().equals(BuildingType.BANK)){
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public int getDebtSize(){
+        int size = 5;
+        if(getTech(EPlayerTech.BANK_UP)) size = 10;
+        if(haveBank()) size = 25;
+        return size;
+    }
+
+    public boolean canDebt(){
+        return getDebtExpense() < getIncome();
+    }
+
+
+    public int getDebt(){
+
+        return (int) getData().getDebtMap().entrySet().stream()
+                .mapToDouble(entry -> {
+                    double interest = 1 + getData().getInterestMap().getOrDefault(entry.getKey(), 0.0);
+                    return Math.ceil(entry.getValue() * interest);
+                })
+                .sum();
+    }
+
+    public List<ItemStack> getDebtList(){
+        List<ItemStack> debts = new ArrayList<>();
+        for (UUID debtId : getData().getDebtMap().keySet()) {
+
+            debts.add(Tools.createDebtItem(this,debtId));
         }
         return debts;
     }
 
-    public int getDebt(){
-        String path = "debt."+displayName+".lvl";
-        int debt = CustomConfig.get().getInt(path+"0")*6;
-        debt += CustomConfig.get().getInt(path+"1")*11;
-        debt += CustomConfig.get().getInt(path+"2")*26;
-        return debt;
-    }
-
-    public int getDebtExpense(){
-        String path = "debt."+displayName+".lvl";
-        int debt = CustomConfig.get().getInt(path+"0");
-        debt += CustomConfig.get().getInt(path+"1");
-        debt += CustomConfig.get().getInt(path+"2");
-        return debt;
+    public double getDebtExpense(){
+        double ex = getData().getDebtMap().entrySet().stream()
+                .mapToDouble(entry -> {
+                    double interest = getData().getInterestMap().getOrDefault(entry.getKey(), 0.0);
+                    return (entry.getValue() * interest) / 12.0;
+                })
+                .sum();
+        return Tools.round(ex);
     }
 
     public List<Army> getArmiesInHand() {
         List<Army> armies = new ArrayList<>();
         for (UUID id : this.getData().armiesInHand) {
-            Army army = Earth.getInstance().getServerDatabase().getArmy(id);
+            Army army = Earth.getInstance().getDatabase().getArmy(id);
             if (army != null) { // Защита от NullPointerException, если армии нет в БД
                 armies.add(army);
             }
@@ -413,451 +942,4 @@ public class EPlayer implements Comparable<EPlayer> {
         if (res == 0) res = uniqueId.compareTo(other.uniqueId);
         return res;
     }
-
-
-//
-//    @Data
-//    public class Country{
-//
-//        public Country(UUID uuid){
-//            ownerId = uuid;
-//        }
-//
-//
-//
-//        private final UUID ownerId;
-//        private String displayName;
-//        private int oiBalance;
-//        private int oiIncome;
-//        private int oiSpent;
-//
-//        private int oiIncomeMod;
-//        private double techCost;
-//        private double oiFromBuilding;
-//
-//        private int politBalance;
-//        private int politIncome;
-//        private double politIncomeMod;
-//        private int politMax;
-//        private double politMaxMod;
-//        private int income;
-//        private int prodIncome;
-//        private double prodMod;
-//        private double goodsMod;
-//        private int tradeIncome;
-//        private double tradeMod;
-//
-//        private double tradeGoodsMod;
-//        private double frigateMod;
-//
-//        private int taxIncome;
-//        private double taxMod;
-//        private int expense;
-//        private int corruption;
-//        private int inflation;
-//        private int inflationReduce;
-//        private int warSup;
-//        private int warStatus;
-//        private int treasury;
-//
-//        private double coreCreationCost;
-//        private int revanchism;
-//        private double revanchismMod;
-//        private double expandInfrCost;
-//        private int buildSites;
-//
-//        private double buildingCost;
-//        private double scienceBuildingCost;
-//        private double warBuildingCost;
-//
-//
-//
-//        public int getPolitMax(){
-//            return (int) Math.round(politMax*politMaxMod);
-//        }
-//        public int getPolitIncome(){
-//            return (int) Math.round(politIncome*politIncomeMod);
-//        }
-//
-//        public void removeTreasury(int amount){
-//            updateTreasury(treasury-amount);
-//        }
-//
-//        // Производство и товары
-//        public void addProdMod(double delta) { updateProdMod(this.prodMod + delta); }
-//        public void addGoodsMod(double delta) { updateGoodsMod(this.goodsMod + delta); }
-//        public void addProdIncome(int delta) { updateProdIncome(this.prodIncome + delta); }
-//
-//        // Очки влияния (OI)
-//        public void addOiBalance(int delta) { updateOiBalance(this.oiBalance + delta); }
-//        public void addOiIncome(int delta) { updateOiIncome(this.oiIncome + delta); }
-//        public void addOiSpent(int delta) { updateOiSpent(this.oiSpent + delta); }
-//
-//        // Политическая власть
-//        public void addPolitBalance(int delta) { updatePolitBalance(this.politBalance + delta); }
-//        public void addPolitIncome(int delta) { updatePolitIncome(this.politIncome + delta); }
-//        public void addPolitIncomeMod(double delta) { updatePolitIncomeMod(this.politIncomeMod + delta); }
-//        public void addPolitMax(int delta) { updatePolitMax(this.politMax + delta); }
-//        public void addPolitMaxMod(double delta) { updatePolitMaxMod(this.politMaxMod + delta); }
-//
-//        // Финансы (Доходы)
-//        public void addIncome(int delta) { updateIncome(this.income + delta); }
-//        public void addTradeIncome(int delta) { updateTradeIncome(this.tradeIncome + delta); }
-//        public void addTradeMod(double delta) { updateTradeMod(this.tradeMod + delta); }
-//        public void addTaxIncome(int delta) { updateTaxIncome(this.taxIncome + delta); }
-//        public void addTaxMod(double delta) { updateTaxMod(this.taxMod + delta); }
-//
-//        // Расходы и показатели экономики
-//        public void addExpense(int delta) { updateExpense(this.expense + delta); }
-//        public void addCorruption(int delta) { updateCorruption(this.corruption + delta); }
-//        public void addInflation(int delta) { updateInflation(this.inflation + delta); }
-//        public void addTreasury(int delta) { updateTreasury(this.treasury + delta); }
-//
-//        // Военные показатели
-//        public void addWarSup(int delta) { updateWarSup(this.warSup + delta); }
-//        public void addWarStatus(int delta) { updateWarStatus(this.warStatus + delta); }
-//
-//        public void updateProdMod(double newValue){
-//            this.prodMod = newValue;
-//            updateC(this);
-//        }
-//        public void updateGoodsMod(double newValue){
-//            this.goodsMod = newValue;
-//            updateC(this);
-//        }
-//
-//        public void updateProdIncome(int newValue){
-//            this.prodIncome = newValue;
-//            updateC(this);
-//        }
-//
-//        public void updateDisplayName(String displayName) {
-//            this.displayName = displayName;
-//            updateC(this);
-//        }
-//
-//        public void updateOiBalance(int oiBalance) {
-//            this.oiBalance = oiBalance;
-//            updateC(this);
-//        }
-//
-//        public void updateOiIncome(int oiIncome) {
-//            this.oiIncome = oiIncome;
-//            updateC(this);
-//        }
-//
-//        public void updateOiSpent(int oiSpent) {
-//            this.oiSpent = oiSpent;
-//            updateC(this);
-//        }
-//
-//        public void updatePolitBalance(int politBalance) {
-//            this.politBalance = politBalance;
-//            updateC(this);
-//        }
-//
-//        public void updatePolitIncome(int politIncome) {
-//            this.politIncome = politIncome;
-//            updateC(this);
-//        }
-//
-//        public void updatePolitIncomeMod(double politIncomeMod) {
-//            this.politIncomeMod = politIncomeMod;
-//            updateC(this);
-//        }
-//
-//        public void updatePolitMax(int politMax) {
-//            this.politMax = politMax;
-//            updateC(this);
-//        }
-//
-//        public void updatePolitMaxMod(double politMaxMod) {
-//            this.politMaxMod = politMaxMod;
-//            updateC(this);
-//        }
-//
-//        public void updateIncome(int income) {
-//            this.income = income;
-//            updateC(this);
-//        }
-//
-//        public void updateTradeIncome(int tradeIncome) {
-//            this.tradeIncome = tradeIncome;
-//            updateC(this);
-//        }
-//
-//        public void updateTradeMod(double tradeMod) {
-//            this.tradeMod = tradeMod;
-//            updateC(this);
-//        }
-//
-//        public void updateTaxIncome(int taxIncome) {
-//            this.taxIncome = taxIncome;
-//            updateC(this);
-//        }
-//
-//        public void updateTaxMod(double taxMod) {
-//            this.taxMod = taxMod;
-//            updateC(this);
-//        }
-//
-//        public void updateExpense(int expense) {
-//            this.expense = expense;
-//            updateC(this);
-//        }
-//
-//        public void updateCorruption(int corruption) {
-//            this.corruption = corruption;
-//            updateC(this);
-//        }
-//
-//        public void updateInflation(int inflation) {
-//            this.inflation = inflation;
-//            updateC(this);
-//        }
-//
-//        public void updateWarSup(int warSup) {
-//            this.warSup = warSup;
-//            updateC(this);
-//        }
-//
-//        public void updateWarStatus(int warStatus) {
-//            this.warStatus = warStatus;
-//            updateC(this);
-//        }
-//
-//        public void updateTreasury(int treasury) {
-//            this.treasury = treasury;
-//            updateC(this);
-//        }
-//
-//        public int getDebtSize(){
-//            if(db.getPlayerTech(ownerId,2)==1) return 25;
-//            if(db.getPlayerTech(ownerId,1)==1) return 10;
-//            return 5;
-//        }
-//
-//        public int getArmyExpense(){
-//            db.getArmies();
-//            return 0;
-//        }
-//    }
-//
-//
-//    @Data
-//    public class ArmyStats{
-//
-//        public ArmyStats(UUID uuid){
-//            ownerId = uuid;
-//        }
-//
-//        private final UUID ownerId;
-//
-//        private double expenseMod;
-//
-//        private double limitMod;
-//        private int manpower;
-//        private double manpowerLimitMod;
-//        private int manpowerIncMod;
-//
-//        private double disciple;
-//        private double tac;
-//        private double morale;
-//
-//        private double fireDamage;
-//        private double fireResist;
-//        private double shockDamage;
-//        private double shockResist;
-//        private double moraleDamage;
-//        private double moraleResist;
-//
-//        private double infCost;
-//        private double infCombatAbility;
-//
-//        private double cavCost;
-//        private double cavCombatAbility;
-//        private double cavRatio;
-//
-//        private double artCost;
-//        private double artCombatAbility;
-//
-//        public int getMaxManpower(){
-//            Town[] towns = db.getPlayerTowns(ownerId);
-//            int people = 0;
-//            for(Town t: towns){
-//                people += t.getPeople();
-//            }
-//            return (int) Math.floor(people*manpowerLimitMod);
-//        }
-//
-//        public int getLimit(){
-//            Town[] towns = db.getPlayerTowns(ownerId);
-//            int people = 0;
-//            for(Town t: towns){
-//                people += t.getPeople();
-//            }
-//            return (int) Math.floor(people*limitMod);
-//        }
-//
-//        public double getTactic(){
-//            return Tools.round(tac*disciple);
-//        }
-//
-//
-//        // Модификаторы содержания и лимитов
-//        public void addExpenseMod(double delta) { updateExpenseMod(this.expenseMod + delta); }
-//        public void addLimitMod(double delta) { updateLimitMod(this.limitMod + delta); }
-//
-//        // Людские ресурсы (Manpower)
-//        public void addManpower(int delta) { updateManpower(this.manpower + delta); }
-//        public void addManpowerLimitMod(double delta) { updateManpowerLimitMod(this.manpowerLimitMod + delta); }
-//        public void addManpowerIncMod(int delta) { updateManpowerIncMod(this.manpowerIncMod + delta); }
-//
-//        // Качество армии
-//        public void addDisciple(double delta) { updateDisciple(this.disciple + delta); }
-//        public void addTac(double delta) { updateTac(this.tac + delta); }
-//
-//        // Боевые показатели (Мораль)
-//        public void addMorale(double delta) { updateMorale(this.morale + delta); }
-//        public void addMoraleDamage(double delta) { updateMoraleDamage(this.moraleDamage + delta); }
-//        public void addMoraleResist(double delta) { updateMoraleResist(this.moraleResist + delta); }
-//
-//        // Урон и сопротивление (Огонь и Натиск)
-//        public void addFireDamage(double delta) { updateFireDamage(this.fireDamage + delta); }
-//        public void addFireResist(double delta) { updateFireResist(this.fireResist + delta); }
-//        public void addShockDamage(double delta) { updateShockDamage(this.shockDamage + delta); }
-//        public void addShockResist(double delta) { updateShockResist(this.shockResist + delta); }
-//
-//        // Пехота (Стоимость и боеспособность)
-//        public void addInfCost(double delta) { updateInfCost(this.infCost + delta); }
-//        public void addInfCombatAbility(double delta) { updateInfCombatAbility(this.infCombatAbility + delta); }
-//
-//        // Кавалерия (Стоимость, боеспособность и соотношение)
-//        public void addCavCost(double delta) { updateCavCost(this.cavCost + delta); }
-//        public void addCavCombatAbility(double delta) { updateCavCombatAbility(this.cavCombatAbility + delta); }
-//        public void addCavRatio(double delta) { updateCavRatio(this.cavRatio + delta); }
-//
-//        // Артиллерия (Стоимость и боеспособность)
-//        public void addArtCost(double delta) { updateArtCost(this.artCost + delta); }
-//        public void addArtCombatAbility(double delta) { updateArtCombatAbility(this.artCombatAbility + delta); }
-//
-//        public void updateExpenseMod(double expenseMod){
-//            this.expenseMod = expenseMod;
-//            updateA(this);
-//        }
-//
-//        public void updateLimitMod(double limitMod) {
-//            this.limitMod = limitMod;
-//            updateA(this);
-//        }
-//
-//        public void updateManpower(int manpower) {
-//            this.manpower = manpower;
-//            updateA(this);
-//        }
-//
-//        public void updateManpowerLimitMod(double manpowerLimitMod) {
-//            this.manpowerLimitMod = manpowerLimitMod;
-//            updateA(this);
-//        }
-//
-//        public void updateManpowerIncMod(int manpowerIncMod) {
-//            this.manpowerIncMod = manpowerIncMod;
-//            updateA(this);
-//        }
-//
-//        public void updateDisciple(double disciple) {
-//            this.disciple = disciple;
-//            updateA(this);
-//        }
-//
-//        public void updateTac(double tactic) {
-//            this.tac = tactic;
-//            updateA(this);
-//        }
-//
-//
-//        public void updateMorale(double morale) {
-//            this.morale = morale;
-//            updateA(this);
-//        }
-//
-//        public void updateFireDamage(double fireDamage) {
-//            this.fireDamage = fireDamage;
-//            updateA(this);
-//        }
-//
-//        public void updateFireResist(double fireResist) {
-//            this.fireResist = fireResist;
-//            updateA(this);
-//        }
-//
-//        public void updateShockDamage(double shockDamage) {
-//            this.shockDamage = shockDamage;
-//            updateA(this);
-//        }
-//
-//        public void updateShockResist(double shockResist) {
-//            this.shockResist = shockResist;
-//            updateA(this);
-//        }
-//
-//        public void updateMoraleDamage(double moraleDamage) {
-//            this.moraleDamage = moraleDamage;
-//            updateA(this);
-//        }
-//
-//        public void updateMoraleResist(double moraleResist) {
-//            this.moraleResist = moraleResist;
-//            updateA(this);
-//        }
-//
-//
-//        public void updateInfCost(double infCost) {
-//            this.infCost = infCost;
-//            updateA(this);
-//        }
-//
-//        public void updateInfCombatAbility(double infCombatAbility) {
-//            this.infCombatAbility = infCombatAbility;
-//            updateA(this);
-//        }
-//
-//
-//        public void updateCavCost(double cavCost) {
-//            this.cavCost = cavCost;
-//            updateA(this);
-//        }
-//
-//        public void updateCavCombatAbility(double cavCombatAbility) {
-//            this.cavCombatAbility = cavCombatAbility;
-//            updateA(this);
-//        }
-//
-//
-//        public void updateCavRatio(double cavRatio) {
-//            this.cavRatio = cavRatio;
-//            updateA(this);
-//        }
-//
-//
-//        public void updateArtCost(double artCost) {
-//            this.artCost = artCost;
-//            updateA(this);
-//        }
-//
-//        public void updateArtCombatAbility(double artCombatAbility) {
-//            this.artCombatAbility = artCombatAbility;
-//            updateA(this);
-//        }
-//
-//
-//
-//
-//
-//
-//        public int getExpense(){
-//            return 0;
-//        }
-//    }
 }

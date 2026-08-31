@@ -1,6 +1,9 @@
 package earthrp.menusystem.menu.buildings.buy;
 
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Multimap;
 import earthrp.Earth;
+import earthrp.customEnums.BuildingType;
 import earthrp.customEnums.EPlayerTech;
 import earthrp.tools.Tools;
 import earthrp.customEnums.EPlayerAttribute;
@@ -9,12 +12,20 @@ import earthrp.database.ServerDatabase;
 import earthrp.menusystem.Menu;
 import earthrp.menusystem.MenuUtility;
 import earthrp.menusystem.menu.BuildingsMenu;
+import net.kyori.adventure.text.Component;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeModifier;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.inventory.EquipmentSlotGroup;
+import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.components.CustomModelDataComponent;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 
@@ -23,6 +34,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
+import static earthrp.customEnums.BuildingType.*;
 import static earthrp.tools.Tools.*;
 import static earthrp.tools.PDCKeys.*;
 
@@ -31,35 +43,12 @@ public class WarBuildingsMenu extends Menu {
     Player p = menuUtility.getOwner();
     EPlayer player = menuUtility.getPlayer();
 
-    double costMod = player.getWarBuildingCost();
-    double traditionMod = 1.0;
-    
-    // Военные здания - некоторые требуют технологий
-    boolean tBarack = player.getTech(EPlayerTech.INF3);
-    boolean tStable = player.getTech(EPlayerTech.CAV3);
-    boolean tGunFactory = player.getTech(EPlayerTech.GUNPOWDER);
-    
-    // Здания с прямыми зависимостями от базовых технологий
-    boolean tFort = player.getTech(EPlayerTech.BUILDING);
-    boolean tForge = player.getTech(EPlayerTech.IRON);
-    boolean tShipyard = player.getTech(EPlayerTech.SHIPBUILDING);
-    
-    int barrackCost = (int) Math.ceil(128*costMod);
-    int stableCost = (int) Math.ceil(160*costMod);
-    int gunFactoryCost = (int) Math.ceil(256*costMod);
-    int fortCost = (int) Math.ceil(48*costMod);
-    int forgeCost = (int) Math.ceil(64*costMod);
-    int shipyardCost = (int) Math.ceil(32*costMod);
+
 
 
     public WarBuildingsMenu(MenuUtility menuUtility) {
         super(menuUtility);
-        if(player.getAttribute(EPlayerAttribute.TRADITION)>=20){
-            traditionMod = 0.25;
-        }
-        barrackCost = (int) Math.ceil(barrackCost*traditionMod);
-        stableCost = (int) Math.ceil(stableCost*traditionMod);
-        gunFactoryCost = (int) Math.ceil(gunFactoryCost*traditionMod);
+
     }
 
 
@@ -72,7 +61,7 @@ public class WarBuildingsMenu extends Menu {
 
     @Override
     public int getSlots() {
-        return 18;
+        return 45;
     }
 
     @Override
@@ -106,80 +95,73 @@ public class WarBuildingsMenu extends Menu {
 
     @Override
     public void setMenuItems() {
+        inventory.clear();
+
+        inventory.setItem(11, createBuildingBuy(BARRACK));
+        inventory.setItem(13, createBuildingBuy(STABLE));
+        inventory.setItem(15, createBuildingBuy(GUN_FACTORY));
+
+        inventory.setItem(29, createBuildingBuy(FORT));
+        inventory.setItem(31, createBuildingBuy(FORGE));
+        inventory.setItem(33, createBuildingBuy(SHIPYARD));
+
+        for (int i = 0; i <= 9; i++) {
+            fillIfEmpty(i);
+            fillIfEmpty(i + 35);
+        }
+
+        fillIfEmpty(17);
+        fillIfEmpty(18);
+        fillIfEmpty(26);
+        fillIfEmpty(27);
+
+        inventory.setItem(40, createBackItem());
+
+    }
+
+    private ItemStack createBuildingBuy( BuildingType bt){
 
 
+        Component name = colorText("<white>" + bt.getDisplayName() + " <gold>" + bt.getCost(menuUtility.getPlayer()) + "<white>$");
+        if(bt.isBuildSiteReq()){
+            name = name.append(colorText("|<yellow>Спец. здание"));
+        }
+        ItemStack building = createItem(bt.getMaterial(),name, bt.getLore(menuUtility.getPlayer()));
+        ItemMeta meta = building.getItemMeta();
+        meta.getPersistentDataContainer().set(buildingNameKey,PersistentDataType.STRING, bt.getDisplayName());
+        meta.getPersistentDataContainer().set(buildingTypeKey,PersistentDataType.STRING, bt.toString());
+        meta.getPersistentDataContainer().set(buildingCostKey,PersistentDataType.INTEGER, bt.getCost(menuUtility.getPlayer()));
+        meta.getPersistentDataContainer().set(buildingTechCheckKey,PersistentDataType.BOOLEAN, bt.isTech(menuUtility.getPlayer()));
+        meta.addEnchant(Enchantment.INFINITY,1,true);
+        meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
+        meta.addItemFlags(ItemFlag.HIDE_ADDITIONAL_TOOLTIP);
+        meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
 
-        List<String> barrackLore = new ArrayList<>(Arrays.asList(
-                Tools.colorText( "&6"+(int) Math.ceil(64*costMod*traditionMod)+"&dx&fБревно,Стрел; &6"+(int) Math.ceil(16*costMod*traditionMod)+"&dx&fМишень,Перо"),
-                (" "),
-                Tools.colorText( "&a20 &fТрадиций для скидки"),
-                (" "),
-                Tools.colorText("&fПозволяет создавать Пехоту 3+ уровня.")
+        Multimap<Attribute, AttributeModifier> modifiers = ArrayListMultimap.create();
+
+        // 2. Добавляем фейковый модификатор (+0.0 к урону)
+        // Так как он равен 0, он не изменит стандартный урон меча (он останется 7.0)
+        modifiers.put(Attribute.ATTACK_DAMAGE, new AttributeModifier(
+                NamespacedKey.minecraft("fake_hidden_modifier"),
+                0.0,
+                AttributeModifier.Operation.ADD_NUMBER,
+                EquipmentSlotGroup.MAINHAND
         ));
-        ItemStack barrack = Tools.createBuildingBuy(Material.ICE,"Казарма","barrack",barrackLore,barrackCost,tBarack, "inf");
+
+        // 3. Записываем этот модификатор в мету
+        meta.setAttributeModifiers(modifiers);
 
 
-        List<String> stableLore = new ArrayList<>(Arrays.asList(
-                Tools.colorText( "&6"+(int) Math.ceil(64*costMod*traditionMod)+"&dx&fБревно; &6"+(int) Math.ceil(32*costMod*traditionMod)+"&dx&fПеро,Кожа,Мишень"),
-                (" "),
-                Tools.colorText( "&a20 &fТрадиций для скидки"),
-                (" "),
-                Tools.colorText("&fПозволяет создавать Кавалерию 3+ уровня.")
-        ));
-        ItemStack stable = Tools.createBuildingBuy(Material.ICE, "Конюшня","stable",stableLore,stableCost,tStable, "cav");
+        building.setItemMeta(meta);
+        return building;
+    }
 
-
-        List<String> gunFactoryLore = new ArrayList<>(Arrays.asList(
-                Tools.colorText( "&6"+(int) Math.ceil(256*costMod*traditionMod)+"&dx&fБревно; &6"+(int) Math.ceil(64*costMod*traditionMod)+"&dx&fПорох,Каменный Кирпич"),
-                Tools.colorText( "&6"+(int) Math.ceil(6*costMod*traditionMod)+"&dx&fЖелезный блок,Алмазный блок"),
-                (" "),
-                Tools.colorText( "&a20 &fТрадиций для скидки"),
-                (" "),
-                Tools.colorText("&fПозволяет создавать Артиллерию.")
-        ));
-        ItemStack gunFactory = Tools.createBuildingBuy(Material.ICE,"Оружейная фабрика","gunFactory",gunFactoryLore,gunFactoryCost,tGunFactory,"art");
-
-        List<String> fortLore = new ArrayList<>(Arrays.asList(
-                Tools.colorText( "&6"+(int) Math.ceil(128*costMod)+"&dx&fКаменный кирпич; &6"+(int) Math.ceil(64*costMod)+"&dx&fФакел"),
-                (" "),
-                Tools.colorText("&fНе даёт противнику оккупировать город."),
-                Tools.colorText("&fНужно будет провести &5осаду."),
-                Tools.colorText("&fПредупреждает о врагах в области &5250."),
-                Tools.colorText("&fНе занимает &6ячейку строительства&f")
-        ));
-        ItemStack fort = Tools.createBuildingBuy(Material.STONE_BRICKS,"Крепость","fort",fortLore,fortCost,tFort);
-
-
-        List<String> forgeLore = new ArrayList<>(Arrays.asList(
-                Tools.colorText( "&6"+(int) Math.ceil(16*costMod)+"&dx&fБревно, &6"+(int) Math.ceil(6*costMod)+"&dx&fНаковальня,Ведро лавы"),
-                (""),
-                Tools.colorText("&a+5%&d к резисту&f в фазе&6 шока."),
-                Tools.colorText("&fПроизводит &dОружие&f,"),
-                Tools.colorText("&fМожно построить&6 только одну&f в городе.")
-        ));
-        ItemStack forge = Tools.createBuildingBuy(Material.ANVIL,"Кузня","forge",forgeLore,forgeCost,tForge);
-
-        List<String> shipyardLore = new ArrayList<>(Arrays.asList(
-                Tools.colorText( "&6"+(int) Math.ceil(32*costMod)+"&dx&fБревно, &6"+(int) Math.ceil(12*costMod)+"&dx&fБочка"),
-                Tools.colorText( "&6"+(int) Math.ceil(1*costMod)+"&dx&fЖелезный блок"),
-                (""),
-                Tools.colorText("&fОткрывает возможность строить корабли."),
-                Tools.colorText("&2+5&f Лимит флота"),
-                Tools.colorText("&fМожно построить&6 только одну&f в городе.")
-        ));
-        ItemStack shipyard = Tools.createBuildingBuy(Material.ICE,"Верфь","shipyard",shipyardLore,shipyardCost,tShipyard,"ship");
-
-
-
-        inventory.setItem(3, barrack);
-        inventory.setItem(4, stable);
-        inventory.setItem(5, gunFactory);
-
-        inventory.setItem(12, fort);
-        inventory.setItem(13, forge);
-        inventory.setItem(14, shipyard);
-
-        inventory.setItem(17, createBackItem());
-
+    private ItemStack createItem(Material material, Component displayName, List<Component> lore){
+        ItemStack item = new ItemStack(material);
+        ItemMeta meta = item.getItemMeta();
+        meta.displayName(displayName);
+        meta.lore(lore);
+        item.setItemMeta(meta);
+        return item;
     }
 }

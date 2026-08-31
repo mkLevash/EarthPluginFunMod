@@ -21,7 +21,7 @@ public class LandHubMenu extends Menu {
     public LandHubMenu(MenuUtility menuUtility, Earth earthPlugin) {
         super(menuUtility);
         this.earthPlugin = earthPlugin;
-        db = Earth.getInstance().getServerDatabase();
+        db = Earth.getInstance().getDatabase();
     }
 
     @Override
@@ -56,6 +56,7 @@ public class LandHubMenu extends Menu {
 
     @Override
     public void setMenuItems() {
+        inventory.clear();
 
 
         ItemStack stats = new ItemStack(Material.BOOK);

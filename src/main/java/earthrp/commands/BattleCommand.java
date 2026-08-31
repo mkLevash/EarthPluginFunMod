@@ -43,11 +43,10 @@ public class BattleCommand implements CommandExecutor, TabCompleter {
                 for(earthrp.battle.Battle b:battles){
 
                     this.earth.getBattleManager().delBattle(b);
-                    Bukkit.broadcastMessage("удалено");
                 }
                 return true;
             }else{
-                Bukkit.broadcastMessage("null");
+
             }
         } else if (args.length == 1 && commandSender instanceof Player player) {
             int ter = 0;
@@ -81,7 +80,7 @@ public class BattleCommand implements CommandExecutor, TabCompleter {
                     if (i != null && item.hasItemMeta()) {
                         ItemMeta meta = item.getItemMeta();
                         if(meta.getPersistentDataContainer().has(armyIdKey, PersistentDataType.STRING)){
-                            attacker = earth.getServerDatabase().getArmy(UUID.fromString(meta.getPersistentDataContainer().get(armyIdKey,PersistentDataType.STRING)));
+                            attacker = earth.getDatabase().getArmy(UUID.fromString(meta.getPersistentDataContainer().get(armyIdKey,PersistentDataType.STRING)));
                         }
                     }
                 }
@@ -95,7 +94,7 @@ public class BattleCommand implements CommandExecutor, TabCompleter {
                             if (i != null && item.hasItemMeta()) {
                                 ItemMeta meta = item.getItemMeta();
                                 if(meta.getPersistentDataContainer().has(armyIdKey, PersistentDataType.STRING)){
-                                    defender = earth.getServerDatabase().getArmy(UUID.fromString(meta.getPersistentDataContainer().get(armyIdKey,PersistentDataType.STRING)));
+                                    defender = earth.getDatabase().getArmy(UUID.fromString(meta.getPersistentDataContainer().get(armyIdKey,PersistentDataType.STRING)));
                                 }
                             }
                         }

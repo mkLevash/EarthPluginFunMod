@@ -1,11 +1,10 @@
 package earthrp.commands;
 
 import earthrp.Earth;
+import earthrp.customEnums.EPlayerAttribute;
 import earthrp.tools.Tools;
 import earthrp.customObjects.EPlayer;
-import earthrp.customEnums.EPlayerAttribute;
 import earthrp.database.ServerDatabase;
-import earthrp.files.CustomConfig;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
@@ -16,15 +15,14 @@ import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
 public class DeclareWar implements CommandExecutor, TabCompleter {
     private final Earth plugin;
     ServerDatabase db;
     public DeclareWar(Earth plugin) {
         this.plugin = plugin;
-        db = plugin.getServerDatabase();
+        db = plugin.getDatabase();
     }
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String s, @NotNull String[] args) {
@@ -32,27 +30,87 @@ public class DeclareWar implements CommandExecutor, TabCompleter {
             if (args.length == 0){
                 sender.sendMessage(ChatColor.YELLOW + "Введите /war <player_name>");
                 return true;}
+
+
             EPlayer p = db.getPlayer(player.getUniqueId());
-            String targetPlayer = args[0];
-            EPlayer targetCountry = db.getPlayer(db.getPlayerUuid(targetPlayer));
-            targetCountry.setAttribute(EPlayerAttribute.WAR_STATUS,1);
-            p.setAttribute(EPlayerAttribute.WAR_STATUS,1);
-            Bukkit.broadcastMessage(Tools.colorText("&4" + p.getDisplayName() + "&e объявил вону &a" + args[0]));
-            p.getData().getWar().add(targetCountry.getUniqueId());
-            targetCountry.getData().getWar().add(p.getUniqueId());
+            String targetName = args[0];
+            EPlayer targetCountry = db.getPlayer(targetName);
+            if(targetCountry == null){
+                player.sendMessage("игрок не найден");
+                return true;
+            }
+            UUID targetId = targetCountry.getUniqueId();
+            if(args.length == 1){
+                if(p.getData().getAlly().contains(targetId)){
+                    player.sendMessage("Вы не можете объявить войну союзнику!");
+                    player.sendMessage("Используйте /ally break");
+                }else if(p.getData().getTruceMap().containsKey(targetId)) {
+                    player.sendMessage("У вас мир с этой страной!");
+                    player.sendMessage("Чтобы подтвердить нарушение мира введите /war <player_name> accept");
+                }else{
+                    Bukkit.broadcastMessage(Tools.colorText("&4" + p.getDisplayName() + "&e объявил вону &a" + args[0]));
+                    p.getData().getEnemies().add(targetId);
+                    targetCountry.getData().getEnemies().add(p.getUniqueId());
+
+                }
+            } else if (args.length == 2 && args[1].equals("accept")) {
+
+
+
+                if(!p.getData().getAlly().contains(targetId)){
+
+                    if(p.getData().getTruceMap().containsKey(targetId)){
+                        if(p.isImperialism()){
+                            if(p.getAttribute(EPlayerAttribute.POLIT_BALANCE) < 3){
+                                player.sendMessage("У вас недостаточно ПП чтобы разорвать мир");
+                            }else {
+                                Bukkit.broadcastMessage(Tools.colorText("&4" + p.getDisplayName() + "&e объявил вону &a" + args[0]));
+                                p.getData().getEnemies().add(targetId);
+                                targetCountry.getData().getEnemies().add(p.getUniqueId());
+                                p.truceBreak(targetCountry);
+                            }
+                        }else{
+                            if(p.getAttribute(EPlayerAttribute.STABILITY) < 0){
+                                player.sendMessage("Вы не можете объявить войну при отрицательной стабильности");
+                            }else {
+                                Bukkit.broadcastMessage(Tools.colorText("&4" + p.getDisplayName() + "&e объявил вону &a" + args[0]));
+                                p.getData().getEnemies().add(targetId);
+                                targetCountry.getData().getEnemies().add(p.getUniqueId());
+                                p.truceBreak(targetCountry);
+
+                            }
+
+                        }
+                    }else{
+                        Bukkit.broadcastMessage(Tools.colorText("&4" + p.getDisplayName() + "&e объявил вону &a" + args[0]));
+                        p.getData().getEnemies().add(targetId);
+                        targetCountry.getData().getEnemies().add(p.getUniqueId());
+                    }
+
+                }else{
+                    player.sendMessage("Вы не можете объявить войну союзнику!");
+                    player.sendMessage("Используйте /ally break");
+                }
+
+            }
+
+
         }
         return false;
     }
 
     @Override
     public @Nullable List<String> onTabComplete(@NotNull CommandSender commandSender, @NotNull Command command, @NotNull String s, @NotNull String[] strings) {
-        Player[] OnlinePlayers = Bukkit.getServer().getOnlinePlayers().toArray(new Player[0]);
-        String[] Players;
-        Players = new String[OnlinePlayers.length];
-        for (int i = 0; i < OnlinePlayers.length; i++){
-            Players[i] = OnlinePlayers[i].getDisplayName();
-        }
 
-        return Arrays.asList(Players);
+        List<String> players = new ArrayList<>();
+        if(commandSender instanceof Player player){
+            for(EPlayer ep : db.getPlayers()){
+                if(!ep.getUniqueId().equals(player.getUniqueId())){
+                    players.add(ep.getDisplayName());
+                }
+
+            }
+        }
+        return players;
     }
 }

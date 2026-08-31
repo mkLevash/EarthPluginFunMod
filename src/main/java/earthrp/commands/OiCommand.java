@@ -19,7 +19,7 @@ public class OiCommand implements CommandExecutor, TabCompleter {
     ServerDatabase db;
     public OiCommand(Earth plugin) {
         this.plugin = plugin;
-        this.db = plugin.getServerDatabase();
+        this.db = plugin.getDatabase();
     }
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String s, @NotNull String[] args) {

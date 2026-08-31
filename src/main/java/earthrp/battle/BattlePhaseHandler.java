@@ -1,12 +1,14 @@
 package earthrp.battle;
 
 import earthrp.Earth;
-import earthrp.customObjects.EPlayer;
+import earthrp.customEnums.UnitTech.UnitType;
+import earthrp.customObjects.Town;
 import earthrp.tools.Tools;
 import earthrp.customEnums.EPlayerAttribute;
 import earthrp.customObjects.Army;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 
@@ -29,10 +31,13 @@ public class BattlePhaseHandler implements Listener {
 
         for(Battle battle : e.getBattles()){
             if (battle.isPrePhase()) continue;
-            int cw = battle.getCw();
             Earth.getInstance().getBattleManager().updateBattle(battle);
             if(isSideAlive(battle.getAttUnits()) && isSideAlive(battle.getDefUnits())){
-                fillRows(battle);
+
+                unFillRows(battle);
+                fillRows(battle,"inBattle");
+                fillRows(battle,"reserve");
+
 
 
 
@@ -67,7 +72,7 @@ public class BattlePhaseHandler implements Listener {
 
                 fighting(battle);
 
-                refillRows(battle);
+
 
 
 
@@ -89,43 +94,70 @@ public class BattlePhaseHandler implements Listener {
                 //System.out.println("[Earth]-----------");
 
 
-            }else if(isSideAlive(battle.getAttUnits())){
-                for (Army a: battle.getAtt()){
-                    a.getOwner().addAttribute(EPlayerAttribute.TRADITION,1);
-                    a.setBattle(false);
-                }
-                for (Army a: battle.getDef()){
-                    a.getOwner().addAttribute(EPlayerAttribute.TRADITION,3);
-                    a.setBattle(false);
-                }
-                Bukkit.broadcastMessage(Tools.colorText("&4" + battle.getAttacker().getFirst().getCountryName() + "&e напал &fна &2" + battle.getDefender().getFirst().getCountryName() + "&f и&a победил"));
-                retreat(battle.getDefender(),battle.getAttacker(),battle.getAttUnits());
-                Earth.getInstance().getBattleManager().delBattle(battle);
-            }else{
-                for (Army a: battle.getAtt()){
-                    a.getOwner().addAttribute(EPlayerAttribute.TRADITION,3);
-                    a.setBattle(false);
-                }
-                for (Army a: battle.getDef()){
-                    a.getOwner().addAttribute(EPlayerAttribute.TRADITION,1);
-                    a.setBattle(false);
-                }
-                Bukkit.broadcastMessage(Tools.colorText("&4" + battle.getAttacker().getFirst().getCountryName() + "&e напал &fна &2" + battle.getDefender().getFirst().getCountryName() + "&f и&c проиграл"));
-                retreat(battle.getAttacker(),battle.getDefender(),battle.getDefUnits());
-                Earth.getInstance().getBattleManager().delBattle(battle);
+            }else if (isSideAlive(battle.getAttUnits())) {
+                finalizeBattle(battle.getAtt(), battle.getDef(), true, battle);
+            } else {
+                finalizeBattle(battle.getDef(), battle.getAtt(), false, battle);
             }
         }
 
     }
 
-    private void retreat(List<EPlayer> retreat, List<EPlayer> winner, List<BattleUnit> winnerUnits){
-        for(EPlayer p:retreat){
-            Bukkit.getPlayer(p.getUniqueId()).sendMessage("Ваша армия отступает");
-            p.getData().setRetreat(true);
-            p.getData().setBattle(false);
+    private void finalizeBattle(Set<Army> winners, Set<Army> losers, boolean attackerWon, Battle battle) {
+        // Начисляем очки победителям (3) и проигравшим (1)
+        boolean flag = false;
+        for(var a : losers){
+            if(a.isBarbarian()){
+                flag = true;
+                break;
+            }
         }
-        for(EPlayer p:winner){
-            p.getData().setBattle(false);
+        if(flag){
+            processParticipants(winners, 3);
+            processParticipants(losers, 1);
+        }
+
+        // Логика сообщения
+        String msg = String.format("&4%s &eнапал &fна &2%s &fи %s",
+                battle.getAttacker().getCountryName(),
+                battle.getDefender().getCountryName(),
+                (attackerWon ? "&aпобедил" : "&cпроиграл"));
+        Bukkit.broadcastMessage(Tools.colorText(msg));
+
+        // Логика отступления
+        retreat(attackerWon ? battle.getDef() : battle.getAtt(),
+                attackerWon ? battle.getAtt() : battle.getDef(),
+                attackerWon ? battle.getDefUnits() : battle.getAttUnits());
+
+        Earth.getInstance().getBattleManager().delBattle(battle);
+    }
+
+    private void processParticipants(Set<Army> armies, int points) {
+        for (Army a : armies) {
+            if (a.isBarbarian()) continue;
+            a.getOwner().addAttribute(EPlayerAttribute.TRADITION, Math.round(points * a.getOwner().getAttribute(EPlayerAttribute.TRADITION_MOD)));
+            if(a.getOwner().getAttribute(EPlayerAttribute.TRADITION)>100){
+                a.getOwner().setAttribute(EPlayerAttribute.TRADITION,100.0);
+            }
+            a.setBattle(null);
+        }
+    }
+
+    private static void retreat(Set<Army> retreat, Set<Army> winner, List<BattleUnit> winnerUnits){
+        for(Army a:retreat){
+            Player javaPlayer = Bukkit.getPlayer(a.getOwner().getUniqueId());
+            if(javaPlayer != null) javaPlayer.sendActionBar(Tools.deserialize("Ваша армия отступает"));
+            a.getData().setRetreat(true);
+            a.setBattle(null);
+            if(a.isBarbarian()){
+                handleBarbarian(a);
+            }
+        }
+        for(Army a:winner){
+            a.setBattle(null);
+            if(a.isBarbarian()){
+                handleBarbarian(a);
+            }
         }
         for(BattleUnit bu:winnerUnits){
             if(bu.getMorale()!=bu.getMaxMorale()){
@@ -142,11 +174,10 @@ public class BattlePhaseHandler implements Listener {
         Map<UUID, Map<String, Double>> aCas;
         Map<UUID, Map<String, Double>> dCas;
 
-        Set<Army> attacker = battle.getAtt();
         BattleUnit[] ARow1 = battle.getARow1();
         BattleUnit[] ARow2 = battle.getARow2();
 
-        Set<Army> def = battle.getDef();
+
         BattleUnit[] DRow1 = battle.getDRow1();
         BattleUnit[] DRow2 = battle.getDRow2();
 
@@ -172,7 +203,7 @@ public class BattlePhaseHandler implements Listener {
                     if (bu.getHp()==0){
                         bu.setStatus("dead");
                         ARow1[bu.getRowIndex()] = null;
-                    } else if (bu.getMorale() == 0) {
+                    } else if (bu.getMorale() <= 0) {
                         bu.setStatus("retreat");
                         ARow1[bu.getRowIndex()] = null;
                     }
@@ -192,7 +223,7 @@ public class BattlePhaseHandler implements Listener {
                         System.out.println("[Earth]"+bu.getStatus());
                         bu.setStatus("dead");
                         DRow1[bu.getRowIndex()] = null;
-                    } else if (bu.getMorale() == 0) {
+                    } else if (bu.getMorale() <= 0) {
                         bu.setStatus("retreat");
                         DRow1[bu.getRowIndex()] = null;
                     }
@@ -221,7 +252,7 @@ public class BattlePhaseHandler implements Listener {
     private void reserveDamage(List<BattleUnit> sideUnits, double maxMorale){
         for (BattleUnit u: sideUnits){
             if (u.getStatus().equals("reserve")){
-                u.setMorale(Tools.round(u.getMorale()-(maxMorale*0.02)));
+                u.setMorale(Math.max (0,Tools.round(u.getMorale()-(maxMorale*0.02))));
 
             }
         }
@@ -275,8 +306,8 @@ public class BattlePhaseHandler implements Listener {
 
     private Map<String, Double> calcCas(Battle battle, BattleUnit unit, BattleUnit targetUnit,BattleUnit targetArt){
         double mod = 1.0;
-        if(targetUnit.getType().equals("art")) mod = 2;
-        if(unit.getType().equals("art")) mod /= 2;
+        if(targetUnit.getTech().getType() == UnitType.ART) mod = 2;
+        if(unit.getTech().getType() == UnitType.ART) mod /= 2;
         int unitPips;
         double unitDamage;
         double damageMod;
@@ -331,21 +362,43 @@ public class BattlePhaseHandler implements Listener {
 
 
     private void calcCavDebuff(BattleUnit[] row){
-        double inf = 0;
-        double cav = 0;
-        for(BattleUnit bu: row){
-            if(bu!=null){
-                if(bu.getType().equals("inf")) inf+=bu.getHp();
-                if(bu.getType().equals("cav")) cav+=bu.getHp();
+
+
+
+        Map<UUID, Integer> cav = new HashMap<>();
+        Map<UUID, Integer> totalTroops = new HashMap<>();
+
+
+        for (BattleUnit bu : row) {
+            if (bu == null) continue;
+
+            UUID ownerId = bu.getArmy().getOwnerId();
+            int hp = bu.getHp();
+            UnitType type = bu.getTech().getType();
+            totalTroops.merge(ownerId, hp, Integer::sum);
+
+            if (type == UnitType.CAV) {
+                cav.merge(ownerId, hp, Integer::sum);
             }
         }
-        double troops = inf+cav;
 
-        for(BattleUnit bu: row){
-            if(bu!=null && bu.getType().equals("cav")){
-                if( Tools.round(cav / troops) > bu.getCavRatio()){
-                    bu.setCavDebuff(Tools.round((cav/troops - bu.getCavRatio()) / 2));
-                }else bu.setCavDebuff(0.0);
+        //  Рассчитываем дебафф для кавалерии
+        for (BattleUnit bu : row) {
+            if (bu != null && bu.getTech().getType() == UnitType.CAV) {
+                UUID ownerId = bu.getArmy().getOwnerId();
+
+                double cavalry = cav.getOrDefault(ownerId, 0);
+                double allTroops = totalTroops.getOrDefault(ownerId, 0);
+
+                if (allTroops > 0) {
+                    double currentRatio = Tools.round(cavalry / allTroops);
+                    if (currentRatio > bu.getCavRatio()) {
+                        double debuff = Tools.round((currentRatio - bu.getCavRatio()) / 2.0);
+                        bu.setCavDebuff(debuff);
+                        continue;
+                    }
+                }
+                bu.setCavDebuff(0.0);
             }
         }
     }
@@ -357,22 +410,22 @@ public class BattlePhaseHandler implements Listener {
     private void updateBattleHolograms(Battle battle){
         Location battleLoc = battle.getLoc();
         String ter;
-        if(battle.getTer()!=0) ter = Tools.getColorMod(battle.getTer(),false,true);
+        if(battle.getTer()!=0) ter = Tools.getColorModLegacy(battle.getTer(),false,true);
         else ter = "";
-        if(!battle.isFire()) Tools.editHologram(battleLoc,"battlePhase","Фаза &6шока");
-        else Tools.editHologram(battleLoc,"battlePhase","Фаза &4огня");
+        if(!battle.isFire()) Tools.editHologramLegacy(battleLoc,"battlePhase","Фаза &6шока");
+        else Tools.editHologramLegacy(battleLoc,"battlePhase","Фаза &4огня");
 
-        Tools.editHologram(battleLoc,"battleDice","&c" + battle.getRoundACas() + " &3"+battle.getADice()+ter+"&f |Бросок &3кубика&f| &3"+battle.getDDice() + "&c " + battle.getRoundDCas() );
+        Tools.editHologramLegacy(battleLoc,"battleDice","&c" + battle.getRoundACas() + " &3"+battle.getADice()+ter+"&f |Бросок &3кубика&f| &3"+battle.getDDice() + "&c " + battle.getRoundDCas() );
 
         //Tools.editHologram(battleLoc,"battleCas","&c"+battle.getRoundACas()+"&f |Урон| &c"+battle.getRoundDCas());
 
-        Tools.editHologram(battleLoc,"battleTroops","(&d"+getInBattleRgt(battle.getAttUnits())+"&f)" + "&a"+getInBattleTroops(battle.getAttUnits())+" &f|В бою| &a"+getInBattleTroops(battle.getDefUnits())  + "&f(&d"+getInBattleRgt(battle.getDefUnits())+"&f)" );
+        Tools.editHologramLegacy(battleLoc,"battleTroops","(&d"+battle.getAttInBattleRgt()+"&f/&a"+battle.getCw() + "&f)" + "&a"+battle.getAttInBattleTroops()+" &f|В бою| &a"+battle.getDefInBattleTroops()  + "&f(&d"+battle.getDefInBattleRgt()+"&f/&a"+battle.getCw() +"&f)" );
 
         //Tools.editHologram(battleLoc,"battleRetreat","(&d"+getRetreatRgt(battle.getAttUnits())+"&f)&4"+getRetreatTroops(battle.getAttUnits())+"&f|Отступили|&4"+getRetreatTroops(battle.getDefUnits()) + "&f(&d"+getRetreatRgt(battle.getDefUnits())+"&f)" );
 
         //Tools.editHologram(battleLoc,"battleReserve",getReserves(battle.getAttUnits())+" |Резервы| "+getReserves(battle.getDefUnits()));
 
-        Tools.editHologram(battleLoc,"battleMorale", "&2"+battle.getAMorale()+"&f |ᠩ| &2"+battle.getDMorale());
+        Tools.editHologramLegacy(battleLoc,"battleMorale", "&2"+battle.getAMorale()+"&f |ᠩ| &2"+battle.getDMorale());
 
        //Tools.editHologram(battleLoc,"battleTac", "&b"+battle.getAttacker().getTactic()*(1-battle.getACavDebuff())+"&f |ᠨ| &b"+battle.getDefender().getTactic()*(1-battle.getDCavDebuff()));
 
@@ -381,65 +434,7 @@ public class BattlePhaseHandler implements Listener {
 
     }
 
-    public int getLoses(List<BattleUnit> sideUnits){
-        int amount = 0;
-        for(BattleUnit bu:sideUnits){
-            amount += 1000 - bu.getHp();
-        }
-        return amount;
-    }
 
-    public int getRetreatTroops(List<BattleUnit> sideUnits){
-        int amount = 0;
-        for(BattleUnit bu:sideUnits){
-            if(bu.getStatus().equals("retreat")){
-                amount += bu.getHp();
-            }
-        }
-        return amount;
-    }
-
-    public int getRetreatRgt(List<BattleUnit> sideUnits){
-        int amount = 0;
-        for(BattleUnit bu:sideUnits){
-            if(bu.getStatus().equals("retreat")){
-                amount++;
-            }
-        }
-        return amount;
-    }
-
-
-
-    private int getInBattleTroops(List<BattleUnit> sideUnits){
-        int amount = 0;
-        for(BattleUnit bu:sideUnits){
-            if(bu.getStatus().equals("inBattle")){
-                amount += bu.getHp();
-            }
-        }
-        return amount;
-    }
-
-    private int getInBattleRgt(List<BattleUnit> sideUnits){
-        int amount = 0;
-        for(BattleUnit bu:sideUnits){
-            if(bu.getStatus().equals("inBattle")){
-                amount++;
-            }
-        }
-        return amount;
-    }
-
-    private int getReserves(List<BattleUnit> sideUnits){
-        int amount = 0;
-        for(BattleUnit bu:sideUnits){
-            if(bu.getStatus().equals("reserve")){
-                amount += bu.getHp();
-            }
-        }
-        return amount;
-    }
 
     private BattleUnit findTarget(BattleUnit attacker, BattleUnit[] targetRow){
         int pos = attacker.getRowIndex(); // Текущая позиция атакующего
@@ -473,46 +468,20 @@ public class BattlePhaseHandler implements Listener {
 
     }
 
-    private void fillRows(Battle battle){
+    private void fillRows(Battle battle, String status){
         int fr = battle.getFr();
         int cw = battle.getCw();
 
+        fillRow(battle.getAttUnits(), battle.getARow1(), battle.getARow2(),UnitType.INF, fr, cw - fr,status);
+        fillRow(battle.getAttUnits(), battle.getARow1(), battle.getARow2(),UnitType.CAV, 0, cw,status);
+        fillRow(battle.getAttUnits(), battle.getARow1(), battle.getARow2(),UnitType.INF, 0, cw,status);
+        fillRow(battle.getAttUnits(), battle.getARow1(), battle.getARow2(), UnitType.ART, 0, cw,status);
 
 
-
-
-        fillRow(battle.getAttUnits(), battle.getARow1(), battle.getARow2(),"inf", fr, cw - fr);
-        fillRow(battle.getAttUnits(), battle.getARow1(), battle.getARow2(),"cav", 0, cw);
-        fillRow(battle.getAttUnits(), battle.getARow1(), battle.getARow2(),"inf", 0, cw);
-        fillRow(battle.getAttUnits(), battle.getARow1(), battle.getARow2(), "art", 0, cw);
-
-
-        fillRow(battle.getDefUnits(), battle.getDRow1(),battle.getDRow2(), "inf",  fr, cw - fr);
-        fillRow(battle.getDefUnits(), battle.getDRow1(),battle.getDRow2(), "cav",  0, cw);
-        fillRow(battle.getDefUnits(), battle.getDRow1(),battle.getDRow2(), "inf",  0, cw);
-        fillRow(battle.getDefUnits(), battle.getDRow1(),battle.getDRow2(), "art",  0, cw);
-
-
-
-    }
-
-    private void refillRows(Battle battle){
-        int fr = battle.getFr();
-        int cw = battle.getCw();
-
-        unFillRows(battle);
-
-
-        refillRow(battle.getAttUnits(), battle.getARow1(), battle.getARow2(), "inf", fr, cw - fr);
-        refillRow(battle.getAttUnits(), battle.getARow1(), battle.getARow2(), "cav", 0, cw);
-        refillRow(battle.getAttUnits(), battle.getARow1(), battle.getARow2(), "inf", 0, cw);
-        refillRow(battle.getAttUnits(), battle.getARow1(), battle.getARow2(), "art", 0, cw);
-
-
-        refillRow(battle.getDefUnits(), battle.getDRow1(), battle.getDRow2(), "inf",  fr, cw - fr);
-        refillRow(battle.getDefUnits(), battle.getDRow1(), battle.getDRow2(), "cav",  0, cw);
-        refillRow(battle.getDefUnits(), battle.getDRow1(), battle.getDRow2(), "inf",  0, cw);
-        refillRow(battle.getDefUnits(), battle.getDRow1(), battle.getDRow2(), "art",  0, cw);
+        fillRow(battle.getDefUnits(), battle.getDRow1(),battle.getDRow2(), UnitType.INF,  fr, cw - fr,status);
+        fillRow(battle.getDefUnits(), battle.getDRow1(),battle.getDRow2(), UnitType.CAV,  0, cw,status);
+        fillRow(battle.getDefUnits(), battle.getDRow1(),battle.getDRow2(), UnitType.INF,  0, cw,status);
+        fillRow(battle.getDefUnits(), battle.getDRow1(),battle.getDRow2(), UnitType.ART,  0, cw,status);
 
 
 
@@ -522,8 +491,8 @@ public class BattlePhaseHandler implements Listener {
 
 
         for(BattleUnit u: battle.getUnits()){
-            if(u.getStatus().equals("inBattle")){
-                u.setRowIndex(-1);
+            if(u.getStatus().equals("inRow")){
+                u.setStatus("inBattle");
             }
         }
 
@@ -534,57 +503,10 @@ public class BattlePhaseHandler implements Listener {
         Arrays.fill(battle.getDRow2(), null);
     }
 
-    private void refillRow(List<BattleUnit> sideUnits,   BattleUnit[] firstRow, BattleUnit[] secondRow  , String type, int start, int end) {
+
+    private void fillRow(List<BattleUnit> sideUnits,   BattleUnit[] firstRow, BattleUnit[] secondRow , UnitType type, int start, int end, String status) {
         int middle = (start + end) / 2;
-        String status = "inBattle";
-        for (int i = 0; i <= middle; i++) {
-            int right = middle + i;
-            int left = middle - i;
-            // Заполняем вправо
-            if (right < end) {
-                if(firstRow[right] == null) {
-                    BattleUnit firstUnit = Battle.getUnit(type, sideUnits, status, -1);
-                    if (firstUnit == null) break;
-                    firstRow[right] = firstUnit;
-                    firstUnit.setRowIndex(right);
-                }else{
-                    BattleUnit secondUnit = Battle.getUnit("art",sideUnits,status,-1);
-                    if(secondRow[right] == null &&  secondUnit != null){
-                        secondRow[right] = secondUnit;
-                        secondUnit.setRowIndex(right);
-                    }
-                }
-
-
-
-
-
-            }
-            // Заполняем влево
-            if (left >= start && left != right){
-                if(firstRow[left] == null){
-                    BattleUnit firstUnit = Battle.getUnit(type,sideUnits,status,-1);
-                    if(firstUnit==null) break;
-                    firstRow[left] = firstUnit;
-                    firstUnit.setRowIndex(left);
-                }else{
-                    BattleUnit secondUnit = Battle.getUnit("art",sideUnits,status,-1);
-                    if(secondRow[left] == null &&  secondUnit != null){
-                        secondRow[left] = secondUnit;
-                        secondUnit.setRowIndex(left);
-                    }
-                }
-
-
-            }
-        }
-    }
-
-
-    private void fillRow(List<BattleUnit> sideUnits,   BattleUnit[] firstRow, BattleUnit[] secondRow , String type, int start, int end) {
-        int middle = (start + end) / 2;
-        String status = "reserve";
-
+        String inRow = "inRow";
         for (int i = 0; i <= middle; i++) {
             int right = middle + i;
             int left = middle - i;
@@ -595,13 +517,13 @@ public class BattlePhaseHandler implements Listener {
                     if(firstUnit==null) break;
                     firstRow[right] = firstUnit;
                     firstUnit.setRowIndex(right);
-                    firstUnit.setStatus("inBattle");
+                    firstUnit.setStatus(inRow);
                 }else{
-                    BattleUnit secondUnit = Battle.getUnit("art",sideUnits,status);
+                    BattleUnit secondUnit = Battle.getUnit(UnitType.ART,sideUnits,status);
                     if(secondRow[right] == null &&  secondUnit != null){
                         secondRow[right] = secondUnit;
                         secondUnit.setRowIndex(right);
-                        secondUnit.setStatus("inBattle");
+                        secondUnit.setStatus(inRow);
                     }
                 }
 
@@ -615,13 +537,13 @@ public class BattlePhaseHandler implements Listener {
                     if(firstUnit==null) break;
                     firstRow[left] = firstUnit;
                     firstUnit.setRowIndex(left);
-                    firstUnit.setStatus("inBattle");
+                    firstUnit.setStatus(inRow);
                 }else{
-                    BattleUnit secondUnit = Battle.getUnit("art",sideUnits,status);
+                    BattleUnit secondUnit = Battle.getUnit(UnitType.ART,sideUnits,status);
                     if(secondRow[left] == null &&  secondUnit != null){
                         secondRow[left] = secondUnit;
                         secondUnit.setRowIndex(left);
-                        secondUnit.setStatus("inBattle");
+                        secondUnit.setStatus(inRow);
                     }
                 }
 
@@ -629,36 +551,38 @@ public class BattlePhaseHandler implements Listener {
             }
         }
 
-
-//        while (sideUnits.stream().anyMatch(bu -> bu.getStatus().equals("reserve") && bu.getType().equals(type))
-//                && Arrays.stream(sideRow).anyMatch(Objects::isNull)
-//                && (left >= start || right < end)) {
-//
-//            if (left >= start && sideRow[left] == null) {
-//                for (BattleUnit bu : sideUnits) {
-//                    if (bu.getStatus().equals("reserve") && bu.getType().equals(type)) {
-//                        sideRow[left] = bu;
-//                        bu.setStatus("inBattle");
-//                        bu.setRowIndex(left);
-//                        break;
-//                    }
-//                }
-//            }
-//            left--;
-//
-//            if (right < end && sideRow[right] == null) {
-//                for (BattleUnit bu : sideUnits) {
-//                    if (bu.getStatus().equals("reserve") && bu.getType().equals(type)) {
-//                        sideRow[right] = bu;
-//                        bu.setStatus("inBattle");
-//                        bu.setRowIndex(right);
-//                        break;
-//                    }
-//                }
-//            }
-//            right++;
-//        }
     }
+
+    private static void handleBarbarian(Army a){
+        if(a.isRetreat()){
+
+            Town town = a.getBarbarianTown();
+            a.getBarbarianChest().addItem(a.getBarbarianOwnerItem());
+            a.getBarbarianChest().addItem(a.getBarbarianTownItem().clone());
+            a.getBarbarianTownItem().setAmount(0);
+
+            Tools.deleteHologram(a.getChunkKey(),"townHolo");
+            Tools.deleteHologram(a.getChunkKey(),"armyHoloTroops" + a.getUuid());
+            Tools.deleteHologram(a.getChunkKey(),"armyHoloMorale" + a.getUuid());
+
+            Tools.spawnHologramLegacy(a.getBarbarianChest().getLocation().clone().add(0.5, 1, 0.5),town.getName(),town.getUniqueId().toString());
+
+            Earth.getInstance().getDatabase().addTown(town);
+            town.getOwner().addBarbariansAmount(1);
+
+
+        }else{
+            a.getBarbarianTown().getOwner().addBarbariansAmount(1);
+        }
+
+
+
+        a.setBarbarianTownItem(null);
+        a.setBarbarianTown(null);
+        a.setBarbarianOwnerItem(null);
+        a.setBarbarianChest(null);
+    }
+
 
 
 

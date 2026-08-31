@@ -6,7 +6,7 @@ authors: [ levash ]
 description: Plugin for Earth RP
 softdepend: ["PlaceholderAPI","SkinsRestorer","BlueMap"]
 commands:
-  mset:
+  eset:
     description: shows the amount of player's treasury
     usage: "/mget <statistic for set> <player> <new value>"
     permission: permissions.admin
@@ -30,10 +30,10 @@ commands:
 #    description: change the amount of player's treasury
 #    usage: "Usage: /<command> [test|stop]"
 #    permission: permissions.player
-#  polit:
-#    description: change the amount of player's treasury
-#    usage: "Usage: /<command> [test|stop]"
-#    permission: permissions.player
+  polit:
+    description: change the amount of player's treasury
+    usage: "Usage: /<command> [test|stop]"
+    permission: permissions.player
 #  tax_mod:
 #    description: change the amount of player's treasury
 #    usage: "Usage: /<command> [test|stop]"
@@ -79,7 +79,7 @@ commands:
   colonial:
     description: shows the amount of player's treasury
     permission: permissions.player
-  diff:
+  start:
     description: shows the amount of player's treasury
     permission: permissions.player
   earth:
@@ -88,6 +88,10 @@ commands:
     permission: permissions.admin
   cache:
     permission: permissions.admin
+  color:
+    permission: permissions.player
+  ally:
+    permission: permissions.player
 
 permissions:
   permissions.admin:

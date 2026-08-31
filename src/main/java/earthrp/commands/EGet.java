@@ -1,35 +1,27 @@
 package earthrp.commands;
 
-import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import earthrp.Earth;
 import earthrp.database.dbTools;
+import earthrp.menusystem.MenuUtility;
+import earthrp.menusystem.menu.MainMenu;
 import earthrp.tools.Tools;
 import earthrp.customObjects.EPlayer;
 import earthrp.customEnums.EPlayerAttribute;
 import earthrp.database.ServerDatabase;
 import io.papermc.paper.command.brigadier.Commands;
-import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import com.mojang.brigadier.context.CommandContext;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import com.mojang.brigadier.Command;
-import org.bukkit.command.CommandExecutor;
-import org.bukkit.command.CommandSender;
-import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.ArrayList;
-import java.util.List;
 
 //Set time in milliseconds
 
 public class EGet implements PaperCommand{
     ServerDatabase db;
     public EGet(Earth instance) {
-        db = instance.getServerDatabase();
+        db = instance.getDatabase();
     }
     @Override
     public void register(Commands registrar){
@@ -73,16 +65,24 @@ public class EGet implements PaperCommand{
             player.getInventory().addItem(Tools.doomStick());
             return Command.SINGLE_SUCCESS;
         }
+        if(p==null){
+            ctx.getSource().getSender().sendMessage(ChatColor.YELLOW + "игрок не найден");
+            return Command.SINGLE_SUCCESS;
+        }
+
+        if(a.equals("menu") && ctx.getSource().getSender() instanceof Player player){
+            MenuUtility mu = new MenuUtility(player);
+            mu.setPlayer(Earth.getInstance().getDatabase().getPlayer(p.getUniqueId()));
+            new MainMenu(mu).open();
+            return Command.SINGLE_SUCCESS;
+        }
 
         EPlayerAttribute stat = EPlayerAttribute.fromString(a);
         if (stat == null) {
             ctx.getSource().getSender().sendMessage(ChatColor.YELLOW + "модификатор не найден");
             return Command.SINGLE_SUCCESS;
         }
-        if(p==null){
-            ctx.getSource().getSender().sendMessage(ChatColor.YELLOW + "игрок не найден");
-            return Command.SINGLE_SUCCESS;
-        }
+
         double value = p.getAttribute(stat);
         // Ваша логика (например, обращение к вашему кэшу)
         ctx.getSource().getSender().sendMessage(Tools.colorText("&2"+a + "&e "+ b + " = "+ value));

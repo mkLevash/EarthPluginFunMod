@@ -1,20 +1,29 @@
 package earthrp.listeners;
 
 import earthrp.Earth;
-import earthrp.customEnums.TownItem;
+import earthrp.customEnums.BuildingType;
+import earthrp.customEnums.EarthItem;
+import earthrp.customEnums.UnitTech.UnitType;
 import earthrp.customObjects.*;
-import earthrp.tools.Tools;
 import earthrp.customEnums.EPlayerAttribute;
 import earthrp.database.ServerDatabase;
 import earthrp.events.NewDayEvent;
+import earthrp.tools.Tools;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
+import org.bukkit.entity.Chicken;
+import org.bukkit.entity.Cow;
+import org.bukkit.entity.Pig;
+import org.bukkit.entity.Sheep;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 
+import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 import static java.lang.Integer.parseInt;
 
@@ -24,7 +33,7 @@ public class MoraCount implements Listener {
     private ServerDatabase db;
     public MoraCount (Earth plugin) {
         this.plugin = plugin;
-        db = plugin.getServerDatabase();
+        db = plugin.getDatabase();
     }
 
     @EventHandler
@@ -33,115 +42,166 @@ public class MoraCount implements Listener {
         Set<EPlayer> players = db.getPlayers();
         boolean status = db.getStatusMora();
         if (status) {
-            StringBuilder otherTownPromt = new StringBuilder();
-            StringBuilder otherPlayerPromt = new StringBuilder();
 
             Bukkit.broadcastMessage("New day!");
-            for(Town t:db.getTowns()){
-                otherTownPromt.append(t.getName() + ":\n"+
-                        "type - " + t.getType() + "\n" +
-                        "people - " + t.getPeople() + "\n" +
-                        "location - X=" + t.getLocation().getBlockX() + " Z=" + t.getLocation().getBlockZ() + "\n" +
-                        "owner - " + t.getOwnerName() + "\n" );
-            }
-            for(EPlayer p:players){
-                p.getData().setRetreat(false);
-                otherPlayerPromt.append(p.getCountryName() + ":\n"+
-                        "isBot - " + p.getData().isBot + "\n" +
-                        "treasury - " + p.getAttribute(EPlayerAttribute.TREASURY) + "\n");
-                int n = 0;
-                for(Army army:p.getArmies()){
-                    n++;
-                    int inf = 0;
-                    int cav = 0;
-                    for(Unit unit:army.getUnits()){
-                        if(unit.getType().equals("inf")){
-                            inf++;
-                        }else{
-                            cav++;
-                        }
-                    }
-                    otherPlayerPromt.append("army"+n +":\n" +
-                            "Infantry: " + inf +"\n" +
-                            "Cavalry: " + cav + "\n" +
-                            "Morale: " +army.getMorale() + "\n"
+            int today = db.getStatusDay();
 
-                    );
-
+            for(Army a:db.getArmies()){
+                if(!a.isBattle()){
+                    a.setRetreat(false);
                 }
             }
+
+
             for(EPlayer p:players){
-                StringBuilder townPromt = new StringBuilder();
-                StringBuilder armyPromt = new StringBuilder();
 
 
-                int lvl = 1;
-                int n = 0;
-                for(Army army:p.getArmies()){
-                    n++;
-                    int inf = 0;
-                    int cav = 0;
-                    for(Unit unit:army.getUnits()){
-                        if(unit.getType().equals("inf")){
-                            inf++;
-                        }else{
-                            cav++;
-                        }
-                    }
-                    armyPromt.append("army"+n +":\n" +
-                            "Infantry: " + inf +"\n" +
-                            "Cavalry: " + cav + "\n" +
-                            "Morale: " +army.getMorale() + "\n"
 
-                    );
 
+                Map<UUID, Integer> truceMap = p.getData().getTruceMap();
+                if(!truceMap.isEmpty()){
+                    truceMap.entrySet().removeIf(entry -> entry.getValue() == today);
                 }
 
+                Set<PlayerModifier> modifiers = p.getData().getModifiers();
+                if(!modifiers.isEmpty()){
+                    modifiers.removeIf(modifier -> modifier.getDateEnd() == today);
+                }
+
+
+
+                p.getData().getSiegeStorm().clear();
 
                 for(Building b:p.getBuildings()){
-                    if(b.getItem()!=null){
-                        if (b.getType().equals("farm")) {
-                            int farmlands = countFarmland(b.getLocation());
-                            long wheat = Math.round(farmlands * p.getAttribute(EPlayerAttribute.FARM_EFFICIENCY));
-                            b.getTown().addItem(TownItem.WHEAT, wheat);
+                    b.getData().setStatus(true);
+                    if( b.getData().getItem()!=null){
+                        if (b.getData().getType().equals(BuildingType.FARM)) {
+                            long wheat = b.getFarmProduction();
+                            b.getTown().addItem(EarthItem.WHEAT, wheat);
+                        }
+                        if(b.getData().getType().equals(BuildingType.PASTURE)){
+                            int count = b.getLocation().getChunk().getEntities().length;
+                            int F = b.getTown().getPeasant() * 50;
+                            int S = b.getData().pastureArea;
+                            int animalAmount = (int) Math.round(( (0.1) * S * F ) / (S + F));
+                            if(b.getData().isPastureMobSpawn() && count <= 100){
+                                for (int i = 0; i < animalAmount; i++) {
+                                    if(b.getData().getItem().equals(EarthItem.BEEF)){
+                                        Cow cow = b.getLocation().getWorld().spawn(b.getLocation(), Cow.class);
+
+                                        cow.setBaby();
+                                    }
+                                    if(b.getData().getItem().equals(EarthItem.CHICKEN)){
+                                        Chicken animal = b.getLocation().getWorld().spawn(b.getLocation(), Chicken.class);
+
+                                        animal.setBaby();
+                                    }
+                                    if(b.getData().getItem().equals(EarthItem.MUTTON)){
+                                        Sheep animal = b.getLocation().getWorld().spawn(b.getLocation(), Sheep.class);
+
+                                        animal.setBaby();
+                                    }
+                                    if(b.getData().getItem().equals(EarthItem.PORKCHOP)){
+                                        Pig animal = b.getLocation().getWorld().spawn(b.getLocation(), Pig.class);
+
+                                        animal.setBaby();
+                                    }
+
+                                }
+                            }
                         }
                     }
                 }
                 double armySatietyTarget = 1.0;
                 for (Town t : p.getTowns()) {
-                    int peopleHunger = t.getPeople() * 2;
+
+                    if(t.isSiege()){
+                        for(Army a:t.getSiegeArmyList()){
+                            if(a.getOwner().getData().getEnemies().contains(t.getController().getUniqueId())) continue;
+                            t.getData().getSiegeArmy().remove(a.getUuid());
+                            a.getData().setSiegeTown(Tools.EMPTY_UUID);
+                        }
+                        int siegeChance = t.getSiegeChance();
+                        int d = (int) (Math.random() * 100) + 1;
+                        if(siegeChance<d){
+                            t.getData().addSiegeChance(10);
+                        }else{
+                            t.besieged();
+                        }
+                    }
+
+                    int peopleHunger = (int) Math.round(((t.getPeasant() * 10) + (t.getData().noble * 50)) * t.getHungerMod());
                     int armyHunger = 0;
 
                     // 1. Рассчитываем базовый запас (пассивный доход еды города)
-                    int baseFood = t.isCapital() ? 20 : 15;
+                    if(t.isCapital()) t.addItem(EarthItem.WHEAT,100);
+                    else t.addItem(EarthItem.WHEAT,50);
 
 
 
                     if (t.isCapital()) {
-                        for (Army a : p.getArmies()) {
-                            armyHunger += a.getSize();
+                        armyHunger = (p.getUnits().size()*5);
+                        for(ArmyUnit u:p.getUnits()){
+                            if(u.getData().isMerc()) continue;
+                            if(u.getType().equals(UnitType.ART)){
+                                if(t.getItem(EarthItem.FIRE_CHARGE) > 0) {
+                                    t.addItem(EarthItem.FIRE_CHARGE, -1);
+                                    u.setDisc(0.0);
+                                }
+                                else u.setDisc(-0.9);
+                            }else{
+                                switch (u.getLvl()){
+                                    case 1,2 ->{
+                                        if(t.getItem(EarthItem.NETHERITE_SWORD) > 0) {
+                                            t.addItem(EarthItem.IRON_SWORD, -1);
+                                            u.setDisc(0.15);
+                                        }
+                                        if(t.getItem(EarthItem.DIAMOND_SWORD) > 0) {
+                                            t.addItem(EarthItem.IRON_SWORD, -1);
+                                            u.setDisc(0.1);
+                                        }
+
+                                        if(t.getItem(EarthItem.IRON_SWORD) > 0) {
+                                            t.addItem(EarthItem.IRON_SWORD, -1);
+                                            u.setDisc(0.05);
+                                        }
+                                        else if(t.getItem(EarthItem.COPPER_SWORD) > 0) {
+                                            t.addItem(EarthItem.COPPER_SWORD, -1);
+                                            u.setDisc(0.00);
+                                        }
+                                        if(t.getItem(EarthItem.STONE_SWORD) > 0) {
+                                            t.addItem(EarthItem.IRON_SWORD, -1);
+                                            u.setDisc(-0.05);
+                                        }
+                                        if(t.getItem(EarthItem.WOODEN_SWORD) > 0) {
+                                            t.addItem(EarthItem.IRON_SWORD, -1);
+                                            u.setDisc(-0.1);
+                                        }
+                                        else u.setDisc(-0.9);
+                                    }
+                                    case 4,5,6 ->{
+                                        if(t.getItem(EarthItem.GUN) > 0) {
+                                            t.addItem(EarthItem.GUN, -1);
+                                            u.setDisc(0.0);
+                                        }
+                                        else u.setDisc(-0.9);
+                                    }
+                                }
+                            }
                         }
                     }
+
 
                     // Общий спрос на еду
                     int totalHunger = peopleHunger + armyHunger;
 
-                    // Вычитаем базовое пропитание из общего голода
-                    totalHunger = Math.max(0, totalHunger - baseFood);
 
-                    // 2. Потребление ресурсов (от лучшего к худшему)
-                    // Массив пар: Тип еды -> Питательность
-                    totalHunger = consumeFood(t, TownItem.BREAD, 3, totalHunger);
-                    totalHunger = consumeFood(t, TownItem.WHEAT, 1, totalHunger);
 
-                    TownItem[] cookedItems = {TownItem.COOKED_BEEF, TownItem.COOKED_PORKCHOP, TownItem.COOKED_CHICKEN, TownItem.COOKED_MUTTON, TownItem.COOKED_COD};
-                    TownItem[] rawItems = {TownItem.BEEF, TownItem.PORKCHOP, TownItem.CHICKEN, TownItem.MUTTON, TownItem.COD};
+                    for(EarthItem item: t.getData().getItems().keySet()){
+                        if(item!=null && item.getType()== EarthItem.ItemType.FOOD){
+                            totalHunger = consumeFood(t, item, item.getFood(), totalHunger);
+                        }
 
-                    for (TownItem item : cookedItems) {
-                        totalHunger = consumeFood(t, item, 4, totalHunger);
-                    }
-                    for (TownItem item : rawItems) {
-                        totalHunger = consumeFood(t, item, 2, totalHunger);
                     }
 
                     // 3. Проверка на голод (если после всей еды голод остался)
@@ -150,27 +210,25 @@ public class MoraCount implements Listener {
                         double famineSeverity = (double) totalHunger / (peopleHunger + armyHunger);
                         t.setFamine(famineSeverity);
                         if (t.isCapital()) {
-                            armySatietyTarget = 1.0 - famineSeverity;
+                            armySatietyTarget = Math.max(0.1 , 1.0 - famineSeverity);
                         }
                     } else {
                         t.setFamine(0);
                         p.setAttribute(EPlayerAttribute.ARMY_SATIETY_MAX,1.0);
                     }
 
-                    int maxPeople = t.isCapital() ? 15 : 13;
-
-                    if (p.getData().isBot){
-                        townPromt.append(t.getName() + ":\n"+
-                                "type - " + t.getType() + "\n" +
-                                "people - " + t.getPeople() + "\n" +
-                                "location - X=" + t.getLocation().getBlockX() + " Z=" + t.getLocation().getBlockZ() + "\n" +
-                                "maxPeople - " + maxPeople + "\n");
-                    }
                 }
                 p.setAttribute(EPlayerAttribute.ARMY_SATIETY_MAX, armySatietyTarget);
-                int balance = Tools.getBalance(p);
 
-                p.addAttribute(EPlayerAttribute.TREASURY, balance);
+                p.addAttribute(EPlayerAttribute.INFLATION,p.getData().getDebtMap().size() * 0.1);
+
+
+
+
+
+
+
+                p.payDay();
 
 
                 p.addAttribute(EPlayerAttribute.OI_BALANCE,p.getOiIncome());
@@ -181,11 +239,9 @@ public class MoraCount implements Listener {
                 p.setAttribute(EPlayerAttribute.POLIT_BALANCE, Math.min(politMax, pp_balance + politIncome));
 
                 p.addAttribute(EPlayerAttribute.INFLATION,p.getAttribute(EPlayerAttribute.INFLATION_REDUCE));
-                double manpowerIncreaseMod = p.getAttribute(EPlayerAttribute.MANPOWER_REC_MOD) + (p.getAttribute(EPlayerAttribute.WAR_SUPPORT) * 0.1 );
 
-                double newManpower = p.getAttribute(EPlayerAttribute.MANPOWER) + (p.getManpowerLimit()*manpowerIncreaseMod);
-
-                p.setAttribute(EPlayerAttribute.MANPOWER,Math.min(Math.floor(newManpower),p.getManpowerLimit()));
+                double newManpower = p.getManpowerIncrease() + p.getAttribute(EPlayerAttribute.MANPOWER);
+                p.setAttribute(EPlayerAttribute.MANPOWER,Math.min(newManpower,Math.max(p.getManpowerLimit(),p.getAttribute(EPlayerAttribute.MANPOWER))));
 
 
 //                int manpowerIncrease = 3;
@@ -207,30 +263,7 @@ public class MoraCount implements Listener {
 //                }
 //                p.setAttribute(EPlayerAttribute.MANPOWER, Math.min(p.getManpowerLimit(), Math.floor(newManpower/1000.0)));
 
-                if(p.getData().isBot){
-                    Earth.getInstance().getGeminiManager().askRulerAI("You are the Ruler of" + p.getCountryName() + " in a Minecraft Military-Political-server. You have " + p.getAttribute(EPlayerAttribute.TREASURY) + " money. You must protect your lands and behave like a proud medieval ruler.\n" +
-                            "Your towns:\n" +
-                            townPromt +
-                            "your Army:\n" +
-                            armyPromt +
-                            "You are in war:" + p.isWar() +
-                            "Other countries:\n"+
-                            otherPlayerPromt +
-                            "Other towns:\n" +
-                            otherTownPromt +
-                            "Your manpower: " + p.getAttribute(EPlayerAttribute.MANPOWER) +
-                            "Your max manpower: " + p.getAttribute(EPlayerAttribute.PEOPLE) +
-                            "You can:\n" +
-                            "1. built new house for people, if current amount of people in town lower than maximum, its cost 5 money, and increase amount of people in town by 1."+
-                            "2. recruit infantry or cavalry, each regiment cost 1 manpower. 1 regiment of infantry cost 9 money to recruit and 1 money to supply. 1 regiment of cavalry cost 18 money to recruit and 2 money to supply. cavalry stronger than infantry, but if amount of cavalry in battle more tha amount of infantry your army gain debuff = +25% damage taken"+
-                            "3. declare wars on another countries or form an alliance" +
-                            "Each people gives 1 money by tax income and increase your maximum of manpower by 1. If current manpower less than maximum, you gain 3 manpower ech day. Tax income is given once a day." +
-                            "*CRITICAL RULES:\n" +
-                            "\n" +
-                            "ALWAYS respond in Russian language. Use a medieval, majestic, and slightly arrogant Russian tone (e.g., use words like \"Приветствую\", \"Владыка\", \"Ступай с миром\").\n" +
-                            "\n" +
-                            "NEVER speak English to the players.*");
-                }
+
             }
             int day = db.getStatusDay();
             db.updateStatusDay(++day);
@@ -249,8 +282,8 @@ public class MoraCount implements Listener {
 
         int farmlandCount = 0;
 
-        for (int x = bX - 4; x <= bX + 4; x++) {
-            for (int z = bZ - 4; z <= bZ + 4; z++) {
+        for (int x = bX - 13; x <= bX + 13; x++) {
+            for (int z = bZ - 13; z <= bZ + 13; z++) {
                 if (world.getBlockAt(x, bY, z).getType() == Material.FARMLAND) {
                     farmlandCount++;
                 }
@@ -259,7 +292,7 @@ public class MoraCount implements Listener {
         return farmlandCount;
     }
 
-    private int consumeFood(Town t, TownItem item, int multiplier, int currentHunger) {
+    private int consumeFood(Town t, EarthItem item, int multiplier, int currentHunger) {
         if (currentHunger <= 0) return 0;
 
         long amountAvailable = t.getItem(item);
@@ -267,7 +300,7 @@ public class MoraCount implements Listener {
 
         if (foodValueAvailable <= currentHunger) {
             // Съедаем всё
-            t.addItem(item, -foodValueAvailable);
+            t.addItem(item, -amountAvailable);
             return Math.toIntExact(currentHunger - foodValueAvailable);
         } else {
             // Съедаем только часть
@@ -276,5 +309,83 @@ public class MoraCount implements Listener {
             return 0;
         }
     }
+
+//    public double calculateSupplyAndModifier(Town town) {
+//        Map<EarthItem, Integer> supplyNeeded = getArmySupply();
+//
+//        // Если армии нет, списывать нечего, возвращаем базовый модификатор
+//        if (supplyNeeded.isEmpty()) {
+//            return 1.0;
+//        }
+//
+//        int totalRequiredItems = 0;
+//        int totalSecuredItems = 0;
+//
+//        int ironSwordsNeeded = supplyNeeded.getOrDefault(EarthItem.IRON_SWORD, 0);
+//        int ironSwordsUsed = 0;
+//
+//        // Карта для отложенного списания ресурсов
+//        Map<EarthItem, Integer> resourcesToRemove = new HashMap<>();
+//
+//        // 1. Проверяем склад и собираем ресурсы для списания
+//        for (Map.Entry<EarthItem, Integer> entry : supplyNeeded.entrySet()) {
+//            EarthItem item = entry.getKey();
+//            int neededAmount = entry.getValue();
+//            totalRequiredItems += neededAmount;
+//
+//            long availableInTown = town.getItem(item);
+//
+//            if (item == EarthItem.IRON_SWORD) {
+//                // Пытаемся забрать железные мечи
+//                ironSwordsUsed = Math.toIntExact(Math.min(neededAmount, availableInTown));
+//                totalSecuredItems += ironSwordsUsed;
+//
+//                if (ironSwordsUsed > 0) {
+//                    resourcesToRemove.put(EarthItem.IRON_SWORD, ironSwordsUsed);
+//                }
+//
+//                int remainingSwordNeed = neededAmount - ironSwordsUsed;
+//
+//                // Если железа не хватило, забираем остаток медными мечами
+//                if (remainingSwordNeed > 0) {
+//                    long availableCopper = town.getItem(EarthItem.COPPER_SWORD);
+//                    int copperSwordsUsed = Math.toIntExact(Math.min(remainingSwordNeed, availableCopper));
+//                    totalSecuredItems += copperSwordsUsed;
+//
+//                    if (copperSwordsUsed > 0) {
+//                        resourcesToRemove.put(EarthItem.COPPER_SWORD, copperSwordsUsed);
+//                    }
+//                }
+//            } else {
+//                // Для GUN и CANNONBALL забираем сколько есть
+//                int usedAmount = Math.toIntExact(Math.min(neededAmount, availableInTown));
+//                totalSecuredItems += usedAmount;
+//
+//                if (usedAmount > 0) {
+//                    resourcesToRemove.put(item, usedAmount);
+//                }
+//            }
+//        }
+//
+//        // 2. Рассчитываем бафф за качественные железные мечи
+//        double modifier = 1.0;
+//
+//        if (ironSwordsNeeded > 0) {
+//            int totalSwordsSecured = Math.min(ironSwordsNeeded, town.getItem(EarthItem.IRON_SWORD) + town.getItem(EarthItem.COPPER_SWORD));
+//
+//            // Бафф рассчитывается, только если потребность в мечах закрыта на 100% (будь то медью или железом)
+//            if (totalSwordsSecured >= ironSwordsNeeded) {
+//                double ironShare = (double) ironSwordsUsed / ironSwordsNeeded;
+//                modifier += (ironShare * 0.05); // +5% если все мечи были железными
+//            }
+//        }
+//
+//        // 3. БЕЗУСЛОВНОЕ СПИСАНИЕ: списываем всё, что армия успела урвать со склада
+//        for (Map.Entry<EarthItem, Integer> toRemove : resourcesToRemove.entrySet()) {
+//            town.addItem(toRemove.getKey(), -toRemove.getValue());
+//        }
+//
+//        return modifier;
+//    }
 
 }

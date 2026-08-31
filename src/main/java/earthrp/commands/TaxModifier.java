@@ -15,7 +15,7 @@ public class TaxModifier implements CommandExecutor {
     ServerDatabase db;
     public TaxModifier(Earth plugin) {
         this.plugin = plugin;
-        db = plugin.getServerDatabase();
+        db = plugin.getDatabase();
     }
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String s, @NotNull String[] args) {

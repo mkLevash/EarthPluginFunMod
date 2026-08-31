@@ -1,24 +1,22 @@
 package earthrp.menusystem.menu.countryMenu;
 
-import earthrp.Earth;
+import earthrp.customEnums.EPlayerTech;
+import earthrp.menusystem.menu.MainMenu;
 import earthrp.tools.Tools;
 import earthrp.customEnums.EPlayerAttribute;
 import earthrp.customObjects.EPlayer;
-import earthrp.database.ServerDatabase;
-import earthrp.files.CustomConfig;
 import earthrp.menusystem.Menu;
 import earthrp.menusystem.MenuUtility;
-import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 
 import static earthrp.tools.PDCKeys.*;
 
@@ -36,28 +34,45 @@ public class EconomicMenu extends Menu {
 
     @Override
     public int getSlots() {
-        return 27;
+        return 45;
     }
 
     @Override
     public void handleMenu(InventoryClickEvent e)  {
         ItemStack item = e.getCurrentItem();
-        if (item!=null && item.getItemMeta().getPersistentDataContainer().has(statIdKey)){
-            String statId = item.getItemMeta().getPersistentDataContainer().get(statIdKey, PersistentDataType.STRING);
+        if (item!=null && item.getItemMeta().getPersistentDataContainer().has(menuIdKey)){
+            String statId = item.getItemMeta().getPersistentDataContainer().get(menuIdKey, PersistentDataType.STRING);
             switch (statId){
 
                 case "debt" ->{
-                    ItemStack mora = Tools.createMora(player.getOneDebt());
-                    String path = "debt."+player.getDisplayName() + ".lvl"+player.getDebtLvl();
-                    CustomConfig.set(path,CustomConfig.get().getInt(path)+1);
-                    p.getInventory().addItem(mora);
-                    p.closeInventory();
-                    new EconomicMenu(menuUtility).open();
+                    if(player.canDebt()){
+                        int size = player.getDebtSize();
+                        ItemStack mora = Tools.createMora(size);
+                        UUID debtId = UUID.randomUUID();
+                        player.getData().getDebtMap().put(debtId,size);
+                        player.getData().getInterestMap().put(debtId,player.getInterest());
+                        player.addAttribute(EPlayerAttribute.INFLATION,0.1);
+                        p.getInventory().addItem(mora);
+                    }else {
+                        p.sendMessage("Вы взяли максимальное кол-во займов");
+                    }
+
                 }
 
                 case "unDebt" -> {
                     p.closeInventory();
                     new DebtsMenu(menuUtility).open();
+                    return;
+                }
+
+                case "inflation" ->{
+                    if(player.getAttribute(EPlayerAttribute.POLIT_BALANCE)>=1 && player.getAttribute(EPlayerAttribute.INFLATION) > 0){
+                        player.addAttribute(EPlayerAttribute.POLIT_BALANCE,-1);
+                        player.addAttribute(EPlayerAttribute.INFLATION,-2);
+                        if(player.getAttribute(EPlayerAttribute.INFLATION)<0) player.setAttribute(EPlayerAttribute.INFLATION,0);
+                    }else{
+                        p.sendMessage("Недостаточно £");
+                    }
                 }
 
 
@@ -65,58 +80,70 @@ public class EconomicMenu extends Menu {
 
         }else if(item!=null && item.getType().equals(Material.BARRIER)){
             e.getWhoClicked().closeInventory();
-            new CountryMenu(menuUtility).open();
+            new MainMenu(menuUtility).open();
+            return;
         }
+
+        inventory.clear();
+        setMenuItems();
 
 
     }
 
     @Override
     public void setMenuItems() {
+        inventory.clear();
 
         List<String> incomeList = List.of(
-                Tools.colorText("&fНалоги: &a" + player.getTaxIncome()  + " &f| " + Tools.getColorMod(player.getAttribute(EPlayerAttribute.TAX_MOD))),
-                Tools.colorText("&fПроизводство: &a" + player.getProdIncome()  + " &f| " + Tools.getColorMod(player.getAttribute(EPlayerAttribute.PROD_MOD))),
-                Tools.colorText("&fТорговля: &a" + player.getTradeIncome()  + " &f| " + Tools.getColorMod(player.getAttribute(EPlayerAttribute.TRADE_MOD)))
-
+                "Налоги("+ player.getTaxModColor() +"): <green>" + player.getTaxIncome(),
+                "Торговля("+player.getTradeModColor()+"): <green>" + player.getTradeIncome()
         );
-        ItemStack income = Tools.createCountryStat("Доходы",incomeList,"income");
-        inventory.setItem(11,income);
+        ItemStack income = makeItem("Доходы <green>" + player.getIncome() + "<white>$","income","income",incomeList);
+        inventory.setItem(20,income);
 
         List<String> expenseList = new ArrayList<>(Arrays.asList(
-                Tools.colorText("&fВойска &c" + player.getArmyExpense() + " &f| " + Tools.getColorMod(player.getAttribute(EPlayerAttribute.ARMY_EXPENSE_MOD), true)),
-                Tools.colorText("&fПроценты &c" + player.getDebtExpense()),
-                Tools.colorText("&fДань &c" + player.getTribute() + " &f| " + Tools.getColorMod(player.getAttribute(EPlayerAttribute.TRIBUTE_MOD),true))
-
-
+                "Содержание регуляров("+player.getArmyMaintenanceColor()+") <red>" + player.getLandArmyExpense(),
+                "Содержание наёмников("+player.getMercMaintenanceColor()+") <red>" + player.getMercExpense(),
+                "Проценты по долгам <red>" + player.getDebtExpense(),
+                "Выплаты сюзерену <red>" + player.getTribute()
         ));
-        ItemStack expense = Tools.createCountryStat("Расходы",expenseList,"expense");
-        inventory.setItem(12,expense);
+        ItemStack expense = makeItem("Расходы <red>" + player.getExpense() + "<white>$","expense","expense",expenseList);
+        inventory.setItem(21,expense);
+
+        List<String> inflationLore = new ArrayList<>();
+        inflationLore.add("<yellow>ЛКМ<white> - чтобы снизить на 2% за 1£");
+        ItemStack inflation = makeItem("Инфляция - <yellow>" + player.getAttribute(EPlayerAttribute.INFLATION) + "%","inflation","inflation",inflationLore);
+        inventory.setItem(22,inflation);
 
 
         List<String> debtList = List.of(
-                Tools.colorText("&fРазмер 1 долга: " + player.getOneDebt())
+                "Размер 1 долга: " + player.getDebtSize() + "$",
+                "Процентная ставка <yellow>" + (int) (player.getInterest() * 100) + "%",
+                "Каждый долг увеличивает инфляцию на <yellow>0.1% в день"
         );
-        ItemStack debt = Tools.createCountryStat("Взять долг",debtList,"debt");
-        inventory.setItem(14,debt);
-
-        List<String> unDebtList = List.of(
-                Tools.colorText("&fВаш долг &c" + player.getDebt())
-        );
-        ItemStack unDebt = Tools.createCountryStat("Выплатить долг",unDebtList,"unDebt");
-        inventory.setItem(15,unDebt);
-
-        for (int i = 0; i < 10; i++) {
-            if (inventory.getItem(i) == null) {
-                inventory.setItem(i, super.FILLER_GLASS);
-            }
-            if (inventory.getItem(i+17) == null) {
-                inventory.setItem(i+17, super.FILLER_GLASS);
-            }
+        ItemStack debt = makeItem("Взять долг","debt","debt",debtList);
+        if(player.getTech(EPlayerTech.BANK_BASE)){
+            inventory.setItem(23,debt);
         }
 
+        List<String> unDebtList = List.of(
+                "У вас " + player.getData().getDebtMap().size() + " долг на сумму <red>" + player.getDebt()
+        );
+        ItemStack unDebt = makeItem("Выплатить долги","unDebt","unDebt",unDebtList);
+        inventory.setItem(24,unDebt);
 
-        inventory.setItem(26,createBackItem());
+        for (int i = 0; i <= 9; i++) {
+            fillIfEmpty(i);
+            fillIfEmpty(i + 35);
+        }
+
+        fillIfEmpty(17);
+        fillIfEmpty(18);
+        fillIfEmpty(26);
+        fillIfEmpty(27);
+
+
+        inventory.setItem(40,createBackItem());
 
 //        inventory.setItem(0, tech);
 //

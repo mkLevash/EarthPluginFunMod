@@ -1,24 +1,14 @@
 package earthrp.menusystem.menu.tech;
 
-import earthrp.Earth;
 import earthrp.tools.Tools;
 import earthrp.customObjects.EPlayer;
-import earthrp.customEnums.EPlayerAttribute;
-import earthrp.database.ServerDatabase;
-import earthrp.files.CustomConfig;
 import earthrp.menusystem.Menu;
 import earthrp.menusystem.MenuUtility;
 import earthrp.menusystem.menu.TechnologyMenu;
-import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.persistence.PersistentDataType;
-
-import java.util.List;
-import java.util.UUID;
 
 import static earthrp.tools.PDCKeys.*;
 
@@ -61,6 +51,7 @@ public class EcoTechMenu extends Menu {
 
     @Override
     public void setMenuItems() {
+        inventory.clear();
 
 
 

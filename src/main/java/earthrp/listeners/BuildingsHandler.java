@@ -1,13 +1,14 @@
 package earthrp.listeners;
 
+import earthrp.customEnums.BuildingType;
 import earthrp.customObjects.Building;
 import earthrp.Earth;
 import earthrp.customObjects.Town;
 import earthrp.database.ServerDatabase;
 import earthrp.menusystem.MenuUtility;
-import earthrp.menusystem.menu.Main;
+import earthrp.menusystem.menu.MainMenu;
+import earthrp.menusystem.menu.buildings.BuildConfirmMenu;
 import earthrp.menusystem.menu.buildings.BuildMenu;
-import earthrp.tools.Tools;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.Chest;
@@ -18,20 +19,16 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
-import org.bukkit.event.inventory.InventoryAction;
-import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.world.ChunkUnloadEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 
 import static earthrp.tools.PDCKeys.*;
@@ -41,7 +38,7 @@ public class BuildingsHandler implements Listener {
     ServerDatabase db;
 
     public BuildingsHandler( Earth moraPlugin) {
-        this.db = moraPlugin.getServerDatabase();
+        this.db = moraPlugin.getDatabase();
     }
 
     @EventHandler
@@ -57,13 +54,13 @@ public class BuildingsHandler implements Listener {
                 chestInventory = container.getInventory();
                 PersistentDataContainer data = building.getItemMeta().getPersistentDataContainer();
                 String type = data.get(buildingTypeKey,PersistentDataType.STRING);
-                if(type.equals("pasture")){
+                if(type.equals("PASTURE")){
                     if(Building.countEnclosedArea(container.getLocation(),1000) == -1) pastureCheck = false;
 
                 }
-                if (type.equals("farm")){
+                if (type.equals("FARM")){
                     for(Building b:db.getBuildings()){
-                        if(b.getType().equals(type)){
+                        if(b.getData().getType().equals(BuildingType.FARM)){
                             Location loc = b.getLocation();
                             double dx = Math.abs(e.getClickedBlock().getX() - loc.getBlockX());
                             double dz = Math.abs(e.getClickedBlock().getZ() - loc.getBlockZ());
@@ -88,7 +85,18 @@ public class BuildingsHandler implements Listener {
                 menuUtility.setBuildingItem(building);
                 menuUtility.setBuildingChest(chestInventory);
 
-                new BuildMenu(menuUtility).open();
+                int x = e.getClickedBlock().getChunk().getX();
+                int z = e.getClickedBlock().getChunk().getZ();
+                Town town = db.getTownAtChunk(x,z);
+
+                if((building.getItemMeta().hasLore() && building.getItemMeta().getLore().get(0).contains("debug")) || town == null){
+                    new BuildMenu(menuUtility).open();
+                }else{
+                    menuUtility.setTown(town);
+                    new BuildConfirmMenu(menuUtility).open();
+                }
+
+
             }
 
 
@@ -98,7 +106,7 @@ public class BuildingsHandler implements Listener {
             Player p = e.getPlayer();
             MenuUtility mu = new MenuUtility(p);
             mu.setPlayer(db.getPlayer(p.getUniqueId()));
-            Main menu = new Main(mu);
+            MainMenu menu = new MainMenu(mu);
             menu.open();
         }
     }
@@ -203,7 +211,7 @@ public class BuildingsHandler implements Listener {
             PersistentDataContainer data = meta.getPersistentDataContainer();
             if(data.has(buildingIdKey)){
                 if (db.getBuilding(UUID.fromString(data.get(buildingIdKey, PersistentDataType.STRING)))!=null){
-                    Bukkit.broadcastMessage("canceled");
+
                     e.setCancelled(true);
                     return;
                 }
@@ -212,6 +220,55 @@ public class BuildingsHandler implements Listener {
 
 
         }
+    }
+
+    @EventHandler
+    public void onChunkUnload(ChunkUnloadEvent event) {
+        Chunk chunk = event.getChunk();
+
+        Building farm = Earth.getInstance().getDatabase().getFarmInChunk(chunk);
+
+        if (farm == null) return;
+
+        int count = countFarmlandInSpecificChunk(farm, chunk);
+
+        farm.getData().updateChunkCache(chunk,count);
+    }
+
+    private int countFarmlandInSpecificChunk(Building farm, Chunk chunk) {
+        Location center = farm.getLocation();
+        int bY = center.getBlockY() - 1;
+
+        // Границы фермы
+        int farmMinX = center.getBlockX() - 13;
+        int farmMaxX = center.getBlockX() + 13;
+        int farmMinZ = center.getBlockZ() - 13;
+        int farmMaxZ = center.getBlockZ() + 13;
+
+        // Границы чанка
+        int chunkMinX = chunk.getX() << 4;
+        int chunkMinZ = chunk.getZ() << 4;
+
+        // Находим зону пересечения (чтобы не вылезти за пределы фермы и за пределы чанка)
+        int startX = Math.max(farmMinX, chunkMinX);
+        int endX   = Math.min(farmMaxX, chunkMinX + 15);
+        int startZ = Math.max(farmMinZ, chunkMinZ);
+        int endZ   = Math.min(farmMaxZ, chunkMinZ + 15);
+
+        int count = 0;
+
+        // Проходимся только по нужному кусочку
+        for (int x = startX; x <= endX; x++) {
+            for (int z = startZ; z <= endZ; z++) {
+                // Так как чанк гарантированно загружен в момент Event'а,
+                // getBlockAt работает мгновенно из памяти:
+                if (chunk.getWorld().getBlockAt(x, bY, z).getType() == Material.FARMLAND) {
+                    count++;
+                }
+            }
+        }
+
+        return count;
     }
 
 

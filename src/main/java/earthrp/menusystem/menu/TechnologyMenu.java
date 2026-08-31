@@ -3,27 +3,27 @@ package earthrp.menusystem.menu;
 import earthrp.customEnums.EPlayerAttribute;
 import earthrp.customEnums.EPlayerTech;
 import earthrp.customObjects.EPlayer;
-import earthrp.files.CustomConfig;
+import earthrp.configs.CustomConfig;
 import earthrp.menusystem.Menu;
 import earthrp.menusystem.MenuUtility;
 import earthrp.menusystem.menu.tech.*;
+import earthrp.tools.Tools;
 import io.papermc.paper.persistence.PersistentDataContainerView;
-import net.kyori.adventure.text.Component;
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.inventory.meta.components.CustomModelDataComponent;
 import org.bukkit.persistence.PersistentDataType;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import static earthrp.tools.PDCKeys.*;
 
-public class TechnologyMenu extends Menu {
+public class    TechnologyMenu extends Menu {
     public TechnologyMenu(MenuUtility menuUtility) {
         super(menuUtility);
     }
@@ -47,14 +47,56 @@ public class TechnologyMenu extends Menu {
         if (item != null) {
             if (item.getType().equals(Material.BARRIER)) {
                 p.closeInventory();
-                new Main(menuUtility).open();
+                new MainMenu(menuUtility).open();
                 return;
             }
 
             PersistentDataContainerView data = item.getPersistentDataContainer();
             if (data.has(menuIdKey)) {
                 String menuId = data.get(menuIdKey, PersistentDataType.STRING);
-                boolean isUnlocked = data.get(epochUnlockedKey, PersistentDataType.BOOLEAN);
+
+                if(Objects.equals(menuId, "idea")){
+                    if(e.isShiftClick()){
+                        if(player.getAttribute(EPlayerAttribute.OI_BALANCE) >= player.getIdeaCost()){
+                            player.addAttribute(EPlayerAttribute.OI_BALANCE,-player.getIdeaCost());
+                            p.getInventory().addItem(Tools.createIdea());
+                        }else{
+                            p.sendMessage("Недостаточно ои");
+                        }
+
+                    }else{
+                        p.closeInventory();
+                        new MainIdeasMenu(menuUtility).open();
+                    }
+                    return;
+
+                }
+                if(Objects.equals(menuId, "militaryIdea")){
+                    if(e.isShiftClick()){
+                        if(player.getAttribute(EPlayerAttribute.OI_BALANCE) >= 10 && player.getAttribute(EPlayerAttribute.TRADITION)>=2){
+                            player.addAttribute(EPlayerAttribute.OI_BALANCE,-10);
+                            player.addAttribute(EPlayerAttribute.TRADITION,-2);
+                            p.getInventory().addItem(Tools.createMilitaryIdea());
+                        }else{
+                            p.sendMessage("Недостаточно ои");
+                        }
+
+                    }else{
+                        p.closeInventory();
+                        new MilIdeasMenu(menuUtility).open();
+                    }
+                    return;
+
+                }
+                boolean isUnlocked = false;
+                if(data.has(epochUnlockedKey)){
+                    isUnlocked = data.get(epochUnlockedKey, PersistentDataType.BOOLEAN);
+                }else{
+                    return;
+                }
+
+
+
 
                 // ЛКМ - открыть меню эпохи для просмотра
                 if (e.isLeftClick()) {
@@ -80,7 +122,6 @@ public class TechnologyMenu extends Menu {
                     }
                     p.closeInventory();
                     new TechnologyMenu(menuUtility).open();
-                    return;
                 }
             }
         }
@@ -120,11 +161,31 @@ public class TechnologyMenu extends Menu {
 
     @Override
     public void setMenuItems() {
+        inventory.clear();
         ItemStack economy = createEpochItem("<red>","Племя", "tribal", player);
         ItemStack reusable = createEpochItem("<green>","Феодализм", "feudalism", player);
         ItemStack social = createEpochItem(Material.BOOK,"<blue>","Ренессанс", "renaissance", player);
         ItemStack craft = createEpochItem(Material.SMITHING_TABLE,"<light_purple>","Мануфактуры", "manufacture", player);
         ItemStack industrial = createEpochItem(Material.BLAST_FURNACE,"<aqua>","Индустриализация", "industrial", player);
+
+        List<String> ideaLore = new ArrayList<>();
+        ideaLore.add("SHIFT + ЛКМ - получить идею за " + player.getIdeaCost() + " ОИ");
+        ItemStack idea = makeItem("Идеи","idea","menuIdea",ideaLore);
+
+        List<String> milIdeaLore = new ArrayList<>();
+        milIdeaLore.add("SHIFT + ЛКМ - получить мил идею за 10 ОИ 2 традиции");
+        inventory.setItem(9, makeItem("Военные идеи","militaryIdea","militaryIdea",milIdeaLore));
+
+        List<String> techStatsList = List.of(
+                "Баланс ОИ <aqua>" + (int) player.getAttribute(EPlayerAttribute.OI_BALANCE),
+                "Прирост ОИ <green>" + player.getOiIncome(),
+                "Потрачено ОИ <yellow>" + (int) player.getAttribute(EPlayerAttribute.OI_SPENT)
+        );
+        ItemStack tech = makeItem("Технологии","tech","menuTech",techStatsList);
+
+        inventory.setItem(0, tech);
+        inventory.setItem(1, idea);
+
 
 
         inventory.setItem(20, economy);

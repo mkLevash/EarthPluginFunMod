@@ -1,17 +1,16 @@
 package earthrp.menusystem.menu.buildings;
 
 import earthrp.Earth;
+import earthrp.customEnums.BuildingType;
 import earthrp.customObjects.Building;
 import earthrp.tools.Tools;
-import earthrp.customObjects.EPlayer;
 import earthrp.customObjects.Town;
 import earthrp.database.ServerDatabase;
 import earthrp.menusystem.Menu;
 import earthrp.menusystem.MenuUtility;
-import org.bukkit.ChatColor;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
@@ -19,6 +18,7 @@ import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 import static earthrp.tools.PDCKeys.buildingIdKey;
@@ -64,10 +64,11 @@ public class BuildConfirmMenu extends Menu {
 
     @Override
     public void setMenuItems() {
-        List<String> lore = List.of(Tools.colorText("&fВы построите &3" + bItem.getItemMeta().getDisplayName() + " &fв &d" + town.getName()));
-        ItemStack yes = Tools.createItem(Material.EMERALD,ChatColor.GREEN + "Да",lore);
+        inventory.clear();
+        List<String> lore = List.of(("Вы построите <aqua>" + Tools.serialize(bItem.getItemMeta().displayName()) + "<white> в <light_purple>" + town.getName()));
+        ItemStack yes = Tools.createItem(Material.EMERALD,"<green>Да",lore);
 
-        ItemStack no = Tools.createItem(Material.BARRIER,ChatColor.RED + "Нет",null);
+        ItemStack no = Tools.createItem(Material.BARRIER,"<red>Нет",null);
 
         inventory.setItem(3, yes);
         inventory.setItem(5, no);
@@ -76,7 +77,7 @@ public class BuildConfirmMenu extends Menu {
 
     private static void build(ItemStack bItem, Inventory chest, Town town){
 
-        ServerDatabase db = Earth.getInstance().getServerDatabase();
+        ServerDatabase db = Earth.getInstance().getDatabase();
         PersistentDataContainer data = bItem.getItemMeta().getPersistentDataContainer();
         UUID buildingId = UUID.fromString(data.get(buildingIdKey, PersistentDataType.STRING));
         String type = data.get(buildingTypeKey,PersistentDataType.STRING);
@@ -85,23 +86,53 @@ public class BuildConfirmMenu extends Menu {
         Building building = new Building(
                 buildingId,
                 town.getUniqueId(),
-                town.getName(),
-                town.getMarketId(),
-                type,
-                1,
-                null,
                 loc,
                 ""
 
         );
-        if (type.equals("pasture")){
-            building.getData().pastureArea = Building.countEnclosedArea(building.getLocation(),1000);
+        building.getData().setType(BuildingType.fromString(type));
+        switch (building.getData().getType()){
+            case PASTURE -> {
+                building.getData().pastureArea = Building.countEnclosedArea(building.getLocation(),1000);
+            }
+
+            case LUMBER -> {
+                String biome = loc.getBlock().getBiome().translationKey().toLowerCase(Locale.ROOT);
+                double lumberEfficiency = 0.1;
+                List<String> forestBiomes = List.of("taiga","forest","jungle","swamp");
+                if(forestBiomes.stream().anyMatch(biome::contains)) lumberEfficiency = 0.75;
+
+                building.getData().setLumberEfficiency(lumberEfficiency);
+            }
+
+            case MINE,PIT,QUARRY -> {
+                String biome = loc.getBlock().getBiome().translationKey().toLowerCase(Locale.ROOT);
+                double mineEfficiency = 0;
+                List<String> forestBiomes = List.of("peaks","hills");
+                if(forestBiomes.stream().anyMatch(biome::contains)) {
+                    switch (building.getData().getType()){
+                        case QUARRY -> {
+                            mineEfficiency = 0.75;
+                        }
+                        case PIT -> {
+                            mineEfficiency = 0.25;
+                        }
+                        case MINE -> {
+                            mineEfficiency = 0.15;
+                        }
+                    }
+
+                }
+
+
+                building.getData().setMineEfficiency(mineEfficiency);
+            }
         }
         db.addBuilding(building);
 
-        Tools.spawnHologram(loc.clone(),String.valueOf(buildingId),"buildingId", false);
+        Tools.spawnHologramLegacy(loc.clone(),String.valueOf(buildingId),"buildingId", false);
 
-        Tools.spawnHologram(loc.clone().add(0.5, 1, 0.5),displayName,"buildingName" , true);
+        Tools.spawnHologramLegacy(loc.clone().add(0.5, 1, 0.5),displayName,"buildingName" , true);
 
         chest.addItem(bItem);
         bItem.setAmount(0);

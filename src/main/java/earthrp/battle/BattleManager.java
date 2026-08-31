@@ -2,11 +2,11 @@ package earthrp.battle;
 
 import earthrp.Earth;
 import earthrp.customObjects.Army;
-import earthrp.customObjects.EPlayer;
-import earthrp.customObjects.Unit;
+import earthrp.customObjects.ArmyUnit;
 import earthrp.database.ServerDatabase;
 import earthrp.tools.Tools;
 import lombok.Getter;
+import org.bukkit.Chunk;
 import org.bukkit.Location;
 
 import java.util.*;
@@ -28,11 +28,11 @@ public class BattleManager {
         Tools.spawnBattleHologram(battle);
     }
 
-    public void newBattle(List<Army> attacker, List<Army> defender, Location location, EPlayer a,EPlayer d){
+    public void newBattle(Set<Army> attacker, Set<Army> defender, Location location){
 
-        Tools.spawnPreBattleHologram(location, a, d);
 
-        Battle battle = new Battle(attacker,a,defender,d,location);
+
+        Battle battle = new Battle(attacker,defender,location);
         battleCache.put(battle.getUuid(),battle);
     }
 
@@ -42,12 +42,25 @@ public class BattleManager {
 
     }
 
+    public void shutdownBattles(){
+        for(Battle b:getBattles()){
+            for(Army a:b.getAtt()){
+                a.setBattle(null);
+            }
+            for(Army a:b.getDef()){
+                a.setBattle(null);
+            }
+            Tools.removePreBattleHologram(b.getLoc());
+            Tools.removeBattleHologram(b.getLoc());
+        }
+    }
+
     public void delBattle(Battle battle){
-        ServerDatabase db = Earth.getInstance().getServerDatabase();
+        ServerDatabase db = Earth.getInstance().getDatabase();
         Tools.removePreBattleHologram(battle.getLoc());
         Tools.removeBattleHologram(battle.getLoc());
-        for(BattleUnit u:battle.getAttUnits()){
-            Unit unit = db.getUnit(u.getUniqueId());
+        for(BattleUnit u:battle.getUnits()){
+            ArmyUnit unit = db.getUnit(u.getUniqueId());
             unit.setMorale(u.getMorale());
             unit.setHp(u.getHp());
             if (unit.getHp() == 0) {
@@ -59,24 +72,27 @@ public class BattleManager {
                 }
             }
         }
-        for(BattleUnit u:battle.getDefUnits()){
-            Unit unit = db.getUnit(u.getUniqueId());
-            unit.setMorale(u.getMorale());
-            unit.setHp(u.getHp());
-            if (unit.getHp() == 0) {
-                if(Earth.getInstance().getConfig().getBoolean("debug")){
-                    Earth.getInstance().getLogger().info("unit Dead -" + unit);
-                }
-                else{
-                    db.deleteUnit(u);
-                }
-            }
+
+        for (Army a:battle.getAtt()){
+            if (a.isBarbarian()) db.deleteArmy(a);
+        }
+        for (Army a:battle.getDef()){
+            if (a.isBarbarian()) db.deleteArmy(a);
         }
         battleCache.remove(battle.getUuid());
     }
 
     public List<Battle> getBattles(){
         return new ArrayList<>(battleCache.values());
+    }
+
+    public Battle getBattle(Chunk chunk){
+        for (Battle b:getBattles()){
+            if(b.getLoc().getChunk().equals(chunk)){
+                return b;
+            }
+        }
+        return null;
     }
 
 

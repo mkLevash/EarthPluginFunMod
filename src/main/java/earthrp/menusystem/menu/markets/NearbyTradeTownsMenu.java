@@ -6,7 +6,7 @@
 //import earthrp.database.ServerDatabase;
 //import earthrp.menusystem.Menu;
 //import earthrp.menusystem.MenuUtility;
-//import earthrp.menusystem.menu.buildings.MiningBuildingMenu;
+//import earthrp.menusystem.menu.buildings.inGame.MiningBuildingMenu;
 //import org.bukkit.ChatColor;
 //import org.bukkit.Material;
 //import org.bukkit.entity.Player;

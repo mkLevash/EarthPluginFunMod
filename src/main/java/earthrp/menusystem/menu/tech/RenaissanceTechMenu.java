@@ -1,7 +1,7 @@
 package earthrp.menusystem.menu.tech;
 
 import earthrp.customObjects.EPlayer;
-import earthrp.files.CustomConfig;
+import earthrp.configs.CustomConfig;
 import earthrp.menusystem.Menu;
 import earthrp.menusystem.MenuUtility;
 import earthrp.menusystem.menu.TechnologyMenu;
@@ -49,6 +49,7 @@ public class RenaissanceTechMenu extends Menu {
 
     @Override
     public void setMenuItems() {
+        inventory.clear();
         // Эпоха 2: Ренессанс
         
         // === ЦЕНТР - Ключевая технология ===
@@ -104,10 +105,7 @@ public class RenaissanceTechMenu extends Menu {
         inventory.setItem(34, art2);
         inventory.setItem(32, spainSquare);
         
-        // === МОРСКИЕ ТЕХНОЛОГИИ (низ) ===
-        ItemStack dock = makeTech(Material.DARK_OAK_BOAT, "dock", player);
-        
-        inventory.setItem(28, dock);
+
 
         for (int i = 0; i <= 9; i++) {
             fillIfEmpty(i);

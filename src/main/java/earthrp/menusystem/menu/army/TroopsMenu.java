@@ -3,7 +3,7 @@ package earthrp.menusystem.menu.army;
 import earthrp.Earth;
 import earthrp.tools.Tools;
 import earthrp.customObjects.Army;
-import earthrp.customObjects.Unit;
+import earthrp.customObjects.ArmyUnit;
 import earthrp.menusystem.Menu;
 import earthrp.menusystem.MenuUtility;
 import org.bukkit.ChatColor;
@@ -45,6 +45,7 @@ public class TroopsMenu extends Menu {
 
     @Override
     public void setMenuItems() {
+        inventory.clear();
 
         ItemStack inf0 = Tools.createTroopItem(Material.ICE,"Ополчение","inf",0,army,"inf0");
         inventory.setItem(0,inf0);
@@ -75,20 +76,19 @@ public class TroopsMenu extends Menu {
         ItemMeta troopsMeta = troops.getItemMeta();
         troopsMeta.setDisplayName("Ваши войска");
         troopsMeta.setCustomModelData(1);
-        Set<Unit> units = army.getUnits();
+        Set<ArmyUnit> units = army.getUnits();
         double moraleSum = 0;
         int hp = 0;
         if(units != null){
-            for(Unit u : units){
+            for(ArmyUnit u : units){
                 moraleSum += u.getMorale();
                 hp += u.getHp();
             }
         }
-
-        double morale = Tools.round(moraleSum/army.getSize());
+        double morale = army.getMorale();
         troopsMeta.setLore(List.of(
                 ChatColor.translateAlternateColorCodes('~', "~fМораль армии - ~2" + morale),
-                ChatColor.translateAlternateColorCodes('~', "~fЗаполненность - ~d" + hp + "~f/~7" +army.getSize()*1000),
+                ChatColor.translateAlternateColorCodes('~', "~fЗаполненность - ~d" + hp + "~f/~7" +army.getArmySize()*1000),
                 ChatColor.translateAlternateColorCodes('~', "~fПолки:"),
                 ChatColor.translateAlternateColorCodes('~', "~fПехота - ~a" + army.getInfantry()),
                 ChatColor.translateAlternateColorCodes('~', "~fКавалерия - ~a" + army.getCavalry())

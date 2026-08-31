@@ -1,11 +1,16 @@
 package earthrp.database;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.reflect.TypeToken;
 import earthrp.*;
 import earthrp.customEnums.EPlayerAttribute;
 import earthrp.customEnums.EPlayerTech;
+import earthrp.customEnums.UnitTech;
 import earthrp.customObjects.*;
-import earthrp.files.CustomConfig;
+import earthrp.configs.CustomConfig;
 import earthrp.tools.Tools;
+import earthrp.tools.maps.CityBoundaryCalculator;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.*;
 import org.bukkit.block.BlockState;
@@ -13,17 +18,22 @@ import org.bukkit.block.Chest;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.TextDisplay;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.persistence.PersistentDataContainer;
-import org.jetbrains.annotations.NotNull;
+import org.bukkit.persistence.PersistentDataType;
 
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.lang.reflect.Type;
 import java.sql.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.logging.Level;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -44,6 +54,114 @@ public class ServerDatabase {
         dbTools.createTables(path);
     }
 
+    public enum TaskType {
+        EDIT,
+        DELETE
+    }
+
+    public record PendingTask(TaskType taskType, String holoType, String newValue) {}
+    private final Map<Long, Set<PendingTask>> pendingTasks = new ConcurrentHashMap<>();
+
+    public void putHoloTasks(Long location, Set<PendingTask> tasks){
+        pendingTasks.put(location,tasks);
+    }
+    public Set<PendingTask> getHoloTasks(Long location){
+        return pendingTasks.get(location);
+    }
+
+    public record PendingTaskDto(
+            long chunkKey,
+            TaskType taskType,
+            String holoType,
+            String newValue
+    ) {}
+
+//    public void executeHoloTasks(){
+//        for(long key : pendingTasks.keySet()){
+//            Set<ServerDatabase.PendingTask> tasks = pendingTasks.get(key);
+//            if (tasks == null || tasks.isEmpty()) continue;
+//            Chunk chunk = Bukkit.getWorlds().getFirst().getChunkAt(key);
+//            for (Entity entity : chunk.getEntities()) {
+//                if (entity instanceof TextDisplay display) {
+//                    if (display.getPersistentDataContainer().has(holoKey) ) {
+//                        for(var task : tasks){
+//                            if(display.getPersistentDataContainer().get(holoKey, PersistentDataType.STRING).equals(task.holoType)){
+//                                display.text(Tools.deserialize(task.newValue));
+//                                if(task.taskType == TaskType.DELETE) display.remove();
+//                            }
+//                        }
+//                    }
+//                }
+//            }
+//        }
+//    }
+
+    public void saveTasksToJson() {
+        if (pendingTasks.isEmpty()) return;
+
+        File file = new File(instance.getDataFolder(), "pending_tasks.json");
+
+        if (!instance.getDataFolder().exists()) {
+            instance.getDataFolder().mkdirs();
+        }
+
+        List<PendingTaskDto> dtoList = new ArrayList<>();
+
+        // Преобразуем Map<Long, Set<PendingTask>> в плоский список DTO
+        pendingTasks.forEach((chunkKey, tasks) -> {
+            for (PendingTask task : tasks) {
+                dtoList.add(new PendingTaskDto(
+                        chunkKey,
+                        task.taskType(),
+                        task.holoType(),
+                        task.newValue()
+                ));
+            }
+        });
+
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+
+        try (FileWriter writer = new FileWriter(file)) {
+            gson.toJson(dtoList, writer);
+            Earth.getInstance().getLogger().info("Успешно сохранено " + dtoList.size() + " отложенных задач в pending_tasks.json");
+        } catch (IOException e) {
+            Earth.getInstance().getLogger().severe("Не удалось сохранить pending_tasks.json: " + e.getMessage());
+        }
+    }
+
+    public void loadTasksFromJson() {
+        File file = new File(instance.getDataFolder(), "pending_tasks.json");
+        if (!file.exists()) return;
+
+        Gson gson = new Gson();
+        Type listType = new TypeToken<List<PendingTaskDto>>(){}.getType();
+
+        try (FileReader reader = new FileReader(file)) {
+            List<PendingTaskDto> dtoList = gson.fromJson(reader, listType);
+
+            if (dtoList != null && !dtoList.isEmpty()) {
+                for (PendingTaskDto dto : dtoList) {
+                    PendingTask task = new PendingTask(
+                            dto.taskType(),
+                            dto.holoType(),
+                            dto.newValue()
+                    );
+
+                    pendingTasks.computeIfAbsent(dto.chunkKey(), k -> ConcurrentHashMap.newKeySet())
+                            .add(task);
+                }
+                instance.getLogger().info("Восстановлено " + dtoList.size() + " отложенных задач из pending_tasks.json");
+            }
+
+        } catch (IOException e) {
+            instance.getLogger().severe("Не удалось прочитать pending_tasks.json: " + e.getMessage());
+        } finally {
+            // Удаляем файл, чтобы задачи не вызвались повторно при следующем запуске
+            file.delete();
+        }
+    }
+
+
     
     private final Map<UUID, Building> buildingCache = new ConcurrentHashMap<>();
     private final Map<UUID, HashSet<Building>> townBuildingCache = new ConcurrentHashMap<>();
@@ -54,8 +172,7 @@ public class ServerDatabase {
     private final Map<UUID, HashSet<Town>> playerTownCache = new ConcurrentHashMap<>();
 
 
-    private final Map<UUID, Unit> unitCache = new ConcurrentHashMap<>();
-    private final Map<UUID, HashSet<Unit>> armyUnitCache = new ConcurrentHashMap<>();
+    private final Map<UUID, ArmyUnit> unitCache = new ConcurrentHashMap<>();
 
     private final Map<UUID, Army> armyCache = new ConcurrentHashMap<>();
     private final Map<UUID, HashSet<Army>> playerArmyCache = new ConcurrentHashMap<>();
@@ -113,23 +230,23 @@ public class ServerDatabase {
         return null;
     }
 
-    public void loadChunk(){
-
-        chunkCache.clear();
-        String query = "SELECT * FROM chunks";
-        String connId = "loadChunks";
-        try (Connection conn = getConnection(connId);
-             PreparedStatement stmt = conn.prepareStatement(query);
-             ResultSet rs = stmt.executeQuery()) {
-            while (rs.next()) {
-                chunkCache.put(rs.getLong("chunkKey"),UUID.fromString(rs.getString("townId")));
-            }
-        } catch (SQLException e) {
-            instance.getLogger().severe("DataBase error while processing " + connId);
-            Bukkit.broadcast(MiniMessage.miniMessage().deserialize("Database <yellow>"+connId+" <red>critical error"));
-            throw new RuntimeException(e);
-        }
+    public Town getTownAtChunk(int x, int z){
+        long key = org.bukkit.Chunk.getChunkKey(x, z);
+        return getTownAtChunk(key);
     }
+
+    public Town getTownAtChunk(Chunk chunk){
+        long key = chunk.getChunkKey();
+        return getTownAtChunk(key);
+    }
+
+
+    public Town getTownAtChunk(Location location){
+        long key = location.getChunk().getChunkKey();
+        return getTownAtChunk(key);
+    }
+
+
 
 //    public void saveChunk(){
 //
@@ -157,12 +274,18 @@ public class ServerDatabase {
 //    }
 
     public void loadCache(){
-        loadBuildings();
-        loadTowns();
-        loadUnits();
-        loadArmies();
         loadPlayers();
-        loadChunk();
+
+        loadTowns();
+        loadArmies();
+
+        loadBuildings();
+        loadUnits();
+
+        loadTasksFromJson();
+
+
+
     }
 
     public void saveCache(){
@@ -171,6 +294,8 @@ public class ServerDatabase {
         saveUnits();
         saveArmies();
         savePlayers();
+
+        saveTasksToJson();
     }
 
 
@@ -199,7 +324,7 @@ public class ServerDatabase {
         System.out.println("[Earth]Towns: " + townCache.size());
         System.out.println("[Earth]Buildings: " + buildingCache.size());
         System.out.println("[Earth]Armies: " + armyCache.size());
-        System.out.println("[Earth]Units: " + unitCache.size());
+        System.out.println("[Earth]Units: " + getUnits().size());
 
         // Проверяем глубину индексов (группировок)
         int totalTownLinks = playerTownCache.values().stream().mapToInt(HashSet::size).sum();
@@ -226,14 +351,10 @@ public class ServerDatabase {
         String sql = "UPDATE buildings SET " +
                 "town_name = ?, " +
                 "town_id = ?, " +
-                "type = ?, " +
-                "item = ?, " +
-                "status = ?, " +
                 "world = ?, " +
                 "x = ?, " +
                 "y = ?, " +
                 "z = ?, " +
-                "market_id = ?, " +
                 "data = ? " +
                 "WHERE uuid = ?";
         Set<Building> buildings = getBuildings();
@@ -243,16 +364,12 @@ public class ServerDatabase {
             conn.setAutoCommit(false);
             for (Building building:buildings){
                 int paramIndex = 1;
-                pstmt.setString(paramIndex++, building.getTownName());
+                pstmt.setString(paramIndex++, building.getTown().getName());
                 pstmt.setString(paramIndex++, building.getTownId().toString());
-                pstmt.setString(paramIndex++, building.getType());
-                pstmt.setString(paramIndex++, building.getItem() != null ? building.getItem().toString() : null);
-                pstmt.setInt(paramIndex++, building.getStatus());
                 pstmt.setString(paramIndex++, building.getLocation().getWorld().getName());
                 pstmt.setDouble(paramIndex++, building.getLocation().getX());
                 pstmt.setDouble(paramIndex++, building.getLocation().getY());
                 pstmt.setDouble(paramIndex++, building.getLocation().getZ());
-                pstmt.setString(paramIndex++, building.getMarketId() != null ? building.getMarketId().toString() : null);
                 pstmt.setString(paramIndex++, building.serializeData());
                 pstmt.setString(paramIndex, building.getUniqueId().toString());
                 pstmt.addBatch();
@@ -277,18 +394,10 @@ public class ServerDatabase {
                 "town_name = ?, " +
                 "owner_id = ?, " +
                 "type = ?, " +
-                "blockade_status = ?, " +
-                "status = ?, " +
-                "core = ?, " +
-                "infrastructure = ?, " +
-                "bonusBuildSites = ?, " +
-                "houses = ?, " +
-                "port = ?, " +
-                "landHub = ?, " +
-                "tradeTown = ?, " +
                 "world = ?, " +
-                "chunk_x = ?, " +
-                "chunk_z = ?, " +
+                "x = ?, " +
+                "y = ?, " +
+                "z = ?, " +
                 "data = ? " +
                 "WHERE uuid = ?";
 
@@ -303,31 +412,15 @@ public class ServerDatabase {
                 pstmt.setString(++paramIndex, town.getName());
                 pstmt.setString(++paramIndex, town.getOwnerId().toString());
                 pstmt.setString(++paramIndex, town.getType());
-                pstmt.setBoolean(++paramIndex, town.getBlockadeStatus());
-                pstmt.setBoolean(++paramIndex, town.isStatus());
-                pstmt.setBoolean(++paramIndex, town.isCore());
-                pstmt.setInt(++paramIndex, town.getInfrastructure());
-                pstmt.setInt(++paramIndex, town.getBonusBuildSite());
-                pstmt.setInt(++paramIndex, town.getHouses());
 
-                pstmt.setBoolean(++paramIndex,town.isPort());
-                pstmt.setBoolean(++paramIndex,town.isLandHub());
+                pstmt.setString(++paramIndex, town.getLocation().getWorld().getName());
+                pstmt.setDouble(++paramIndex, town.getLocation().getX());
+                pstmt.setDouble(++paramIndex, town.getLocation().getY());
+                pstmt.setDouble(++paramIndex, town.getLocation().getZ());
 
-
-                UUID tradeTown = town.getTradeTownId();
-                if (tradeTown != null) {
-                    pstmt.setString(++paramIndex, tradeTown.toString());
-                } else {
-                    pstmt.setNull(++paramIndex, Types.VARCHAR);
-                }
-
-                pstmt.setString(++paramIndex, town.getWorld());
-                pstmt.setInt(++paramIndex, town.getChunkX());
-                pstmt.setInt(++paramIndex, town.getChunkZ());
                 pstmt.setString(++paramIndex, town.serializeData());
 
                 pstmt.setString(++paramIndex, town.getUniqueId().toString());
-
                 pstmt.addBatch();
             }
 
@@ -402,25 +495,32 @@ public class ServerDatabase {
                 "leaderName = ? , " +
                 "leaderFire = ? , " +
                 "leaderShock = ? , " +
-                "maxLvl = ? " +
+                "maxLvl = ? , " +
+                "data = ? " +
                 "WHERE uuid = ?";
         Set<Army> armyList = getArmies();
         try (Connection c = getConnection(connId)){
             try(PreparedStatement st = c.prepareStatement(sql)){
                 c.setAutoCommit(false);
                 for(Army a:armyList){
-                    int i = 0;
-                    st.setString(++i, a.getOwnerId().toString());
-                    st.setInt(++i, a.getInfantry());
-                    st.setInt(++i, a.getCavalry());
-                    st.setInt(++i, a.getArtillery());
-                    st.setString(++i, a.getLeaderName());
-                    st.setInt(++i, a.getLeaderFire());
-                    st.setInt(++i, a.getLeaderShock());
-                    st.setInt(++i, a.getTechLvl());
+                    if(a.isBarbarian()){
+                        deleteArmy(a);
+                    }else {
+                        int i = 0;
+                        st.setString(++i, a.getOwnerId().toString());
+                        st.setInt(++i, a.getInfantry());
+                        st.setInt(++i, a.getCavalry());
+                        st.setInt(++i, a.getArtillery());
+                        st.setString(++i, a.getLeaderName());
+                        st.setInt(++i, a.getLeaderFire());
+                        st.setInt(++i, a.getLeaderShock());
+                        st.setInt(++i, 0);
+                        st.setString(++i, a.serializeData());
 
-                    st.setString(++i, a.getUuid().toString());
-                    st.addBatch();
+                        st.setString(++i, a.getUuid().toString());
+                        st.addBatch();
+                    }
+
                 }
 
 
@@ -436,28 +536,30 @@ public class ServerDatabase {
     }
 
     private void saveUnits(){
-        Set<Unit> units = getUnits();
+        Set<ArmyUnit> units = getUnits();
         String connId = "saveUnits";
-        String sql = "UPDATE units SET " +
-                "armyId = ? , " +
-                "type = ? , " +
-                "lvl = ? , " +
-                "hp = ? , " +
-                "morale = ? , " +
-                "maxMorale = ? , " +
-                "disc = ? , " +
-                "fire = ? , " +
-                "shock = ? " +
-                "WHERE uuid = ?";
+        String sql = "INSERT INTO units (armyId, type, lvl, hp, morale, maxMorale, disc, fire, shock, data, uuid) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
+                "ON CONFLICT(uuid) DO UPDATE SET " +
+                "armyId = excluded.armyId, " +
+                "type = excluded.type, " +
+                "lvl = excluded.lvl, " +
+                "hp = excluded.hp, " +
+                "morale = excluded.morale, " +
+                "maxMorale = excluded.maxMorale, " +
+                "disc = excluded.disc, " +
+                "fire = excluded.fire, " +
+                "shock = excluded.shock, " +
+                "data = excluded.data";
 
         try (Connection c = getConnection(connId)){
             try(PreparedStatement st = c.prepareStatement(sql)){
                 c.setAutoCommit(false);
                 
-                for(Unit unit:units){
+                for(ArmyUnit unit:units){
                     int i = 0;
                     st.setString(++i, unit.getArmyId().toString());
-                    st.setString(++i, unit.getType());
+                    st.setString(++i, unit.getTech().toString());
                     st.setInt(++i, unit.getLvl());
                     st.setInt(++i, unit.getHp());
                     st.setDouble(++i, unit.getMorale());
@@ -465,8 +567,9 @@ public class ServerDatabase {
                     st.setDouble(++i, unit.getDisc());
                     st.setDouble(++i, unit.getFire());
                     st.setDouble(++i, unit.getShock());
-
+                    st.setString(++i, unit.serializeData());
                     st.setString(++i, unit.getUniqueId().toString());
+
                     st.addBatch();
                 }
 
@@ -493,8 +596,9 @@ public class ServerDatabase {
              ResultSet rs = stmt.executeQuery()) {
             while (rs.next()) {
                 Building building = createBuildingFromResultSet(rs);
+                building.getTown().addBuilding(building);
                 buildingCache.put(building.getUniqueId(),building);
-                townBuildingCache.computeIfAbsent(building.getTownId(), k -> new HashSet<>()).add(building);
+                //townBuildingCache.computeIfAbsent(building.getTownId(), k -> new HashSet<>()).add(building);
             }
         } catch (SQLException e) {
             instance.getLogger().severe("DataBase error while processing " + connId);
@@ -515,12 +619,18 @@ public class ServerDatabase {
 
             while (rs.next()) {
                 Town town = createTownFromResultSet(rs);
+                town.getOwner().addTown(town);
 
                 Set<Building> buildings = townBuildingCache.get(town.getUniqueId());
                 if (buildings != null) for (Building building : buildings) town.addBuilding(building);
 
                 townCache.put(town.getUniqueId(), town);
-                playerTownCache.computeIfAbsent(town.getOwnerId(), k -> new HashSet<>()).add(town);
+                for (CityBoundaryCalculator.chunkPoint c:town.getData().getChunk()) {
+                    // Быстрая упаковка координат в long без загрузки чанка
+                    long chunkKey = org.bukkit.Chunk.getChunkKey(c.x(), c.z());
+                    chunkCache.put(chunkKey, town.getUniqueId());
+                }
+                //playerTownCache.computeIfAbsent(town.getOwnerId(), k -> new HashSet<>()).add(town);
             }
         } catch (SQLException e) {
             instance.getLogger().severe("DataBase error while processing " + connId);
@@ -532,8 +642,7 @@ public class ServerDatabase {
 
 
     private void loadUnits(){
-        unitCache.clear();
-        armyUnitCache.clear();
+
         String sql = "SELECT * from units";
         String connId = "loadUnits";
         try(
@@ -542,9 +651,8 @@ public class ServerDatabase {
                 ResultSet rs = st.executeQuery(sql)
         ){
             while(rs.next()){
-                Unit unit = createUnitFromRS(rs);
-                unitCache.put(unit.getUniqueId(),unit);
-                armyUnitCache.computeIfAbsent(unit.getArmyId(), k -> new HashSet<>()).add(unit);
+                ArmyUnit unit = createUnitFromRS(rs);
+                unit.getArmy().addUnit(unit);
             }
         }catch (SQLException e) {
             instance.getLogger().severe("DataBase error while processing " + connId);
@@ -563,11 +671,14 @@ public class ServerDatabase {
              ResultSet rs = st.executeQuery(sql)) {
             while (rs.next()){
                 Army army = createArmyFromResultSet(rs);
+                if(army.isBarbarian()) continue;
+                army.getOwner().addArmy(army);
 
-                Set<Unit> units = armyUnitCache.get(army.getUuid());
-                if (units != null) for (Unit unit : units) army.addUnit(unit);
+                //Set<ArmyUnit> units = armyUnitCache.get(army.getUuid());
+                //if (units != null) for (ArmyUnit unit : units) army.addUnit(unit);
                 armyCache.put(army.getUuid(),army);
-                playerArmyCache.computeIfAbsent(army.getOwnerId(), k -> new HashSet<>()).add(army);
+
+                //playerArmyCache.computeIfAbsent(army.getOwnerId(), k -> new HashSet<>()).add(army);
             }
 
         } catch (SQLException e) {
@@ -589,12 +700,12 @@ public class ServerDatabase {
                 try {
                     String id = rs.getString("uuid");
                     EPlayer player = getPlayerFromDb(id);
-                    Set<Town> towns = playerTownCache.get(player.getUniqueId());
-                    if (towns != null) for (Town town : towns) player.addTown(town);
-
-                    // 2. Привязываем армии
-                    Set<Army> armies = playerArmyCache.get(player.getUniqueId());
-                    if (armies != null) for (Army army : armies) player.addArmy(army);
+//                    Set<Town> towns = playerTownCache.get(player.getUniqueId());
+//                    if (towns != null) for (Town town : towns) player.addTown(town);
+//
+//                    // 2. Привязываем армии
+//                    Set<Army> armies = playerArmyCache.get(player.getUniqueId());
+//                    if (armies != null) for (Army army : armies) player.addArmy(army);
 
                     playerCache.put(player.getUniqueId(), player);
                 } catch (SQLException e) {
@@ -754,56 +865,28 @@ public class ServerDatabase {
 
     private Town createTownFromResultSet(ResultSet rs) throws SQLException {
         UUID townId = UUID.fromString(rs.getString("uuid"));
-        UUID playerId = UUID.fromString(rs.getString("owner_id"));
+        UUID ownerId = UUID.fromString(rs.getString("owner_id"));
+        World world = Bukkit.getWorlds().get(0);
+        Location location = new Location(world,rs.getDouble("x"),rs.getDouble("y"),rs.getDouble("z"));
 
 
-        UUID tradeTown = null;
-        String tradeTownStr = rs.getString("tradeTown");
-        if (tradeTownStr != null && !tradeTownStr.isEmpty()) {
-            tradeTown = UUID.fromString(tradeTownStr);
-        }
-
-        Town town =  new Town(
+        return new Town(
                 townId,
-                playerId,
+                ownerId,
                 rs.getString("type"),
                 rs.getString("town_name"),
-                rs.getString("owner_name"),
-                rs.getInt("houses"),
-                rs.getInt("bonusBuildSites"),
-                rs.getString("world"),
-                rs.getInt("chunk_x"),
-                rs.getInt("chunk_z"),
-                rs.getBoolean("port"),
-                rs.getBoolean("landHub"),
-                tradeTown,
+                location,
                 rs.getString("data")
         );
-        town.setCore(rs.getBoolean("core"));
-        town.setInfrastructure(rs.getInt("infrastructure"));
-        town.setStatus(rs.getBoolean("status"));
-        town.setBStatus(rs.getBoolean("blockade_status"));
-
-
-        return town;
-
-
-
     }
 
     private Building createBuildingFromResultSet(ResultSet rs) throws SQLException {
-        String marketIdStr = rs.getString("market_id");
-        UUID marketId = marketIdStr != null ? UUID.fromString(marketIdStr) : null;
-        World world = Bukkit.getWorld(rs.getString("world"));
+
+        World world = Bukkit.getWorlds().get(0);
         Location location = new Location(world,rs.getDouble("x"),rs.getDouble("y"),rs.getDouble("z"));
         return new Building(
                 UUID.fromString(rs.getString("uuid")),
                 UUID.fromString(rs.getString("town_id")),
-                rs.getString("town_name"),
-                marketId,
-                rs.getString("type"),
-                rs.getInt("status"),
-                rs.getString("item"),
                 location,
                 rs.getString("data")
         );
@@ -812,25 +895,25 @@ public class ServerDatabase {
 
 
     private Army createArmyFromResultSet(ResultSet rs) throws SQLException {
-        Army army = new Army(UUID.fromString(rs.getString("uuid")), UUID.fromString(rs.getString("ownerId")));
+        Army army = new Army(UUID.fromString(rs.getString("uuid")), UUID.fromString(rs.getString("ownerId")),rs.getString("data"));
         army.setLeaderName(rs.getString("leaderName"));
         army.setLeaderFire(rs.getInt("leaderFire"));
         army.setLeaderShock(rs.getInt("leaderShock"));
-        army.setTechLvl(rs.getInt("maxLvl"));
         return army;
     }
 
-    private Unit createUnitFromRS(ResultSet rs) throws SQLException {
-        Unit unit = new Unit(UUID.fromString(rs.getString("uuid")));
-        unit.setArmyId(UUID.fromString(rs.getString("armyId")));
-        unit.setType(rs.getString("type"));
+    private ArmyUnit createUnitFromRS(ResultSet rs) throws SQLException {
+        var tech = UnitTech.valueOf(rs.getString("type"));
+        var armyId = UUID.fromString(rs.getString("armyId"));
+        var unitId = UUID.fromString(rs.getString("uuid"));
+        ArmyUnit unit = new ArmyUnit(tech,unitId,armyId,rs.getString("data"));
         unit.setLvl(rs.getInt("lvl"));
         unit.setHp(rs.getInt("hp"));
         unit.setMorale(rs.getDouble("morale"));
         unit.setDisc(rs.getDouble("disc"));
         unit.setFire(rs.getDouble("fire"));
         unit.setShock(rs.getDouble("shock"));
-        String path = "pips.standard."+unit.getType() + unit.getLvl() + ".";
+        String path = "pips.standard."+unit.getTech() + unit.getLvl() + ".";
         unit.setPipsFire(CustomConfig.get().getInt(path+"fire"));
         unit.setPipsShock(CustomConfig.get().getInt(path + "shock"));
         unit.setPipsMorale(CustomConfig.get().getInt(path + "morale"));
@@ -945,6 +1028,7 @@ public class ServerDatabase {
 //    }
 
     public Army getArmy(UUID armyId){
+        if(armyId == null) return null;
         if (armyCache.containsKey(armyId)) {
             return armyCache.get(armyId);
         }
@@ -981,8 +1065,10 @@ public class ServerDatabase {
 
 
     public void deleteArmy(Army army){
-        List<Unit> units = new ArrayList<>(army.getUnits());
-        for(Unit u:units){
+        EPlayer hand = getPlayer(army.getData().getInHand());
+        if(hand!=null) hand.placeArmy(army);
+        List<ArmyUnit> units = new ArrayList<>(army.getUnits());
+        for(ArmyUnit u:units){
             deleteUnit(u);
         }
         armyCache.remove(army.getUuid());
@@ -996,58 +1082,20 @@ public class ServerDatabase {
         }
     }
 
-    public void addUnit(Unit u){
-        unitCache.put(u.getUniqueId(),u);
-
-        String sql = "INSERT INTO units (" +
-                "uuid, " +
-                "armyId, " +
-                "type, " +
-                "lvl, " +
-                "morale, " +
-                "maxMorale, " +
-                "disc, " +
-                "fire, " +
-                "shock) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        try(Connection c = getConnection("addUnit")){
-            try(PreparedStatement st = c.prepareStatement(sql)){
-                int i = 1;
-                st.setString(i++, u.getUniqueId().toString());
-                st.setString(i++, u.getArmyId().toString());
-                st.setString(i++, u.getType());
-                st.setInt(i++, u.getLvl());
-                st.setDouble(i++, u.getMorale());
-                st.setDouble(i++, u.getBaseMorale());
-                st.setDouble(i++, u.getDisc());
-                st.setDouble(i++, u.getFire());
-                st.setDouble(i, u.getShock());
-
-                st.executeUpdate();
-
-            }
-
-
-        }catch (SQLException e) {
-            System.out.println("[Earth]Earth DataBase error in 'addUnit': " + e.getMessage());
-            Bukkit.broadcastMessage(ChatColor.RED + "DataBase error 'addUnit'");
-            throw new RuntimeException(e);
-        }
-    }
-
-    public HashSet<Unit> getUnits(){
-        if (unitCache.isEmpty()) {
-            return new HashSet<>();
-        }
-        // Создаем новый HashSet и копируем в него все ссылки на города из мапы
+    public HashSet<ArmyUnit> getUnits(){
+        if (unitCache.isEmpty()) return new HashSet<>();
         return new HashSet<>(unitCache.values());
     }
 
-    public Unit getUnit(UUID id){
-        return unitCache.get(id);
+    public ArmyUnit getUnit(UUID unitId){
+        return unitCache.get(unitId);
     }
 
-    public void deleteUnit(Unit unit){
+    public void addUnit(ArmyUnit unit){
+        unitCache.put(unit.getUniqueId(), unit);
+    }
+
+    public void deleteUnit(ArmyUnit unit){
         unitCache.remove(unit.getUniqueId());
         unit.getArmy().removeUnit(unit);
         try (Connection conn = getConnection("deleteUnit");
@@ -1055,9 +1103,15 @@ public class ServerDatabase {
             stmt.setString(1, unit.getUniqueId().toString());
             stmt.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            instance.getLogger().severe("DataBase error while processing deleteUnit");
+            Bukkit.broadcast(MiniMessage.miniMessage().deserialize("Database <yellow>deleteUnit <red>critical error"));
+            throw new RuntimeException(e);
         }
     }
+
+
+
+
 
     public void addBot(String botName, UUID botId) {
         String sqlPlayer = "INSERT INTO players (uuid, displayName) VALUES (?, ?)";
@@ -1210,6 +1264,12 @@ public class ServerDatabase {
 
     public EPlayer getPlayer(String name) {
         UUID id = getPlayerUuid(name);
+        if(id == null) return null;
+        return playerCache.get(id);
+    }
+
+    public EPlayer getPlayer(Player player) {
+        UUID id = player.getUniqueId();
         if(id == null) return null;
         return playerCache.get(id);
     }
@@ -1580,24 +1640,18 @@ public class ServerDatabase {
 
     public void addTown(Town town){
         townCache.put(town.getUniqueId(),town);
-        List<Long> chunkKeysToSave = new java.util.ArrayList<>();
-        int centerX = town.getLocation().getBlockX() >> 4;
-        int centerZ = town.getLocation().getBlockZ() >> 4;
-        int radius = 10;
-        for (int x = -radius; x <= radius; x++) {
-            for (int z = -radius; z <= radius; z++) {
-                int targetX = centerX + x;
-                int targetZ = centerZ + z;
 
-                // Быстрая упаковка координат в long без загрузки чанка
-                long chunkKey = org.bukkit.Chunk.getChunkKey(targetX, targetZ);
-
-                chunkCache.put(chunkKey, town.getUniqueId());
-
-                chunkKeysToSave.add(chunkKey);
-            }
-        }
         getPlayer(town.getOwnerId()).addTown(town);
+
+        for (var c:town.getData().getChunk()) {
+            long chunkKey = org.bukkit.Chunk.getChunkKey(c.x(), c.z());
+            chunkCache.put(chunkKey, town.getUniqueId());
+        }
+
+
+
+        Earth.getInstance().getBlueMapManager().updateTownMarker(town);
+
 
         String townUuidStr = town.getUniqueId().toString();
         String ownerIdStr = town.getOwnerId().toString();
@@ -1605,15 +1659,16 @@ public class ServerDatabase {
         String ownerName = town.getOwnerName();
         String townName = town.getName();
         String type = town.getType();
-        String world = town.getWorld();
-        int chunkX = town.getChunkX();
-        int chunkZ = town.getChunkZ();
-        int houses = town.getHouses();
+        Location location = town.getLocation();
+        String world = location.getWorld().getName();
+        double x = location.getX();
+        double y = location.getY();
+        double z = location.getZ();
 
         String connId = "addTown";
         Bukkit.getScheduler().runTaskAsynchronously(instance, () -> {
 
-            String sql = "INSERT OR REPLACE INTO towns (owner_name, town_name, uuid, owner_id, type, world, chunk_x, chunk_z, houses) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            String sql = "INSERT OR REPLACE INTO towns (owner_name, town_name, uuid, owner_id, type, world, x, y, z) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
             String chunkSql = "INSERT OR REPLACE INTO chunks (chunkKey, townId) VALUES (?, ?)";
 
             // Открываем соединение внутри асинхронного потока
@@ -1631,25 +1686,15 @@ public class ServerDatabase {
                     preparedStatement.setString(paramIndex++, ownerIdStr);
                     preparedStatement.setString(paramIndex++, type);
                     preparedStatement.setString(paramIndex++, world);
-                    preparedStatement.setInt(paramIndex++, chunkX);
-                    preparedStatement.setInt(paramIndex++, chunkZ);
-                    preparedStatement.setInt(paramIndex, houses);
+                    preparedStatement.setDouble(paramIndex++, x);
+                    preparedStatement.setDouble(paramIndex++, y);
+                    preparedStatement.setDouble(paramIndex, z);
                     preparedStatement.executeUpdate();
-                }
-
-                // 2. Сохраняем все 441 чанков через Batch пакет
-                try (PreparedStatement chunkStmt = conn.prepareStatement(chunkSql)) {
-                    for (long chunkKey : chunkKeysToSave) {
-                        chunkStmt.setLong(1, chunkKey);
-                        chunkStmt.setString(2, townUuidStr);
-                        chunkStmt.addBatch();
-                    }
-                    chunkStmt.executeBatch();
                 }
 
                 // Применяем транзакцию
                 conn.commit();
-                Earth.getInstance().getBlueMapManager().updateTownMarker(town);
+
             }catch (SQLException e) {
                 instance.getLogger().severe("DataBase error while processing " + connId);
                 Bukkit.broadcast(MiniMessage.miniMessage().deserialize("Database <yellow>"+connId+" <red>critical error"));
@@ -1665,21 +1710,27 @@ public class ServerDatabase {
         for (Building b:buildings){
             deleteBuilding(b);
         }
-        World world = Bukkit.getWorld(town.getWorld());
-        if (world == null) return;
-        int radius = instance.getConfig().getInt("townSize")*16;
-        for (Entity entity : world.getNearbyEntities(town.getLocation(),radius,radius,radius)) {
-            if (Objects.equals(entity.getCustomName(), town.getOwnerName())) {
-                entity.remove();
+
+
+        for(Entity entity:town.getLocation().getWorld().getEntities()){
+            var container = entity.getPersistentDataContainer();
+
+            if (container.has(villagerTownKey, PersistentDataType.STRING)) {
+                UUID id = UUID.fromString(container.get(villagerTownKey,PersistentDataType.STRING));
+                if(id.equals(town.getId())) entity.remove();
             }
+        }
+        List<String> deletedTowns = CustomConfig.get().getStringList("deletedTowns");
+        deletedTowns.add(town.getUniqueId().toString());
+        CustomConfig.set("deletedTown",deletedTowns);
+        if(town.getLocation().getBlock().getState() instanceof Chest chest){
+            chest.getBlockInventory().clear();
         }
         Tools.deleteHologram(town.getLocation(),town.getUniqueId().toString());
         townCache.remove(town.getUniqueId());
         getPlayer(town.getOwnerId()).removeTown(town);
 
-        if(town.getLocation().getBlock().getState() instanceof Chest chest){
-            chest.getBlockInventory().clear();
-        }
+
 
         String townUuidStr = town.getUniqueId().toString();
         String connId = "deleteTown";
@@ -1729,16 +1780,14 @@ public class ServerDatabase {
     }
 
     public boolean isLocationSafeForNewTown(Location newLocation, double minDistance) {
-        String newWorldName = newLocation.getWorld().getName();
+
 
         // Координаты нового города, который игрок пытается создать
         int newX = newLocation.getBlockX();
         int newZ = newLocation.getBlockZ();
 
         for (Town existingTown : townCache.values()) {
-            if (!existingTown.getWorld().equals(newWorldName)) {
-                continue;
-            }
+
 
             Location existingLocation = existingTown.getLocation();
 
@@ -1777,12 +1826,11 @@ public class ServerDatabase {
 
     public void addBuilding(Building building){
         try (Connection conn = getConnection("addBuilding");
-             PreparedStatement preparedStatement = conn.prepareStatement("INSERT INTO buildings (town_name, uuid, town_id, type, world, x, y, z) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")){
+             PreparedStatement preparedStatement = conn.prepareStatement("INSERT INTO buildings (town_name, uuid, town_id, world, x, y, z) VALUES (?, ?, ?, ?, ?, ?, ?)")){
             int paramIndex = 1;
-            preparedStatement.setString(paramIndex++, building.getTownName());
+            preparedStatement.setString(paramIndex++, building.getTown().getName());
             preparedStatement.setString(paramIndex++, building.getUniqueId().toString());
             preparedStatement.setString(paramIndex++, building.getTownId().toString());
-            preparedStatement.setString(paramIndex++, building.getType());
             preparedStatement.setString(paramIndex++, building.getLocation().getWorld().getName());
             preparedStatement.setDouble(paramIndex++, building.getLocation().getX());
             preparedStatement.setDouble(paramIndex++, building.getLocation().getY());
@@ -1851,12 +1899,41 @@ public class ServerDatabase {
     public Building getBuilding(UUID buildingId) {
         return buildingCache.get(buildingId);
     }
-    public HashSet<Building> getBuildings() {
-        if (buildingCache.isEmpty()) {
-            return new HashSet<>();
+    public Set<Building> getBuildings() {
+
+        if(buildingCache.isEmpty()) return new HashSet<>();
+
+        return new HashSet<>(buildingCache.values()); // Не создает новых объектов в памяти
+    }
+
+    public Building getFarmInChunk(Chunk chunk) {
+        int chunkMinX = chunk.getX() << 4;
+        int chunkMaxX = chunkMinX + 15;
+        int chunkMinZ = chunk.getZ() << 4;
+        int chunkMaxZ = chunkMinZ + 15;
+
+        for (Building farm : getBuildings()) {
+            Location center = farm.getLocation();
+
+            if (!center.getWorld().equals(chunk.getWorld())) {
+                continue;
+            }
+
+            int farmMinX = center.getBlockX() - 13;
+            int farmMaxX = center.getBlockX() + 13;
+            int farmMinZ = center.getBlockZ() - 13;
+            int farmMaxZ = center.getBlockZ() + 13;
+
+            // Проверяем пересечение квадрата фермы и квадрата чанка
+            boolean intersects = (farmMinX <= chunkMaxX && farmMaxX >= chunkMinX) &&
+                    (farmMinZ <= chunkMaxZ && farmMaxZ >= chunkMinZ);
+
+            if (intersects) {
+                return farm;
+            }
         }
-        // Создаем новый HashSet и копируем в него все ссылки на города из мапы
-        return new HashSet<>(buildingCache.values());
+
+        return null;
     }
 
 

@@ -29,7 +29,7 @@ public class CreateBot implements CommandExecutor, TabCompleter {
     private final Earth earth;
     public CreateBot(Earth plugin) {
         this.earth = plugin;
-        db = plugin.getServerDatabase();
+        db = plugin.getDatabase();
     }
     private final NamespacedKey armyOwnerKey = new NamespacedKey(Earth.getInstance(), "armyOwner");
     private final NamespacedKey armyIdKey = new NamespacedKey(Earth.getInstance(), "armyId");
@@ -72,8 +72,7 @@ public class CreateBot implements CommandExecutor, TabCompleter {
                     switch (args[1]){
                         case "army" -> {
                             UUID armyId = UUID.randomUUID();
-                            Army army = new Army(armyId,bot.getUniqueId());
-                            army.setTechLvl(1);
+                            Army army = new Army(armyId,bot.getUniqueId(),"");
                             db.addArmy(army);
 
                             ItemStack owner = new ItemStack(Material.PLAYER_HEAD);

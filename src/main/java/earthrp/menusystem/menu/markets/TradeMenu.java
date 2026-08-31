@@ -61,16 +61,17 @@ public class TradeMenu extends Menu {
 
     @Override
     public void setMenuItems() {
+        inventory.clear();
         ItemStack stats;
         if(town.isLandHub()){
             stats = new ItemStack(Material.BOOK);
             ItemMeta statsMeta = stats.getItemMeta();
             statsMeta.setDisplayName(ChatColor.AQUA + "Основная Информация о рынке");
-            System.out.println("[Earth]town " + town.getTradeMod()*100.0);
+
             statsMeta.setLore(List.of(
-                            Tools.colorText("&fБонус рынка:" + town.getColorTradeMod()),
-                            Tools.colorText("&fКоличество товаров: " + town.getMarketGoods()),
-                            Tools.colorText("&dДоход: &a" + town.getTradeIncome())
+                            Tools.colorText("&fБонус рынка:" + town.getColorTradeMod())
+                            //Tools.colorText("&fКоличество товаров: " + town.getMarketGoods()),
+                            //Tools.colorText("&dДоход: &a" + town.getTradeIncome())
                     )
             );
             stats.setItemMeta(statsMeta);
@@ -79,7 +80,6 @@ public class TradeMenu extends Menu {
             ItemMeta statsMeta = stats.getItemMeta();
             statsMeta.setDisplayName(ChatColor.RED + "В городе отсутствует рынок!");
             statsMeta.setLore(List.of(
-                            ChatColor.translateAlternateColorCodes('&', "&fЦена товаров в городе: &a" + town.getLocalGoodsCost()),
                             ChatColor.translateAlternateColorCodes('&', "&fНажмите чтобы перенаправить торговлю")
                     )
             );
@@ -88,7 +88,7 @@ public class TradeMenu extends Menu {
 
 
 
-        ItemStack tradeWay = Tools.createItem(Material.SADDLE,"Перенаправить торговлю",null);
+        ItemStack tradeWay = Tools.createItemLegacy(Material.SADDLE,"Перенаправить торговлю",null);
         inventory.setItem(1,tradeWay);
 
         ItemStack next = new ItemStack(Material.BARRIER, 1);

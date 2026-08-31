@@ -1,28 +1,42 @@
 package earthrp.battle;
 
+import earthrp.customEnums.UnitTech.UnitType;
 import earthrp.tools.Tools;
 import earthrp.customEnums.EPlayerAttribute;
-import earthrp.customObjects.Unit;
+import earthrp.customObjects.ArmyUnit;
 import lombok.Getter;
 import lombok.Setter;
 
 @Getter
 @Setter
-public class BattleUnit extends Unit {
+public class BattleUnit extends ArmyUnit {
 
-    public BattleUnit(Unit unit) {
-        super(unit.getUniqueId());
+    public BattleUnit(ArmyUnit unit) {
+        super(unit.getTech(),unit.getUniqueId(),unit.getArmyId(),unit.serializeData());
         this.setHp(unit.getHp());
         this.setMorale(unit.getMorale());
         this.setMaxMorale(unit.getMaxMorale());
         this.setDisc(unit.getDisc());
 
 
-        this.setFire(unit.getFire());
-        this.setShock(unit.getShock());
-
         this.setType(unit.getType());
         this.setLvl(unit.getLvl());
+
+        switch (getType()){
+            case INF ->{
+                this.setFire(unit.getFire() + unit.getArmy().getOwner().getAttribute(EPlayerAttribute.INF_FIRE));
+                this.setShock(unit.getShock()+ unit.getArmy().getOwner().getAttribute(EPlayerAttribute.INF_SHOCK));
+            }
+            case CAV ->{
+                this.setFire(unit.getFire() + unit.getArmy().getOwner().getAttribute(EPlayerAttribute.CAV_FIRE));
+                this.setShock(unit.getShock()+ unit.getArmy().getOwner().getAttribute(EPlayerAttribute.CAV_SHOCK));
+            }
+            case ART ->{
+                this.setFire(unit.getFire() + unit.getArmy().getOwner().getAttribute(EPlayerAttribute.ART_FIRE));
+                this.setShock(unit.getShock()+ unit.getArmy().getOwner().getAttribute(EPlayerAttribute.ART_SHOCK));
+            }
+        }
+
 
         this.setPipsFire(unit.getPipsFire());
         this.setPipsShock(unit.getPipsShock());
@@ -46,8 +60,8 @@ public class BattleUnit extends Unit {
 
         this.status = "reserve";
 
-        if(this.getType().equals("inf")) fr = 1;
-        if(this.getType().equals("cav")) fr = 2;
+        if(this.getTech().getType() == UnitType.INF) fr = 1;
+        else if(this.getTech().getType() == UnitType.CAV) fr = 2;
         else fr = 3;
         fr += getLvl()/2;
 
@@ -82,12 +96,12 @@ public class BattleUnit extends Unit {
     }
 
     public double getCA(){
-        return getArmy().getOwner().getAttribute(EPlayerAttribute.fromString(this.getType()+"CombatAbility"));
+        return getArmy().getOwner().getAttribute(EPlayerAttribute.fromString(this.getTech().getType()+"_CombatAbility"));
     }
 
     @Override
     public String toString() {
-        return  "[" + getRowIndex() + "]" + getType() + "{" + getMorale() + "}";
+        return  "[" + getRowIndex() + "]" + getTech() + "{" + getMorale() + "}";
     }
 
     public double getFireDamage(){

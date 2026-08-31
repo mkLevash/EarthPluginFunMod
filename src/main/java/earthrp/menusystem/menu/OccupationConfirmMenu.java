@@ -41,7 +41,7 @@ public class OccupationConfirmMenu extends Menu {
         switch (e.getCurrentItem().getType()){
             case EMERALD->{
                 p.closeInventory();
-                town.setStatus(false);
+
                 p.sendMessage("Вы оккупировали "+town.getName());
 
                 new TownsMenu(menuUtility).open();
@@ -55,6 +55,7 @@ public class OccupationConfirmMenu extends Menu {
 
     @Override
     public void setMenuItems() {
+        inventory.clear();
 
         ItemStack yes = new ItemStack(Material.EMERALD, 1);
         ItemMeta yes_meta = yes.getItemMeta();

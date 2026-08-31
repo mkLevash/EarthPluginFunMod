@@ -1,14 +1,12 @@
 package earthrp.listeners;
 
-import earthrp.customObjects.EPlayer;
+import earthrp.customEnums.UnitTech;
+import earthrp.customObjects.*;
 import earthrp.tools.Tools;
-import earthrp.customObjects.Army;
 import earthrp.Earth;
-import earthrp.customObjects.Unit;
 import earthrp.database.ServerDatabase;
 import earthrp.menusystem.MenuUtility;
 import earthrp.menusystem.menu.army.ArmyMenu;
-import io.papermc.paper.event.packet.PlayerChunkLoadEvent;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.ShulkerBox;
@@ -18,7 +16,6 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
-import org.bukkit.event.inventory.InventoryAction;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.player.PlayerInteractEvent;
@@ -33,7 +30,6 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.Vector;
 
-import java.util.Collections;
 import java.util.Set;
 import java.util.UUID;
 
@@ -65,9 +61,12 @@ public class ArmyHandler implements Listener {
         try{
             if(!validUnitTransfer(e)) return;
 
+            e.setCancelled(true);
+
             if(!armyExists(e)){
                 handleNewArmy(e);
             }else{
+
                 handleExistingArmy(e);
             }
 
@@ -91,10 +90,12 @@ public class ArmyHandler implements Listener {
         if(e.getAction().equals(Action.LEFT_CLICK_BLOCK)
                 && e.getPlayer().getInventory().getItemInMainHand().equals(Tools.doomStick())
                 && e.getClickedBlock()!=null){
+
             Army army = Tools.getArmyFromShulker(e.getClickedBlock());
             if (army != null){
                 e.setCancelled(true);
-                for(Unit u:army.getUnits()){
+                army.setRetreat(false);
+                for(ArmyUnit u:army.getUnits()){
                     u.setHp(1000);
                     u.setMorale(u.getMaxMorale());
                 }
@@ -118,13 +119,19 @@ public class ArmyHandler implements Listener {
             }
 
             if (army!=null){
-                PotionEffect slowness = new PotionEffect(PotionEffectType.SLOWNESS, Integer.MAX_VALUE, 4);
-                PotionEffect glowing = new PotionEffect(PotionEffectType.GLOWING, Integer.MAX_VALUE, 1);
+                EPlayer p = Earth.getInstance().getDatabase().getPlayer(player.getUniqueId());
+                p.getData().armiesInHand.add(army.getUuid());
+                int amplifier = 5 - (p.getMaxLeaderMovement() / 2 );
+
+                PotionEffect slowness = new PotionEffect(PotionEffectType.SLOWNESS, -1, amplifier);
+                PotionEffect glowing = new PotionEffect(PotionEffectType.GLOWING, -1, 1);
                 player.addPotionEffect(slowness);
                 player.addPotionEffect(glowing);
-                Earth.getInstance().getServerDatabase().getPlayer(player.getUniqueId()).getData().armiesInHand.add(army.getUuid());
-                army.setPlayerUUID(player.getUniqueId());
-                player.setSprinting(false);
+
+                Tools.deleteHologram(army.getChunkKey(),"armyHoloTroops" + army.getUuid().toString());
+                Tools.deleteHologram(army.getChunkKey(),"armyHoloMorale" + army.getUuid().toString());
+
+
             }
         }
 
@@ -184,30 +191,29 @@ public class ArmyHandler implements Listener {
     public void onShulkerPlace(BlockPlaceEvent e) {
         Player player = e.getPlayer();
         Block block = e.getBlockPlaced();
+        Location loc = block.getLocation();
+        Chunk toChunk =e.getBlockPlaced().getLocation().getChunk();
 
-        // Проверяем, является ли поставленный блок шалкеровым ящиком
-        // Использование Tag.SHULKER_BOXES автоматически покроет все цвета
+
         if (Tag.SHULKER_BOXES.isTagged(block.getType())) {
+            Army army = Tools.getArmyFromShulker(e.getBlock());
+            if(army == null) return;
+            if (player.isSneaking()) { // зажат shift
+                Set<UUID> armies = Earth.getInstance().getDatabase().getPlayer(player.getUniqueId()).getData().armiesInHand;
+                armies.remove(army.getUuid());
+                if(armies.isEmpty()){
+                    player.removePotionEffect(PotionEffectType.SLOWNESS);
+                    player.removePotionEffect(PotionEffectType.GLOWING);
+                    player.setSprinting(true);
+                }
+                army.setLocation(toChunk);
 
-            // Проверяем, крадется (шифтит) ли игрок
-            if (!player.isSneaking()) {
-                // Отменяем установку блока
-                e.setCancelled(true);
+                Tools.spawnHologram(loc.clone().add(0.5,1.25,0.5),"Армия <light_purple>" + army.getOwner().getDisplayName() + "<white>'a - <green>" + (army.getTroops()/1000) + "K","armyHoloTroops" + army.getUuid().toString());
+                Tools.spawnHologram(loc.clone().add(0.5,1.0,0.5),"Мораль <dark_green>" + army.getMorale() + "<white> / <dark_green>" + army.getMaxMorale(),"armyHoloMorale" + army.getUuid().toString());
+
 
             }else{
-                Army army = Tools.getArmyFromShulker(e.getBlock());
-                if(army != null){
-                    Set<UUID> armies = Earth.getInstance().getServerDatabase().getPlayer(player.getUniqueId()).getData().armiesInHand;
-                    armies.remove(army.getUuid());
-                    if(armies.isEmpty()){
-                        player.removePotionEffect(PotionEffectType.SLOWNESS);
-                        player.removePotionEffect(PotionEffectType.GLOWING);
-                        player.setSprinting(true);
-                    }
-                    army.setPlayerUUID(null);
-                    army.setStaticLocation(e.getBlock().getLocation());
-
-                }
+                e.setCancelled(true);
             }
         }
     }
@@ -221,31 +227,44 @@ public class ArmyHandler implements Listener {
         }
 
         // Получаем чанк, ИЗ которого игрок вышел, и В который пришел
-        EPlayer player = Earth.getInstance().getServerDatabase().getPlayer(e.getPlayer().getUniqueId());
 
         Chunk toChunk = e.getTo().getChunk();
-        Chunk fromChunk = toChunk.getWorld().getChunkAt(player.getData().getLocation());
+        Chunk fromChunk = e.getFrom().getChunk();
 
         // Если координаты чанков не совпадают — игрок перешел границу
         if (fromChunk.getX() != toChunk.getX() || fromChunk.getZ() != toChunk.getZ()) {
+            ServerDatabase db = Earth.getInstance().getDatabase();
+            EPlayer player = db.getPlayer(e.getPlayer());
+            Set<UUID> armies = player.getData().armiesInHand;
+            if (!armies.isEmpty()){
+                e.getPlayer().removePotionEffect(PotionEffectType.SLOWNESS);
+                int amplifier = 5 - (player.getMaxLeaderMovement() / 2) ;
+                PotionEffect slowness = new PotionEffect(PotionEffectType.SLOWNESS, -1, amplifier);
+                Town town = db.getTownAtChunk(toChunk);
+                if(town!=null && !town.getController().equals(player) && town.isFort() && !player.getData().getAlly().contains(town.getOwnerId()) ){
+
+                    if(isBorderChunk(toChunk,town)){
+                        e.getPlayer().sendMessage("Вы зашли на территорию контролируемую крепостью и не можете пройти дальше без осады или права прохода");
+                        Player javaPlayer = Bukkit.getPlayer(town.getController().getUniqueId());
+                        if (javaPlayer!=null) javaPlayer.sendMessage(Tools.deserialize("На границе города <aqua>"+ town.getName() + "<white> была замечена <red>армия врага!"));
+                    }else {
+                        slowness = new PotionEffect(PotionEffectType.SLOWNESS, -1, 6);
+
+                    }
 
 
-
-            if (!player.getData().armiesInHand.isEmpty()){
-                player.getData().setLocation(toChunk.getChunkKey());
-                player.getData().setLocationTime(System.currentTimeMillis());
+                }
+                e.getPlayer().addPotionEffect(slowness);
+                for(UUID armyId : armies){
+                    Army army = db.getArmy(armyId);
+                    army.setLocation(toChunk,System.currentTimeMillis());
+                }
 
             }
         }
     }
 
-    @EventHandler
-    public void onMove(PlayerChunkLoadEvent e){
-        EPlayer player = Earth.getInstance().getServerDatabase().getPlayer(e.getPlayer().getUniqueId());
-        if (!player.getData().armiesInHand.isEmpty()){
 
-        }
-    }
 
     @EventHandler
     public void onPlayerMoveInAir(PlayerMoveEvent event) {
@@ -257,8 +276,8 @@ public class ArmyHandler implements Listener {
             return;
         }
 
-        if (!Earth.getInstance().getServerDatabase().getPlayer(player.getUniqueId()).getData().armiesInHand.isEmpty()) {
-            double reductionMultiplier = 0.2;
+        if (!Earth.getInstance().getDatabase().getPlayer(player.getUniqueId()).getData().armiesInHand.isEmpty()) {
+            double reductionMultiplier = 0.35;
             Vector velocity = player.getVelocity();
             player.setVelocity(new Vector(
                     velocity.getX() * reductionMultiplier,
@@ -267,8 +286,6 @@ public class ArmyHandler implements Listener {
             ));
 
         }
-
-
     }
 
 
@@ -285,7 +302,7 @@ public class ArmyHandler implements Listener {
             ShulkerBox shulkerBox = (ShulkerBox) e.getClickedBlock().getState();
             ItemStack leader = e.getPlayer().getInventory().getItemInMainHand();
 
-            if(leader.getType().equals(Material.PLAYER_HEAD)){
+            if(leader.getType().equals(Material.PLAYER_HEAD) && army.getLeaderName()==null){
 
                 PersistentDataContainer data = leader.getItemMeta().getPersistentDataContainer();
                 if(data.has(leaderFireKey)){
@@ -298,11 +315,6 @@ public class ArmyHandler implements Listener {
                     
                 }
             }
-
-            if(mu.getLeaderHead()==null&&army.getLeaderName()!=null){
-
-
-            }
             e.setCancelled(true);
             mu.setArmy(army);
             mu.setArmyShulkerBox(shulkerBox);
@@ -313,14 +325,19 @@ public class ArmyHandler implements Listener {
     }
 
     private boolean validUnitTransfer(InventoryClickEvent e) {
-        if (e.getAction() == InventoryAction.MOVE_TO_OTHER_INVENTORY && (e.getInventory().getType() == InventoryType.SHULKER_BOX || armyExists(e))){
+        if (e.getClickedInventory() == null) return false;
+
+        // Клик должен быть по инвентарю игрока (нижнему)
+        if (e.getClickedInventory().equals(e.getWhoClicked().getInventory()) && (e.getInventory().getType() == InventoryType.SHULKER_BOX || armyExists((e))) ){
             if (e.getCurrentItem() != null && e.getCurrentItem().hasItemMeta()){
                 ItemMeta meta = e.getCurrentItem().getItemMeta();
                 NamespacedKey key = new NamespacedKey(Earth.getInstance(), "unitType");
 
-                return (meta.getPersistentDataContainer().has(key, PersistentDataType.STRING) || meta.getPersistentDataContainer().has(leaderFireKey, PersistentDataType.INTEGER));
+                return (meta.getPersistentDataContainer().has(key, PersistentDataType.STRING));
             }
+
         }
+
         return false;
     }
 
@@ -335,7 +352,7 @@ public class ArmyHandler implements Listener {
     }
 
     private void handleNewArmy(InventoryClickEvent e){
-        ServerDatabase db = this.earth.getServerDatabase();
+        ServerDatabase db = this.earth.getDatabase();
         UUID ownerId = e.getWhoClicked().getUniqueId();
         UUID armyId = UUID.randomUUID();
 
@@ -347,45 +364,40 @@ public class ArmyHandler implements Listener {
         ownerMeta.getPersistentDataContainer().set(armyOwnerKey, PersistentDataType.STRING, ownerId.toString());
         ownerMeta.getPersistentDataContainer().set(armyIdKey, PersistentDataType.STRING, armyId.toString());
         ownerMeta.setDisplayName(e.getWhoClicked().getName());
-        ownerMeta.setLore(Collections.singletonList(ChatColor.RED + "ВЫ СОЗДАЛИ АРМИЮ, ОТКРОЙТЕ ЗАНОВОЙ ШАЛКЕР ЧТОБЫ ПРОДОЛЖИТЬ"));
         owner.setItemMeta(ownerMeta);
 
 
 
 
 
-
-        Army army = new Army(armyId,ownerId);
-
+        Location loc = e.getInventory().getLocation();
+        Army army = new Army(armyId,ownerId,loc);
         ItemStack item = e.getCurrentItem();
         ItemMeta meta = item.getItemMeta();
         PersistentDataContainer data = meta.getPersistentDataContainer();
         String type = data.get(unitTypeKey,PersistentDataType.STRING);
-        int lvl = data.get(unitLvlKey,PersistentDataType.INTEGER);
-        double disc = data.get(unitDiscKey,PersistentDataType.DOUBLE);
-        double fire = data.get(unitFireKey,PersistentDataType.DOUBLE);
-        double shock = data.get(unitShockKey,PersistentDataType.DOUBLE);
+
+
+        db.addArmy(army);
 
         for (int i = 0; i < item.getAmount(); i++) {
-            Unit unit = new Unit(UUID.randomUUID());
-            unit.setArmyId(armyId);
-            unit.setType(type);
-            unit.setLvl(lvl);
-            unit.setHp(1000);
-            unit.setMorale(Tools.round(unit.getBaseMorale() * db.getPlayer(ownerId).getMoraleMod()));
+            ArmyUnit unit = new ArmyUnit(UnitTech.valueOf(type),UUID.randomUUID(),armyId,"");
+
             if(data.has(unitMoraleKey)){
                 unit.setMorale(data.get(unitMoraleKey,PersistentDataType.DOUBLE));
             }
-            unit.setDisc(disc);
-            unit.setFire(fire);
-            unit.setShock(shock);
-            db.addUnit(unit);
+            if(data.has(unitDiscKey)){
+                double disc = data.get(unitDiscKey,PersistentDataType.DOUBLE);
+                unit.getData().setDisc(disc);
+            }
+
             army.addUnit(unit);
         }
-        army.setTechLvl(lvl);
-        db.addArmy(army);
-
+        item.setAmount(0);
         e.getInventory().addItem(owner);
+
+        Tools.spawnHologram(loc.clone().add(0.5,1.25,0.5),"Армия <light_purple>" + army.getOwner().getDisplayName() + "<white>'a - <green>" + (army.getTroops()/1000) + "K","armyHoloTroops" + army.getUuid());
+        Tools.spawnHologram(loc.clone().add(0.5,1.0,0.5),"Мораль <dark_green>" + army.getMorale() + "<white> / <dark_green>" + army.getMaxMorale(),"armyHoloMorale" + army.getUuid());
 
 
 
@@ -393,7 +405,7 @@ public class ArmyHandler implements Listener {
     }
 
     private void handleExistingArmy(InventoryClickEvent e){
-        ServerDatabase db = this.earth.getServerDatabase();
+        ServerDatabase db = this.earth.getDatabase();
         UUID armyId = null;
         int leaderFire = -1;
         for(ItemStack item: e.getInventory().getContents()){
@@ -414,41 +426,25 @@ public class ArmyHandler implements Listener {
             PersistentDataContainer data = meta.getPersistentDataContainer();
             if(data.has(unitTypeKey,PersistentDataType.STRING)){
                 String type = data.get(unitTypeKey,PersistentDataType.STRING);
-                int lvl = data.get(unitLvlKey,PersistentDataType.INTEGER);
-                double disc = data.get(unitDiscKey,PersistentDataType.DOUBLE);
-                double fire = data.get(unitFireKey,PersistentDataType.DOUBLE);
-                double shock = data.get(unitShockKey,PersistentDataType.DOUBLE);
                 for (int i = 0; i < item.getAmount(); i++) {
-                    Unit unit = new Unit(UUID.randomUUID());
-                    unit.setArmyId(armyId);
-                    unit.setType(type);
-                    unit.setLvl(lvl);
-                    unit.setHp(1000);
-                    unit.setMorale(unit.getMaxMorale());
+                    ArmyUnit unit = new ArmyUnit(UnitTech.valueOf(type),UUID.randomUUID(),armyId, "");
+
                     if(data.has(unitMoraleKey)){
                         unit.setMorale(data.get(unitMoraleKey,PersistentDataType.DOUBLE));
                     }
-                    unit.setDisc(disc);
-                    unit.setFire(fire);
-                    unit.setShock(shock);
-                    db.addUnit(unit);
+                    if(data.has(unitDiscKey)){
+                        double disc = data.get(unitDiscKey,PersistentDataType.DOUBLE);
+                        unit.getData().setDisc(disc);
+                    }
                     army.addUnit(unit);
 
                 }
-                if(lvl>=army.getTechLvl()){
-                    army.setTechLvl(lvl);
-                }
-                for (int i = 0; i < e.getWhoClicked().getInventory().getSize(); i++) {
-                    ItemStack itemStack = e.getWhoClicked().getInventory().getItem(i);
-                    if(itemStack!=null && itemStack.equals(e.getCurrentItem())){
-                        e.getWhoClicked().getInventory().setItem(i,new ItemStack(Material.AIR));
-                    }
-                }
+
+                item.setAmount(0);
             } else if (data.has(leaderFireKey)) {
                 updateLeader(army,data);
                 army.setLeaderName(meta.getDisplayName());
-            }else{
-                e.setCancelled(true);
+                item.setAmount(0);
             }
 
 
@@ -465,8 +461,45 @@ public class ArmyHandler implements Listener {
     private void updateLeader(Army army, PersistentDataContainer data){
         int fire = data.get(leaderFireKey,PersistentDataType.INTEGER);
         int shock = data.get(leaderShockKey,PersistentDataType.INTEGER);
+        int move = data.get(leaderMoveKey,PersistentDataType.INTEGER);
+        int siege = data.get(leaderSiegeKey,PersistentDataType.INTEGER);
 
         army.setLeaderFire(fire);
         army.setLeaderShock(shock);
+        army.getData().setLeaderMovement(move);
+        army.getData().setLeaderSiege(siege);
+    }
+
+    private boolean isBorderChunk(Chunk currentChunk, Town town) {
+
+        ServerDatabase db = Earth.getInstance().getDatabase();
+
+        World world = currentChunk.getWorld();
+        int currentX = currentChunk.getX();
+        int currentZ = currentChunk.getZ();
+
+
+        int[][] neighbors = {
+                {currentX, currentZ - 1}, // Север
+                {currentX, currentZ + 1}, // Юг
+                {currentX + 1, currentZ}, // Восток
+                {currentX - 1, currentZ}  // Запад
+        };
+
+
+        for (int[] offset : neighbors) {
+            int nextX = offset[0];
+            int nextZ = offset[1];
+
+            Chunk neighborChunk = world.getChunkAt(nextX, nextZ);
+
+
+            Town neighborTown = db.getTownAtChunk(neighborChunk);
+            if (neighborTown == null || !neighborTown.equals(town)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

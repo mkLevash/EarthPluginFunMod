@@ -30,7 +30,7 @@ public class GiveTown implements CommandExecutor, TabCompleter {
                 ItemStack capital = new ItemStack(Material.END_CRYSTAL, 1);
                 ItemMeta capitalMeta = capital.getItemMeta();
                 capitalMeta.setDisplayName(args[1]);
-                capitalMeta.setLore(List.of(args[0],capitalId,String.valueOf(p.getUniqueId()),p.getDisplayName()));
+                capitalMeta.setLore(List.of(args[0],capitalId,String.valueOf(p.getUniqueId()),p.getDisplayName(),"debug"));
                 capital.setItemMeta(capitalMeta);
                 p.getInventory().addItem(capital);
                 sender.sendMessage(ChatColor.GREEN + "Вы выдали себе ратушу");

@@ -4,7 +4,7 @@ import earthrp.Earth;
 import earthrp.tools.Tools;
 import earthrp.customObjects.Army;
 import earthrp.battle.Battle;
-import earthrp.customObjects.Unit;
+import earthrp.customObjects.ArmyUnit;
 import earthrp.battle.BattleUnit;
 import earthrp.menusystem.Menu;
 import earthrp.menusystem.MenuUtility;
@@ -70,7 +70,7 @@ public class BattleJoinMenu extends Menu {
                     item.setAmount(0);
                     if(attacker.equals(join)){
                         battle.getAtt().add(army);
-                        for(Unit u:army.getUnits()){
+                        for(ArmyUnit u:army.getUnits()){
                             battle.getAttUnits().add(new BattleUnit(u));
                         }
 
@@ -87,6 +87,7 @@ public class BattleJoinMenu extends Menu {
 
     @Override
     public void setMenuItems() {
+        inventory.clear();
 
         ItemStack defenderItem = new ItemStack(Material.PLAYER_HEAD);
         SkullMeta defenderMeta = (SkullMeta) defenderItem.getItemMeta();

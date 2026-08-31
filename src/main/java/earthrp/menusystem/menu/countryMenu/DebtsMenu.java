@@ -1,11 +1,8 @@
 package earthrp.menusystem.menu.countryMenu;
 
-import earthrp.Earth;
 import earthrp.tools.Tools;
-import earthrp.customObjects.Building;
 import earthrp.customObjects.EPlayer;
 import earthrp.customEnums.EPlayerAttribute;
-import earthrp.files.CustomConfig;
 import earthrp.menusystem.MenuUtility;
 import earthrp.menusystem.PaginatedMenu;
 import org.bukkit.ChatColor;
@@ -16,10 +13,8 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
-import static earthrp.tools.Tools.*;
 import static earthrp.tools.PDCKeys.*;
 
 public class DebtsMenu extends PaginatedMenu {
@@ -29,14 +24,9 @@ public class DebtsMenu extends PaginatedMenu {
 
     public DebtsMenu(MenuUtility menuUtility) {
         super(menuUtility);
-        int[] debtAmount = player.getDebts();
-        for (int i=0; i<3;i++) {
-            for (int j = 0; j < debtAmount[i]; j++) {
-                debts.add(Tools.createDebtItem(i));
-            }
-        }
+
     }
-    List<ItemStack> debts = new ArrayList<>();
+
 
 
 
@@ -44,7 +34,7 @@ public class DebtsMenu extends PaginatedMenu {
 
     @Override
     public String getMenuName() {
-        return "Выбор рынка. Страница "+page;
+        return "Долги. Страница "+page;
     }
 
     @Override
@@ -69,7 +59,7 @@ public class DebtsMenu extends PaginatedMenu {
                             super.open();
                         }
                     }else if (ChatColor.stripColor(e.getCurrentItem().getItemMeta().getDisplayName()).equalsIgnoreCase("Right")){
-                        if (!((index + 1) > player.getDebtExpense())){
+                        if (!((index + 1) > player.getDebtList().size())){
                             page = page + 1;
                             super.open();
                         }else{
@@ -78,34 +68,42 @@ public class DebtsMenu extends PaginatedMenu {
                     }
                 }
                 case PAPER -> {
-                    p.closeInventory();
                     PersistentDataContainer data = item.getItemMeta().getPersistentDataContainer();
-                    int debtSize = data.get(debtSizeKey,PersistentDataType.INTEGER);
+                    UUID debtId = UUID.fromString(data.get(debtIdKey,PersistentDataType.STRING));
+                    double interest = 1.0 + player.getData().getInterestMap().get(debtId);
+                    int debtSize = (int) Math.ceil(data.get(debtSizeKey,PersistentDataType.INTEGER) * interest);
                     if(debtSize<=player.getAttribute(EPlayerAttribute.TREASURY)){
-                        int lvl = data.get(debtLvlKey,PersistentDataType.INTEGER);
-                        String path = "debt."+player.getDisplayName()+".lvl"+lvl;
-                        CustomConfig.set(path,CustomConfig.get().getInt(path)-1);
                         player.addAttribute(EPlayerAttribute.TREASURY, -debtSize);
+
+                        player.getData().getDebtMap().remove(debtId);
                     }
-                    new DebtsMenu(menuUtility).open();
-
-
                 }
                 case MAP ->{
-                    p.closeInventory();
-                    if(player.getAttribute(EPlayerAttribute.TREASURY)>=player.getDebt()){
-                        player.addAttribute(EPlayerAttribute.TREASURY, -player.getDebt());
-                        String path = "debt."+player.getDisplayName()+".lvl";
-                        for (int i = 0; i < 3; i++) {
-                            CustomConfig.set(path+i,0);
+                    player.getData().getDebtMap().entrySet().removeIf(entry -> {
+                        int debtSize = entry.getValue();
+                        if (player.getAttribute(EPlayerAttribute.TREASURY) >= debtSize) {
+                            player.addAttribute(EPlayerAttribute.TREASURY, -debtSize);
+                            return true;
                         }
-                        new CountryMenu(menuUtility).open();
-                    }else{
-                        new DebtsMenu(menuUtility).open();
-                    }
+                        return false;
+                    });
+                }
+                case PRISMARINE_CRYSTALS -> {
+                    if (player.getAttribute(EPlayerAttribute.OI_BALANCE)>=10 && !player.getData().getDebtMap().isEmpty()){
+                        player.addAttribute(EPlayerAttribute.OI_BALANCE,-10);
+                        Iterator<UUID> iterator = player.getData().getDebtMap().keySet().iterator();
+                        if (iterator.hasNext()) {
+                            iterator.next();
+                            iterator.remove();
+                        }
 
+                    }else{
+                        p.sendMessage("недостаточно ૹ");
+                    }
                 }
             }
+            inventory.clear();
+            setMenuItems();
         }
 
 
@@ -113,16 +111,23 @@ public class DebtsMenu extends PaginatedMenu {
 
     @Override
     public void setMenuItems() {
+        inventory.clear();
         addMenuBorder();
         ItemStack border = makeItem(Material.GRAY_STAINED_GLASS_PANE, " ");
         inventory.setItem(0,border);
         //The thing you will be looping through to place items
         List<String> allDebtsLore = List.of(
                 Tools.colorText("&fОбщий долг: &c" + player.getDebt()));
-        ItemStack allDebts = Tools.createItem(Material.MAP,"Выплатить все долги",allDebtsLore);
+        ItemStack allDebts = Tools.createItemLegacy(Material.MAP,"Выплатить все долги",allDebtsLore);
         inventory.setItem(4,allDebts);
 
+        List<String> revisionLore = new ArrayList<>();
+        revisionLore.add("Стоимость 10ૹ");
+        revisionLore.add("Прощает 1 долг");
+        ItemStack revision = makeItem(Material.PRISMARINE_CRYSTALS,"Провести ревизию",revisionLore);
+        inventory.setItem(5,revision);
 
+        List<ItemStack> debts = player.getDebtList();
         for(int i = 0; i < getMaxItemsPerPage(); i++) {
             index = getMaxItemsPerPage() * page + i;
 

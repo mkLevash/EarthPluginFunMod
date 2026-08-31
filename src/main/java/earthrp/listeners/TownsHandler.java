@@ -2,38 +2,30 @@ package earthrp.listeners;
 
 
 import earthrp.Earth;
-import earthrp.customObjects.Building;
 import earthrp.customObjects.Town;
 import earthrp.database.ServerDatabase;
+import earthrp.configs.CustomConfig;
 import earthrp.menusystem.MenuUtility;
-import earthrp.menusystem.menu.Main;
 import earthrp.menusystem.menu.TownsMenu;
-import earthrp.menusystem.menu.buildings.BuildMenu;
 import earthrp.menusystem.menu.buildings.TownConfirmMenu;
-import org.bukkit.Bukkit;
-import org.bukkit.Location;
+import earthrp.tools.maps.CityBoundaryCalculator;
 import org.bukkit.Material;
-import org.bukkit.World;
 import org.bukkit.block.Container;
-import org.bukkit.entity.ArmorStand;
-import org.bukkit.entity.EntityType;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
-import org.bukkit.event.inventory.InventoryAction;
-import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.world.ChunkLoadEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 
-import java.util.*;
+import static earthrp.tools.PDCKeys.*;
 
-import static earthrp.tools.PDCKeys.buildingTypeKey;
+import java.util.*;
 
 
 public class TownsHandler implements Listener {
@@ -42,15 +34,34 @@ public class TownsHandler implements Listener {
     int townSize = Earth.getInstance().getConfig().getInt("townSize");
     public TownsHandler(Earth moraPlugin) {
         this.earthPlugin = moraPlugin;
-        db = Earth.getInstance().getServerDatabase();
+        db = Earth.getInstance().getDatabase();
     }
     ServerDatabase db;
+
+    @EventHandler
+    public void onChunkLoad(ChunkLoadEvent event) {
+        // Проверяем сущности в только что загруженном чанке
+        for (Entity entity : event.getChunk().getEntities()) {
+            var data = entity.getPersistentDataContainer();
+            if (data.has(villagerTownKey, PersistentDataType.STRING)) {
+                String id = data.get(villagerTownKey,PersistentDataType.STRING);
+                if(CustomConfig.get().getStringList("deletedTowns").contains(id)){
+                    entity.remove();
+                }
+            }
+        }
+    }
 
     @EventHandler
     public void onInteract(PlayerInteractEvent e) {
         if(isValidTownInteract(e)){
             e.setCancelled(true);
-            if(db.isLocationSafeForNewTown(e.getClickedBlock().getLocation(),336)){
+            CityBoundaryCalculator calculator = new CityBoundaryCalculator(Earth.getInstance().getRegionMap());
+            int x = e.getClickedBlock().getChunk().getX();
+            int z = e.getClickedBlock().getChunk().getZ();
+            int townSize = (int) Math.pow(Earth.getInstance().getConfig().getInt("townSize"),2);
+            Set<CityBoundaryCalculator.chunkPoint> chunks = calculator.calculateCityArea(x,z,townSize);
+            if(chunks.size() > townSize/2){
                 MenuUtility menuUtility = new MenuUtility(e.getPlayer());
 
                 ItemStack item = e.getItem();
@@ -58,10 +69,11 @@ public class TownsHandler implements Listener {
 
                 Container container = (Container) e.getClickedBlock().getState();
                 menuUtility.setBuildingChest(container.getInventory());
+                menuUtility.setTownChunks(chunks);
 
                 new TownConfirmMenu(menuUtility).open();
             }else{
-                e.getPlayer().sendMessage("Слишком близко к другому городу!");
+                e.getPlayer().sendMessage("Слишком мало места для города");
             }
 
         }
@@ -94,8 +106,10 @@ public class TownsHandler implements Listener {
                     Town town = db.getTown(UUID.fromString(lore.get(1)));
                     MenuUtility pmu = new MenuUtility(player);
                     pmu.setTown(town);
+                    pmu.setBuildingChest(inventory);
                     new TownsMenu(pmu).open();
                 }
+
             }
         }
     }

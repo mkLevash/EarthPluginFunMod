@@ -1,6 +1,9 @@
 package earthrp.menusystem.menu.buildings.buy;
 
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Multimap;
 import earthrp.Earth;
+import earthrp.customEnums.BuildingType;
 import earthrp.customEnums.EPlayerTech;
 import earthrp.tools.Tools;
 import earthrp.customEnums.EPlayerAttribute;
@@ -9,10 +12,20 @@ import earthrp.database.ServerDatabase;
 import earthrp.menusystem.Menu;
 import earthrp.menusystem.MenuUtility;
 import earthrp.menusystem.menu.BuildingsMenu;
+import io.papermc.paper.datacomponent.item.ItemAttributeModifiers;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.MiniMessage;
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeModifier;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.inventory.EquipmentSlotGroup;
+import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataContainer;
@@ -23,51 +36,14 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
+import static earthrp.customEnums.BuildingType.*;
+
 import static earthrp.tools.PDCKeys.*;
 
 public class StandartBuildingsMenu extends Menu {
     Player p = menuUtility.getOwner();
     EPlayer player = menuUtility.getPlayer();
 
-    double costMod = player.getAttribute(EPlayerAttribute.BUILDING_COST);
-    double scienceCostMod = player.getScienceBuildingCost();
-    
-    // Здания с прямыми зависимостями от базовых технологий
-    int farmCost = (int) Math.ceil(48 * costMod);
-    boolean tFarm = player.getTech(EPlayerTech.IRRIGATION);
-    
-    int pastureCost = (int) Math.ceil(48 * costMod);
-    boolean tPasture = player.getTech(EPlayerTech.LIVESTOCK);
-    
-    int lumberCost = (int) Math.ceil(64 * costMod);
-    boolean tLumber = player.getTech(EPlayerTech.BUILDING);
-    
-    int mineV1Cost = (int) Math.ceil(64 * costMod);
-    boolean tMineV1 = player.getTech(EPlayerTech.MINING);
-    
-    int mineV2Cost = (int) Math.ceil(96 * costMod);
-    boolean tMineV2 = player.getTech(EPlayerTech.GUNPOWDER);
-    
-    int careerCost = (int) Math.ceil(128 * costMod);
-    boolean tCareer = player.getTech(EPlayerTech.MANUFACTURE);
-    
-    int factoryCost = (int) Math.ceil(320 * costMod);
-    boolean tFactory = player.getTech(EPlayerTech.MANUFACTURE);
-    
-    int plantCost = (int) Math.ceil(160 * costMod);
-    boolean tPlant = player.getTech(EPlayerTech.MANUFACTURE);
-    
-    int universityCost = (int) Math.ceil(240 * scienceCostMod);
-    boolean tUniversity  = player.getTech(EPlayerTech.UNIVERSITY);
-    
-    int bankCost = (int) Math.ceil(128 * costMod);
-    boolean tBank = player.getTech(EPlayerTech.BANK_BASE);
-    
-    int marketCost= (int) Math.ceil(64 * costMod);
-    boolean tMarket= player.getTech(EPlayerTech.TRADE);
-    
-    int portCost = marketCost;
-    boolean tPort= player.getTech(EPlayerTech.SHIPPING);
 
     public StandartBuildingsMenu(MenuUtility menuUtility){
         super(menuUtility);
@@ -117,126 +93,38 @@ public class StandartBuildingsMenu extends Menu {
 
     @Override
     public void setMenuItems() {
+        inventory.clear();
 
 
-        List<String> pastureLore = new ArrayList<>(Arrays.asList(
-                Tools.colorText("&6"+(int) Math.ceil(32*costMod)+"&dx&fБревно, &6"+(int) Math.ceil(12*costMod)+"&dx&fСноп сена"),
-                Tools.colorText("&fПозволяет разводить скот."),
-                Tools.colorText("&fПроизводительность &a1")
-                ));
-        ItemStack pasture = Tools.createBuildingBuy(Material.LEATHER,"Пастбище","pasture",pastureLore,pastureCost,tPasture);
+        ItemStack pasture = createBuildingBuy(PASTURE);
 
-        List<String> farmLore = new ArrayList<>(Arrays.asList(
-                Tools.colorText("&6"+(int) Math.ceil(16*costMod)+"&dx&fБревно; &6"+(int) Math.ceil(32*costMod)+"&dx&fБлок земли; &6"+(int) Math.ceil(6*costMod)+"&dx&fВедро с водой"),
-                Tools.colorText(" "),
-                Tools.colorText("&fПозволяет выращивать культуры на грядках."),
-                Tools.colorText("&fПроизводительность &a1")
-        ));
-        ItemStack farm = Tools.createBuildingBuy(Material.WHEAT,"Плантация","farm",farmLore,farmCost,tFarm);
 
-        List<String> lumberLore = new ArrayList<>(Arrays.asList(
-                Tools.colorText("&6"+(int) Math.ceil(128*costMod)+"&dx&fБревно; &6"+(int) Math.ceil(1*costMod)+"&dx&fЖелезный блок,Камнерез &6"),
-                Tools.colorText(" "),
-                Tools.colorText("&fДобывает древесину/кору."),
-                Tools.colorText("&fПроизводительность &a1")
-        ));
-        ItemStack lumber = Tools.createBuildingBuy(Material.OAK_LOG,"Лесопилка","lumber",lumberLore,lumberCost,tLumber);
+        ItemStack farm = createBuildingBuy(FARM);
 
-        List<String> careerLore = new ArrayList<>(Arrays.asList(
-                Tools.colorText("&6"+(int) Math.ceil(128*costMod)+"&dx&fКаменный кирпич; &6"+(int) Math.ceil(64*costMod)+"&dx&fБревно,Фонарь; &6"+(int) Math.ceil(16*costMod)+"&dx&fПорох"),
-                Tools.colorText("&6"+(int) Math.ceil(2*costMod)+"&dx&fАлмазный блок; &6"+(int) Math.ceil(6*costMod)+"&dx&fЖелезный блок;"),
-                Tools.colorText("&6"+(int) Math.ceil(5*costMod)+"&dx&fКамнерез,Точило; &6"+(int) Math.ceil(3*costMod)+"&dx&fНаковальня;"),
-                Tools.colorText(" "),
-                Tools.colorText("&fМожет добывать алмазы/кристаллы. "),
-                Tools.colorText("&fПроизводительность &a2")
-        ));
-        ItemStack career = Tools.createBuildingBuy(Material.DIAMOND_PICKAXE,"Карьер","career",careerLore,careerCost,tCareer);
+        ItemStack lumber = createBuildingBuy(LUMBER);
 
-        List<String> mineV2Lore = new ArrayList<>(Arrays.asList(
-                Tools.colorText("&6"+(int) Math.ceil(128*costMod)+"&dx&fБулыжник; &6"+(int) Math.ceil(32*costMod)+"&dx&fБревно, Фонарь;"),
-                Tools.colorText("&6"+(int) Math.ceil(4*costMod)+"&dx&fЖелезный блок; &6"+(int) Math.ceil(3*costMod)+"&dx&fКамнерез, Плавильня"),
-                Tools.colorText(" "),
-                Tools.colorText("&fМожет добывать: золото,"),
-                Tools.colorText("&fобработанные каменные блоки,"),
-                Tools.colorText("&fнеобработанное железо."),
-                Tools.colorText(" "),
-                Tools.colorText("&fПроизводительность &a1.5"),
-                Tools.colorText("&fЕдиница золота = &610&f$")
-        ));
-        ItemStack mineV2 = Tools.createBuildingBuy(Material.IRON_PICKAXE,"Рудник","mineV2",mineV2Lore,mineV2Cost,tMineV2);
+        ItemStack career = createBuildingBuy(QUARRY);
 
-        List<String> mineV1Lore = new ArrayList<>(Arrays.asList(
-                Tools.colorText("&6"+(int) Math.ceil(128*costMod)+"&dx&fБулыжник, &6"+(int) Math.ceil(32*costMod)+"&dx&fБревно,Факел"),
-                Tools.colorText("&6"+(int) Math.ceil(2*costMod)+"&dx&fКамнерез,Железный блок;"),
-                Tools.colorText(" "),
-                Tools.colorText("&fМожет добывать: уголь, необр. медь"),
-                Tools.colorText("&fнеобработанные каменные блоки,"),
-                Tools.colorText(" "),
-                Tools.colorText("&fПроизводительность &a1")
-        ));
-        ItemStack mineV1 = Tools.createBuildingBuy(Material.STONE_PICKAXE,"Шахта","mineV1",mineV1Lore,mineV1Cost,tMineV1);
+        ItemStack mineV2 = createBuildingBuy(PIT);
 
-        List<String> factoryLore = new ArrayList<>(Arrays.asList(
-                Tools.colorText("&6"+(int) Math.ceil(128*costMod)+"&dx&fКирпичный блок,Бревно; &6"+(int) Math.ceil(64*costMod)+"&dx&fФонарь,Порох;"),
-                Tools.colorText("&6"+(int) Math.ceil(3*costMod)+"&dx&fСтол кузнеца,Наковальня,Плавильня;"),
-                Tools.colorText("&6"+(int) Math.ceil(5*costMod)+"&dx&fАлмазный блок,Железный блок,Угольный блок"),
-                Tools.colorText(" "),
-                Tools.colorText("&fПроизводит &a3&f ресурса, которые"),
-                Tools.colorText("&fуже производятся или &a2 &dпороха &f"),
-                Tools.colorText(" "),
-                Tools.colorText("&fМожет перерабатывать сырые"),
-                Tools.colorText("&fресурсы в готовые изделия")
-        ));
-        ItemStack factory = Tools.createBuildingBuy(Material.SMITHING_TABLE,"Завод","factory",factoryLore,factoryCost,tFactory);
+        ItemStack mineV1 = createBuildingBuy(MINE);
 
-        List<String> plantLore = new ArrayList<>(Arrays.asList(
-                Tools.colorText("&6"+(int) Math.ceil(128*costMod)+"&dx&fКаменный кирпич; &6"+(int) Math.ceil(32*costMod)+"&dx&fБревно,Фонарь;"),
-                Tools.colorText("&6"+(int) Math.ceil(6*costMod)+"&dx&fВерстак,Камнерез,Точило;"),
-                Tools.colorText("&6"+(int) Math.ceil(3*costMod)+"&dx&fЖелезный блок,Угольный блок"),
-                Tools.colorText(" "),
-                Tools.colorText("&fПроизводит &a2&f ресурса, которые"),
-                Tools.colorText("&fуже производятся или &a1 &dпорох"),
-                Tools.colorText(" "),
-                Tools.colorText("&fМожет перерабатывать сырые"),
-                Tools.colorText("&fресурсы в готовые изделия")
-        ));
-        ItemStack plant = Tools.createBuildingBuy(Material.CRAFTING_TABLE,"Мануфактура","plant",plantLore,plantCost,tPlant);
+        ItemStack factory = createBuildingBuy(MANUFACTURE);
 
-        List<String> universityLore = new ArrayList<>(Arrays.asList(
-                Tools.colorText("&6"+(int) Math.ceil(64*costMod)+"&dx&fКнижная полка,Стекло; &6"+(int) Math.ceil(32*costMod)+"&dx&fБревно,Фонарь"),
-                Tools.colorText("&6"+(int) Math.ceil(5*costMod)+"&dx&fКафедра,Большой сундук;"),
-                Tools.colorText(" "),
-                Tools.colorText("&fУвеличивает прирост ОИ на &a3."),
-                Tools.colorText("&fПроизводит книги."),
-                Tools.colorText("&fПотребляет бумагу"),
-                Tools.colorText("&eМожно построить только одну в городе")
-        ));
-        ItemStack university = Tools.createBuildingBuy(Material.ENCHANTED_BOOK,"Университет","university",universityLore,universityCost,tUniversity);
+        ItemStack plant = createBuildingBuy(WORKSHOP);
 
-        List<String> bankLore = new ArrayList<>(Arrays.asList(
-                Tools.colorText("&6"+(int) Math.ceil(8*costMod)+"&dx&fБольшой сундук; &6"+(int) Math.ceil(32*costMod)+"&dx&fБумага"),
-                Tools.colorText("&6"+(int) Math.ceil(16*costMod)+"&dx&fСтекло,Бревно"),
-                Tools.colorText(" "),
-                Tools.colorText("&fПроцентная ставка - 10%"),
-                Tools.colorText("&fЕдиничный долг - 10$.")
-        ));
-        ItemStack bank = Tools.createBuildingBuy(Material.ENDER_CHEST,"Банк","bank",bankLore,bankCost,tBank);
+        ItemStack university = createBuildingBuy(UNIVERSITY);
+        ItemStack library = createBuildingBuy(LIBRARY);
 
-        List<String> marketLore = new ArrayList<>(Arrays.asList(
-                Tools.colorText("&6"+(int) Math.ceil(18*costMod)+"&dx&fЗолото,Сундук; &6"+(int) Math.ceil(16*costMod)+"&dx&fПеро,Бревно"),
-                Tools.colorText(" "),
-                Tools.colorText("&fДает возможность продавать товары")
-        ));
-        ItemStack market = Tools.createBuildingBuy(Material.BELL,"Рынок","landHub",marketLore,marketCost,tMarket);
+        ItemStack bank = createBuildingBuy(BANK);
 
-        List<String> portLore = new ArrayList<>(Arrays.asList(
-                Tools.colorText("&6"+(int) Math.ceil(32*costMod)+"&dx&fБочка; &6"+(int) Math.ceil(64*costMod)+"&dx&fБревно"),
-                Tools.colorText(" "),
-                Tools.colorText("&fДает возможность использовать корабли"),
-                Tools.colorText("&fНе занимает ячейку строительства"),
-                Tools.colorText("&aБонус рынка +10%")
-        ));
-        ItemStack port = Tools.createBuildingBuy(Material.BARREL,"Порт","port",portLore,portCost,tPort);
+        ItemStack market = createBuildingBuy(MARKETPLACE);
+
+        ItemStack port = createBuildingBuy(PORT);
+
+        ItemStack barn = createBuildingBuy(BARN);
+
+        ItemStack courtHouse = createBuildingBuy(COURTHOUSE);
 
 
 
@@ -244,6 +132,7 @@ public class StandartBuildingsMenu extends Menu {
         inventory.setItem(0, lumber);
         inventory.setItem(9, pasture);
         inventory.setItem(18, farm);
+        inventory.setItem(27, createBuildingBuy(FISHER));
 
         inventory.setItem(2, career);
         inventory.setItem(11, mineV2);
@@ -252,12 +141,65 @@ public class StandartBuildingsMenu extends Menu {
         inventory.setItem(4, factory);
         inventory.setItem(13, plant);
 
-        inventory.setItem(6, university);
-        inventory.setItem(15, bank);
-        inventory.setItem(26, market);
-        inventory.setItem(35, port);
+        inventory.setItem(17, university);
+        inventory.setItem(26, library);
+        inventory.setItem(6, bank);
 
-        inventory.setItem(44, createBackItem());
+        inventory.setItem(8, barn);
+        inventory.setItem(15, courtHouse);
+
+        inventory.setItem(35, market);
+        inventory.setItem(44, port);
+
+        inventory.setItem(40, createBackItem());
 
     }
+
+    private ItemStack createBuildingBuy( BuildingType bt){
+
+
+        Component name = colorText("<white>" + bt.getDisplayName() + " <gold>" + bt.getCost(menuUtility.getPlayer()) + "<white>$");
+        if(bt.isBuildSiteReq()){
+            name = name.append(colorText("|<yellow>Спец. здание"));
+        }
+        ItemStack building = createItem(bt.getMaterial(),name, bt.getLore(menuUtility.getPlayer()));
+        ItemMeta meta = building.getItemMeta();
+        meta.getPersistentDataContainer().set(buildingNameKey,PersistentDataType.STRING, bt.getDisplayName());
+        meta.getPersistentDataContainer().set(buildingTypeKey,PersistentDataType.STRING, bt.toString());
+        meta.getPersistentDataContainer().set(buildingCostKey,PersistentDataType.INTEGER, bt.getCost(menuUtility.getPlayer()));
+        meta.getPersistentDataContainer().set(buildingTechCheckKey,PersistentDataType.BOOLEAN, bt.isTech(menuUtility.getPlayer()));
+        meta.addEnchant(Enchantment.INFINITY,1,true);
+        meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
+        meta.addItemFlags(ItemFlag.HIDE_ADDITIONAL_TOOLTIP);
+        meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
+
+        Multimap<Attribute, AttributeModifier> modifiers = ArrayListMultimap.create();
+
+        // 2. Добавляем фейковый модификатор (+0.0 к урону)
+        // Так как он равен 0, он не изменит стандартный урон меча (он останется 7.0)
+        modifiers.put(Attribute.ATTACK_DAMAGE, new AttributeModifier(
+                NamespacedKey.minecraft("fake_hidden_modifier"),
+                0.0,
+                AttributeModifier.Operation.ADD_NUMBER,
+                EquipmentSlotGroup.MAINHAND
+        ));
+
+        // 3. Записываем этот модификатор в мету
+        meta.setAttributeModifiers(modifiers);
+
+
+        building.setItemMeta(meta);
+        return building;
+    }
+
+    private ItemStack createItem(Material material, Component displayName, List<Component> lore){
+        ItemStack item = new ItemStack(material);
+        ItemMeta meta = item.getItemMeta();
+        meta.displayName(displayName);
+        meta.lore(lore);
+        item.setItemMeta(meta);
+        return item;
+    }
+
+
 }

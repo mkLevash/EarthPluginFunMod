@@ -1,11 +1,12 @@
 package earthrp.commands;
 
 import earthrp.Earth;
+import earthrp.customEnums.UnitTech;
+import earthrp.customObjects.Army;
 import earthrp.tools.Tools;
 import earthrp.customEnums.EPlayerAttribute;
 import earthrp.customObjects.EPlayer;
 import earthrp.database.ServerDatabase;
-import earthrp.files.CustomConfig;
 import org.bukkit.Color;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -27,13 +28,14 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 
 public class Difficulty implements CommandExecutor, TabCompleter {
     private final ServerDatabase db;
     private final Earth earth;
     public Difficulty(Earth plugin) {
         this.earth = plugin;
-        db = plugin.getServerDatabase();
+        db = plugin.getDatabase();
     }
     private final NamespacedKey armyOwnerKey = new NamespacedKey(Earth.getInstance(), "armyOwner");
     private final NamespacedKey armyIdKey = new NamespacedKey(Earth.getInstance(), "armyId");
@@ -71,11 +73,8 @@ public class Difficulty implements CommandExecutor, TabCompleter {
 
                 ItemStack mora = Tools.createMora(1);
 
-                List<String> infLore = List.of(
-                        Tools.colorText("&fМоральᠩ&23.0"),
-                        Tools.colorText("&fУрон - &40.3&f/&60.35"),
-                        Tools.colorText("&fОчки &41&f/&60&f/&20"));
-                ItemStack inf = Tools.createArmyCraftItem("Копейщики",infLore,"inf",1,0.0,0.3,0.35);
+
+                ItemStack inf = Tools.createArmyCraftItem(UnitTech.INF0);
 
                 int infiniteTicks = Integer.MAX_VALUE;
                 PotionEffect slowness4 = new PotionEffect(PotionEffectType.SLOWNESS,infiniteTicks,3);
@@ -127,14 +126,14 @@ public class Difficulty implements CommandExecutor, TabCompleter {
                                 Tools.colorText("&fУ вас&b божественная удача")
                         );
                         String difName = Tools.colorText("&fСложность &bБомж");
-                        ItemStack dif = Tools.createItem(Material.LIGHT_BLUE_DYE,difName,difLore);
+                        ItemStack dif = Tools.createItemLegacy(Material.LIGHT_BLUE_DYE,difName,difLore);
 
                         player.setAttribute(EPlayerAttribute.STABILITY,2);
                         player.setAttribute(EPlayerAttribute.WAR_SUPPORT,2);
 
                         apple.setAmount(64);
                         mora.setAmount(32);
-                        inf.setAmount(3);
+                        inf.setAmount(10);
 
                         inv.addItem(pickaxe);
                         inv.addItem(axe);
@@ -172,14 +171,14 @@ public class Difficulty implements CommandExecutor, TabCompleter {
                                 Tools.colorText("&fУ вас&a хорошая удача")
                         );
                         String difName = Tools.colorText("&fСложность &aНовичок");
-                        ItemStack dif = Tools.createItem(Material.LIME_DYE,difName,difLore);
+                        ItemStack dif = Tools.createItemLegacy(Material.LIME_DYE,difName,difLore);
 
                         player.setAttribute(EPlayerAttribute.STABILITY,1);
                         player.setAttribute(EPlayerAttribute.WAR_SUPPORT,1);
 
                         apple.setAmount(48);
                         mora.setAmount(16);
-                        inf.setAmount(2);
+                        inf.setAmount(5);
 
                         inv.addItem(pickaxe);
                         inv.addItem(axe);
@@ -205,6 +204,7 @@ public class Difficulty implements CommandExecutor, TabCompleter {
                         shulkerItem.setItemMeta(bsm);
                     }
                     case "гражданский" -> {
+
                         shulkerItem = new ItemStack(Material.YELLOW_SHULKER_BOX);
                         BlockStateMeta bsm = (BlockStateMeta) shulkerItem.getItemMeta();
                         ShulkerBox shulker = (ShulkerBox) bsm.getBlockState();
@@ -214,14 +214,14 @@ public class Difficulty implements CommandExecutor, TabCompleter {
                                 Tools.colorText("&fСтандартная сложность")
                         );
                         String difName = Tools.colorText("&fСложность&e Гражданский");
-                        ItemStack dif = Tools.createItem(Material.YELLOW_DYE,difName,difLore);
+                        ItemStack dif = Tools.createItemLegacy(Material.YELLOW_DYE,difName,difLore);
 
                         player.setAttribute(EPlayerAttribute.STABILITY,0);
                         player.setAttribute(EPlayerAttribute.WAR_SUPPORT,0);
 
                         apple.setAmount(32);
                         mora.setAmount(8);
-                        inf.setAmount(1);
+                        inf.setAmount(3);
 
                         inv.addItem(pickaxe);
                         inv.addItem(axe);
@@ -260,7 +260,7 @@ public class Difficulty implements CommandExecutor, TabCompleter {
                                 Tools.colorText("&fУ вас &61 &6долг")
                         );
                         String difName = Tools.colorText("&fСложность&e Гигачад");
-                        ItemStack dif = Tools.createItem(Material.ORANGE_DYE,difName,difLore);
+                        ItemStack dif = Tools.createItemLegacy(Material.ORANGE_DYE,difName,difLore);
 
                         apple.setAmount(32);
                         mora.setAmount(8);
@@ -286,8 +286,9 @@ public class Difficulty implements CommandExecutor, TabCompleter {
 
                         player.setAttribute(EPlayerAttribute.STABILITY,-1);
                         player.setAttribute(EPlayerAttribute.WAR_SUPPORT,-1);
-                        String path = "debt."+player.getDisplayName() + ".lvl"+player.getDebtLvl();
-                        CustomConfig.set(path,CustomConfig.get().getInt(path)+1);
+                        UUID debtId = UUID.randomUUID();
+                        player.getData().getDebtMap().put(debtId,5);
+                        player.getData().getInterestMap().put(debtId,1.0);
 
 
 

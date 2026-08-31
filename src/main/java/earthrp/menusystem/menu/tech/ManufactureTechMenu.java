@@ -1,7 +1,7 @@
 package earthrp.menusystem.menu.tech;
 
 import earthrp.customObjects.EPlayer;
-import earthrp.files.CustomConfig;
+import earthrp.configs.CustomConfig;
 import earthrp.menusystem.Menu;
 import earthrp.menusystem.MenuUtility;
 import earthrp.menusystem.menu.TechnologyMenu;
@@ -49,6 +49,7 @@ public class ManufactureTechMenu extends Menu {
 
     @Override
     public void setMenuItems() {
+        inventory.clear();
         // Эпоха 3: Мануфактуры
         
         // === ЦЕНТР - Ключевая технология ===
@@ -74,17 +75,31 @@ public class ManufactureTechMenu extends Menu {
         // Пехота
         ItemStack lineInfantry = makeTech(Material.CROSSBOW, "lineInfantry", player);
         // Кавалерия
-        ItemStack cav5 = makeTech( "cav5", player,"inf5");
+        ItemStack cav5 = makeTech( "cav5", player,"cav5");
         ItemStack art3 = makeTech( "art3", player,"art3");
         // Артиллерия
-        ItemStack cartridges = makeTech("inf5", player,"inf5");
+        ItemStack inf5 = makeTech("inf5", player,"inf5");
+
+        ItemStack impulseWarfare = makeTech(Material.NETHERITE_SWORD, "impulseWarfare", player);
+        // Кавалерия
+        ItemStack cav6 = makeTech( "cav6", player,"cav6");
+        ItemStack art4 = makeTech( "art4", player,"art4");
+        // Артиллерия
+        ItemStack inf6 = makeTech("inf6", player,"inf6");
         
         inventory.setItem(23, lineInfantry);
 
-        inventory.setItem(24, cav5);
-        inventory.setItem(22, cartridges);
+        inventory.setItem(22, cav5);
+        inventory.setItem(24, inf5);
 
-        inventory.setItem(32, art3);
+        inventory.setItem(25, art3);
+
+        inventory.setItem(32, impulseWarfare);
+
+        inventory.setItem(31, cav6);
+        inventory.setItem(33, inf6);
+
+        inventory.setItem(34, art4);
         for (int i = 0; i <= 9; i++) {
             fillIfEmpty(i);
             fillIfEmpty(i + 44);

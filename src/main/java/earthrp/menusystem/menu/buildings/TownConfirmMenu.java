@@ -1,30 +1,30 @@
 package earthrp.menusystem.menu.buildings;
 
 import earthrp.Earth;
-import earthrp.customObjects.Building;
+import earthrp.customEnums.EPlayerAttribute;
+import earthrp.customEnums.UnitTech;
+import earthrp.customObjects.Army;
+import earthrp.customObjects.ArmyUnit;
+import earthrp.customObjects.EPlayer;
 import earthrp.customObjects.Town;
 import earthrp.database.ServerDatabase;
 import earthrp.menusystem.Menu;
 import earthrp.menusystem.MenuUtility;
 import earthrp.tools.Tools;
-import org.bukkit.ChatColor;
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.World;
+import org.bukkit.*;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.EntityType;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.persistence.PersistentDataContainer;
+import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.persistence.PersistentDataType;
 
 import java.util.List;
 import java.util.UUID;
 
-import static earthrp.tools.PDCKeys.buildingIdKey;
-import static earthrp.tools.PDCKeys.buildingTypeKey;
+import static earthrp.tools.PDCKeys.*;
 
 public class TownConfirmMenu extends Menu {
     public TownConfirmMenu(MenuUtility menuUtility) {
@@ -36,7 +36,7 @@ public class TownConfirmMenu extends Menu {
 
     @Override
     public String getMenuName() {
-        return "Вы уверены что хотите здесь построить город?";
+        return "Вы уверены что хотите начать битву с варварами за город?";
     }
 
     @Override
@@ -50,18 +50,52 @@ public class TownConfirmMenu extends Menu {
         if(e.getCurrentItem() != null){
             switch (e.getCurrentItem().getType()){
                 case EMERALD ->{
+
+                    ServerDatabase db = Earth.getInstance().getDatabase();
                     e.getWhoClicked().closeInventory();
                     ItemMeta meta = townItem.getItemMeta();
                     List<String> lore = meta.getLore();
                     String type = lore.get(0);
                     UUID townId = UUID.fromString(lore.get(1));
                     UUID ownerId = UUID.fromString(lore.get(2));
-                    String ownerName = lore.get(3);
+                    EPlayer owner = db.getPlayer(ownerId);
+                    ItemStack ownerItem = new ItemStack(Material.PLAYER_HEAD);
+                    SkullMeta ownerMeta = (SkullMeta) ownerItem.getItemMeta();
+                    ownerMeta.setOwningPlayer(Bukkit.getOfflinePlayer(ownerId));
+                    ownerMeta.getPersistentDataContainer().set(townOwnerKey, PersistentDataType.STRING,ownerId.toString());
+                    ownerItem.setItemMeta(ownerMeta);
                     String townName = meta.getDisplayName();
                     Location loc = chest.getLocation();
-                    handleNewTown(townId, ownerId, ownerName, townName, type, loc);
-                    chest.addItem(townItem);
-                    townItem.setAmount(0);
+                    Town town = new Town(owner,townId,type,townName,loc);
+                    String debug = lore.getLast();
+                    town.getData().setChunk(menuUtility.getTownChunks());
+                    if(debug.equals("debug")){
+                        chest.addItem(ownerItem);
+                        chest.addItem(townItem.clone());
+                        handleNewTown(town,loc);
+                    }else{
+                        int barbarianAmount = (int) (Math.random() * 3) + owner.getData().getBarbarians();
+                        EPlayer barbarian = db.getPlayer("barbarian");
+                        if(barbarian == null){
+                            db.addBot("barbarian",UUID.randomUUID());
+                            barbarian = db.getPlayer("barbarian");
+                        }
+                        Army army = new Army(UUID.randomUUID(),barbarian.getUniqueId(),"");
+                        army.setBarbarianChest(chest);
+                        army.setBarbarianOwnerItem(ownerItem);
+                        army.setBarbarianTown(town);
+                        army.setBarbarianTownItem(townItem);
+                        army.setLocation(loc,0);
+                        army.setShulkerLoc(loc);
+                        Tools.spawnHologram(loc.clone().add(0.5,1.5,0.5),"Чтобы построить город победите варваров","townHolo");
+                        Tools.spawnHologram(loc.clone().add(0.5,1.25,0.5),"Армия <light_purple>" + army.getOwner().getDisplayName() + "<white>'a - <green>" + (army.getTroops()/1000) + "K","armyHoloTroops" + army.getUuid());
+                        Tools.spawnHologram(loc.clone().add(0.5,1.0,0.5),"Мораль <dark_green>" + army.getMorale() + "<white> / <dark_green>" + army.getMaxMorale(),"armyHoloMorale" + army.getUuid());
+                        db.addArmy(army);
+                        UnitTech barbarianTech = UnitTech.valueOf("INF"+ (int)owner.getAttribute(EPlayerAttribute.INF_LVL));
+                        for (int i = 0; i < barbarianAmount; i++) {
+                            army.addUnit(new ArmyUnit(barbarianTech,UUID.randomUUID(),army.getUuid(),""));
+                        }
+                    }
                 }
 
                 case BARRIER -> {
@@ -76,25 +110,21 @@ public class TownConfirmMenu extends Menu {
 
     @Override
     public void setMenuItems() {
+        inventory.clear();
         List<String> lore = List.of(Tools.colorText("&fВы построите &3" + townItem.getItemMeta().getDisplayName()));
-        ItemStack yes = Tools.createItem(Material.EMERALD,ChatColor.GREEN + "Да",lore);
+        ItemStack yes = Tools.createItemLegacy(Material.EMERALD,ChatColor.GREEN + "Да",lore);
 
-        ItemStack no = Tools.createItem(Material.BARRIER,ChatColor.RED + "Нет",null);
+        ItemStack no = Tools.createItemLegacy(Material.BARRIER,ChatColor.RED + "Нет",null);
 
         inventory.setItem(3, yes);
         inventory.setItem(5, no);
 
     }
 
-    private void handleNewTown(UUID townId, UUID ownerId, String ownerName, String townName, String type, Location loc) {
-        int x = loc.getChunk().getX();
-        int z = loc.getChunk().getZ();
-        String world = loc.getWorld().getName();
-        Tools.spawnHologram(loc.clone().add(0.5, 1, 0.5),townName,townId.toString());
+    private void handleNewTown(Town town, Location loc) {
 
-        Town town = new Town(townId,ownerId,type,townName,ownerName,world,x,z);
-        ServerDatabase db = Earth.getInstance().getServerDatabase();
-        db.addTown(town);
+        Tools.spawnHologramLegacy(loc.clone().add(0.5, 1, 0.5),town.getName(),town.getUniqueId().toString());
+        Earth.getInstance().getDatabase().addTown(town);
 
 
     }

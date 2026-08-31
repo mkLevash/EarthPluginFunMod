@@ -15,14 +15,13 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.ArrayList;
-import java.util.Objects;
 
 public class AnnexConfirmMenu extends Menu {
     Town town = menuUtility.getTown();
     private final ServerDatabase db;
     public AnnexConfirmMenu(MenuUtility menuUtility) {
         super(menuUtility);
-        db = Earth.getInstance().getServerDatabase();
+        db = Earth.getInstance().getDatabase();
     }
 
     @Override
@@ -43,16 +42,10 @@ public class AnnexConfirmMenu extends Menu {
         switch (e.getCurrentItem().getType()){
             case EMERALD->{
                 p.closeInventory();
-                town.getOwner().removeTown(town);
-                if(town.getType().equals("capital")) town.setType("townHall");
-                town.setStatus(true);
-                town.setCore(false);
-                town.setOwnerId(p.getUniqueId());
-                town.setOwnerName(player.getCountryName());
-                player.addTown(town);
+                player.annexTown(town);
                 p.sendMessage("Вы аннексировали "+town.getName());
                 Player target = Bukkit.getPlayer(town.getOwnerName());
-                if(target!= null) target.sendMessage(p.getDisplayName() + " оккупировал ваш город "+town.getName()+ "!");
+                if(target!= null) target.sendMessage(p.getDisplayName() + " аннексировал ваш город "+town.getName()+ "!");
                 new TownsMenu(menuUtility).open();
             }case BARRIER->{
                 p.closeInventory();
@@ -64,6 +57,7 @@ public class AnnexConfirmMenu extends Menu {
 
     @Override
     public void setMenuItems() {
+        inventory.clear();
 
         ItemStack yes = new ItemStack(Material.EMERALD, 1);
         ItemMeta yes_meta = yes.getItemMeta();

@@ -1,15 +1,17 @@
 package earthrp.menusystem.menu.ideas;
 
-import earthrp.Earth;
+import earthrp.customObjects.EPlayer;
+import earthrp.menusystem.menu.MilIdeasMenu;
 import earthrp.tools.Tools;
-import earthrp.files.CustomConfig;
+import earthrp.configs.CustomConfig;
 import earthrp.menusystem.Menu;
 import earthrp.menusystem.MenuUtility;
-import earthrp.menusystem.menu.IdeasMenu;
+import earthrp.menusystem.menu.MainIdeasMenu;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.block.ShulkerBox;
 import org.bukkit.enchantments.Enchantment;
+import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemFlag;
@@ -17,9 +19,12 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.BlockStateMeta;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.components.CustomModelDataComponent;
+import org.bukkit.persistence.PersistentDataType;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import static earthrp.tools.PDCKeys.*;
 
 public class IdeaMenu extends Menu {
     public IdeaMenu(MenuUtility menuUtility) {
@@ -53,8 +58,8 @@ public class IdeaMenu extends Menu {
 
     @Override
     public void handleMenu(InventoryClickEvent e) {
-
-
+        ItemStack item = e.getCurrentItem();
+        if(item == null) return;
         switch (e.getCurrentItem().getType()){
 
             case EMERALD -> {
@@ -63,8 +68,14 @@ public class IdeaMenu extends Menu {
 
             }
             case BARRIER -> {
-                e.getWhoClicked().closeInventory();
-                new IdeasMenu(menuUtility).open();
+                if(menuUtility.getTerrain()==1){
+                    e.getWhoClicked().closeInventory();
+                    new MilIdeasMenu(menuUtility).open();
+                }else{
+                    e.getWhoClicked().closeInventory();
+                    new MainIdeasMenu(menuUtility).open();
+                }
+
 
             }
 
@@ -74,6 +85,8 @@ public class IdeaMenu extends Menu {
 
     @Override
     public void setMenuItems() {
+        inventory.clear();
+        EPlayer player = menuUtility.getPlayer();
 //
 //        ItemStack lantern = new ItemStack(Material.SOUL_LANTERN, 1);
 //        ItemMeta lanternMeta = lantern.getItemMeta();
@@ -83,12 +96,15 @@ public class IdeaMenu extends Menu {
 
         ItemStack light = new ItemStack(Material.EGG);
         ItemMeta meta = light.getItemMeta();
+        meta.getPersistentDataContainer().set(ideaOwnerKey, PersistentDataType.STRING,player.getUniqueId().toString());
         CustomModelDataComponent cmd = meta.getCustomModelDataComponent();
         cmd.setStrings(List.of("menuIdea"));
         meta.setCustomModelDataComponent(cmd);
         meta.setDisplayName(menuUtility.getIdeaName());
         meta.addEnchant(Enchantment.INFINITY,1,true);
         meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
+
+
         light.setItemMeta(meta);
 
         Material material = Material.getMaterial(menuUtility.getIdeaMaterial()+"_CONCRETE_POWDER");
@@ -96,7 +112,13 @@ public class IdeaMenu extends Menu {
 
         List<ItemStack> ideas = new ArrayList<>();
         for (int i = 0; i < 5; i++) {
-            ideas.add(Tools.createIdeaItem(material,ideaNames.get(i),ideaEffectsId.get(i),ideaDesc.get(i),ideaEffects.get(i),p.getUniqueId()));
+            ItemStack idea = Tools.createIdeaItem(material,ideaNames.get(i),ideaEffectsId.get(i),ideaDesc.get(i),ideaEffects.get(i),player.getUniqueId());
+            if(menuUtility.getTerrain()==1){
+                ItemMeta itemMeta = idea.getItemMeta();
+                itemMeta.getPersistentDataContainer().set(isMilitaryIdeaKey,PersistentDataType.BOOLEAN,true);
+                idea.setItemMeta(itemMeta);
+            }
+            ideas.add(idea);
         }
 
 
@@ -115,11 +137,11 @@ public class IdeaMenu extends Menu {
 
 
         List<String> lore = List.of(Tools.colorText("&fПолучить идеи"));
-        ItemStack yes = Tools.createItem(Material.EMERALD,ChatColor.GREEN + "Да",lore);
+        ItemStack yes = Tools.createItemLegacy(Material.EMERALD,ChatColor.GREEN + "Да",lore);
 
         inventory.setItem(9,light);
         meta = light.getItemMeta();
-        meta.setLore(List.of(Tools.colorText("&fПринадлежит &d" + p.getName())));
+        meta.setLore(List.of(Tools.colorText("&fПринадлежит &d" + player.getDisplayName())));
         light.setItemMeta(meta);
         shulker.getInventory().setItem(9,light);
         inventory.setItem(18,yes);

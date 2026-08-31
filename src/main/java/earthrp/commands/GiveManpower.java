@@ -22,7 +22,7 @@ public class GiveManpower implements CommandExecutor {
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String s, @NotNull String[] args) {
         if (sender instanceof Player player){
-            EPlayer p = plugin.getServerDatabase().getPlayer(player.getUniqueId());
+            EPlayer p = plugin.getDatabase().getPlayer(player.getUniqueId());
             if (args.length != 1){
                 sender.sendMessage(ChatColor.YELLOW + "/manpower <amount>");
                 return true;

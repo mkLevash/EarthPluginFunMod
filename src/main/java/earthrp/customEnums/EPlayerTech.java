@@ -1,7 +1,6 @@
 package earthrp.customEnums;
 
-import earthrp.files.CustomConfig;
-import earthrp.tools.Tools;
+import earthrp.configs.CustomConfig;
 import lombok.Getter;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
@@ -24,29 +23,39 @@ public enum EPlayerTech {
     SHIPPING(0),
     FORT(0),
     LUMBER(0),
-    HORSE_RIDDING(0,Set.of(LIVESTOCK)),
-    BASE_MILITARY(0,Set.of(HORSE_RIDDING),Map.of(EPlayerAttribute.TACTIC,0.1,EPlayerAttribute.LAND_MORALE,0.5)),
+    BASE_MILITARY(0,Map.of(EPlayerAttribute.TACTIC,0.25,EPlayerAttribute.CW,5.0)),
     TRADE(0),
 
     // ==================== ЭПОХА 1: ФЕОДАЛИЗМ ====================
-    FEUDALISM(-1, Set.of(TRIBAL)),
+    FEUDALISM(-1, Set.of(TRIBAL),Map.of(EPlayerAttribute.POLIT_INCOME,1.0,EPlayerAttribute.POLIT_MAX,5.0)),
 
-    BANK_BASE(1),
+    MEDIEVAL_ADMINISTRATION(1,Map.of(EPlayerAttribute.ADMIN_EFFICIENCY,1.0)),
+
+    BANK_BASE(1, Set.of(MEDIEVAL_ADMINISTRATION)),
     ENGINEERING(1,Map.of(EPlayerAttribute.SIEGE_ABILITY,0.1)),
-    BANNER(1,Map.of(EPlayerAttribute.MANPOWER_REC_MOD,0.05)),
+    BANNER(1, Set.of(MEDIEVAL_ADMINISTRATION),Map.of(EPlayerAttribute.MANPOWER_REC_MOD,0.05)),
 
-    CASTLE(1,Set.of(ENGINEERING)),
+    CASTLE(1,Set.of(ENGINEERING),Map.of(EPlayerAttribute.FORT_LVL,1.0)),
     SHIPBUILDING(1,Set.of(ENGINEERING),Map.of(EPlayerAttribute.NAVAL_MORALE,0.5)),
     IRON(1),
+    IRON_MINE(1,Set.of(IRON),Map.of(EPlayerAttribute.MINE_PROD,0.5)),
+    IRON_LUMBER(1,Set.of(IRON),Map.of(EPlayerAttribute.LUMBER_PROD,0.5)),
     WORKSHOP(1,Set.of(ENGINEERING)),
-    MEDIEVAL_MILITARY(1,Set.of(ENGINEERING,IRON),Map.of(EPlayerAttribute.TACTIC,0.25,EPlayerAttribute.LAND_MORALE,0.5)),
+
+    BASE_MEDIEVAL_MILITARY(1,Set.of(ENGINEERING,IRON),Map.of(EPlayerAttribute.TACTIC,0.25)),
+    INF1(1,Set.of(BASE_MEDIEVAL_MILITARY),Map.of(EPlayerAttribute.INF_LVL,1.0)),
+    CAV1(1,Set.of(BASE_MEDIEVAL_MILITARY),Map.of(EPlayerAttribute.CAV_LVL,1.0)),
+
+    NEW_MEDIEVAL_MILITARY(1,Set.of(BASE_MEDIEVAL_MILITARY),Map.of(EPlayerAttribute.TACTIC,0.5,EPlayerAttribute.CW,5.0)),
+    INF2(1,Set.of(NEW_MEDIEVAL_MILITARY,INF1),Map.of(EPlayerAttribute.INF_LVL,1.0)),
+    CAV2(1,Set.of(NEW_MEDIEVAL_MILITARY,CAV1),Map.of(EPlayerAttribute.CAV_LVL,1.0)),
 
     // ==================== ЭПОХА 2: РЕНЕССАНС ====================
     RENAISSANCE(-1, Set.of(FEUDALISM),Map.of(EPlayerAttribute.OI_FROM_BUILDING,0.5)),
 
-    BASTION(2),
+    BASTION(2,Map.of(EPlayerAttribute.FORT_LVL,1.0)),
     BANK_UP(2),
-    DOCK(2,Map.of(EPlayerAttribute.NAVAL_MORALE,1.0)),
+
 
     PRINTING_PRESS(2,Map.of(EPlayerAttribute.TECH_COST,-0.1)),
     EARLY_MODERN_ADMINISTRATION(2,Set.of(PRINTING_PRESS)),
@@ -55,31 +64,38 @@ public enum EPlayerTech {
     BUREAUCRACY_BASE(2,Set.of(PRINTING_PRESS),Map.of(EPlayerAttribute.ADMIN_EFFICIENCY,1.0)),
 
 
-    PROFESSIONAL_ARMY(2,Map.of(EPlayerAttribute.TACTIC,0.15,EPlayerAttribute.LAND_MORALE,1.0)),
-    INF3(2,Set.of(PROFESSIONAL_ARMY)),
-    CAV3(2,Set.of(PROFESSIONAL_ARMY)),
+    PROFESSIONAL_ARMY(2,Map.of(EPlayerAttribute.TACTIC,0.5)),
+    INF3(2,Set.of(PROFESSIONAL_ARMY),Map.of(EPlayerAttribute.INF_LVL,1.0)),
+    CAV3(2,Set.of(PROFESSIONAL_ARMY),Map.of(EPlayerAttribute.CAV_LVL,1.0)),
 
 
 
-    SPAIN_SQUARE(2,Set.of(PROFESSIONAL_ARMY),Map.of(EPlayerAttribute.TACTIC,0.5)),
+    SPAIN_SQUARE(2,Set.of(PROFESSIONAL_ARMY),Map.of(EPlayerAttribute.TACTIC,0.5,EPlayerAttribute.CW,5.0)),
 
-    GUNPOWDER(2),
-    INF4(2,Set.of(GUNPOWDER,SPAIN_SQUARE,INF3)),
-    CAV4(2,Set.of(SPAIN_SQUARE,CAV3)),
-    ART2(2,Set.of(GUNPOWDER)),
+    GUNPOWDER(2,Map.of(EPlayerAttribute.ART_LVL,1.0)),
+    INF4(2,Set.of(GUNPOWDER,SPAIN_SQUARE,INF3),Map.of(EPlayerAttribute.INF_LVL,1.0)),
+    CAV4(2,Set.of(SPAIN_SQUARE,CAV3),Map.of(EPlayerAttribute.CAV_LVL,1.0)),
+    ART2(2,Set.of(GUNPOWDER),Map.of(EPlayerAttribute.ART_LVL,1.0)),
 
 
     // ==================== ЭПОХА 3: МАНУФАКТУРЫ ====================
     MANUFACTURE(-1, Set.of(RENAISSANCE)),
 
-    FORTRESS(3),
+    NATIONAL_BANK(3),
+    FORTRESS(3,Map.of(EPlayerAttribute.FORT_LVL,1.0)),
     ENLIGHTENMENT(3),
     CONSTITUTION(3,Set.of(ENLIGHTENMENT)),
     BUREAUCRACY_UP(3,Set.of(ENLIGHTENMENT)),
-    LINE_INFANTRY(3),
-    INF5(3,Set.of(LINE_INFANTRY)),
-    CAV5(3,Set.of(LINE_INFANTRY)),
-    ART3(3,Set.of(LINE_INFANTRY)),
+    LINE_INFANTRY(3,Map.of(EPlayerAttribute.TACTIC,0.5)),
+    INF5(3,Set.of(LINE_INFANTRY),Map.of(EPlayerAttribute.INF_LVL,1.0)),
+    CAV5(3,Set.of(LINE_INFANTRY),Map.of(EPlayerAttribute.CAV_LVL,1.0)),
+    ART3(3,Set.of(LINE_INFANTRY),Map.of(EPlayerAttribute.ART_LVL,1.0)),
+
+    IMPULSE_WARFARE(3,Set.of(LINE_INFANTRY),Map.of(EPlayerAttribute.TACTIC,0.5,EPlayerAttribute.CW,5.0)),
+
+    INF6(3,Set.of(IMPULSE_WARFARE,INF5),Map.of(EPlayerAttribute.INF_LVL,1.0)),
+    CAV6(3,Set.of(IMPULSE_WARFARE,CAV5),Map.of(EPlayerAttribute.CAV_LVL,1.0)),
+    ART4(3,Set.of(IMPULSE_WARFARE,ART3),Map.of(EPlayerAttribute.ART_LVL,1.0)),
 
     INDUSTRIAL(-1, Set.of(MANUFACTURE));
 
@@ -193,10 +209,14 @@ public enum EPlayerTech {
         return lore;
     }
 
+    public String getName(){
+        return CustomConfig.get().getString("tech.name."+this, "techName");
+    }
+
 
     private static Component colorText(String text){
 
-        return MiniMessage.miniMessage().deserialize("<!italic>" + text);
+        return MiniMessage.miniMessage().deserialize("<!italic><white>" + text);
     }
 
 

@@ -4,7 +4,7 @@
 //import earthrp.customObjects.Town;
 //import earthrp.menusystem.Menu;
 //import earthrp.menusystem.MenuUtility;
-//import earthrp.menusystem.menu.buildings.MiningBuildingMenu;
+//import earthrp.menusystem.menu.buildings.inGame.MiningBuildingMenu;
 //import org.bukkit.Bukkit;
 //import org.bukkit.ChatColor;
 //import org.bukkit.Material;

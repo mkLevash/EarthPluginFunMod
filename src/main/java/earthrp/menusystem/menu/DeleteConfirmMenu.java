@@ -23,7 +23,7 @@ public class DeleteConfirmMenu extends Menu {
     private final ServerDatabase db;
     public DeleteConfirmMenu(MenuUtility menuUtility) {
         super(menuUtility);
-        db = Earth.getInstance().getServerDatabase();
+        db = Earth.getInstance().getDatabase();
     }
 
     @Override
@@ -55,7 +55,7 @@ public class DeleteConfirmMenu extends Menu {
                     db.deleteTown(town);
                 }
                 if(army!=null){
-                    army.mergeUnits();
+                    army.mergeUnits(false);
                     army.disband(e.getWhoClicked().getInventory());
                     menuUtility.getArmyShulkerBox().getInventory().clear();
                     db.deleteArmy(army);
@@ -73,6 +73,7 @@ public class DeleteConfirmMenu extends Menu {
 
     @Override
     public void setMenuItems() {
+        inventory.clear();
 
         ItemStack yes = new ItemStack(Material.EMERALD, 1);
         ItemMeta yes_meta = yes.getItemMeta();

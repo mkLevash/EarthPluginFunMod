@@ -4,51 +4,26 @@ package earthrp.runnable;
 import earthrp.Earth;
 import earthrp.battle.Battle;
 import earthrp.battle.BattleManager;
-import earthrp.battle.BattleUnit;
 import earthrp.customObjects.Army;
 import earthrp.customObjects.EPlayer;
-import earthrp.customObjects.Unit;
-import org.bukkit.Bukkit;
-import org.bukkit.Location;
-import org.bukkit.World;
-import org.bukkit.entity.Player;
+import earthrp.tools.Tools;
+import org.bukkit.*;
+import org.bukkit.block.Block;
 import org.bukkit.scheduler.BukkitRunnable;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 public class ArmyTask extends BukkitRunnable {
 
     private boolean isOwnerOfChunk(EPlayer country) {
-        var town = Earth.getInstance().getServerDatabase().getTownAtChunk(country.getData().getLocation());
+        var town = Earth.getInstance().getDatabase().getTownAtChunk(country.getData().getLocation());
         return town != null && town.getOwnerId().equals(country.getUniqueId());
     }
 
     // Быстрый сбор армий из UUID в объекты Army
 
 
-    private Location getChunkCenter(Player player) {
-        Location loc = player.getLocation();
-        World world = loc.getWorld();
 
-        // Находим координаты самого чанка (побитовый сдвиг вправо на 4, то же самое что деление на 16)
-        int chunkX = loc.getBlockX() >> 4;
-        int chunkZ = loc.getBlockZ() >> 4;
-
-        // Вычисляем координаты центра чанка:
-        // (chunk * 16) — это начало чанка (нулевой блок), и прибавляем 8 блоков для выхода на центр.
-        // Добавляем 0.5, чтобы встать ровно в центр блока, а не на его край.
-        double centerX = (chunkX << 4) + 8.5;
-        double centerZ = (chunkZ << 4) + 8.5;
-
-        // Y-координату (высоту) оставляем как у игрока, либо берем поверхность земли:
-        //double centerY = loc.getY();
-        // Если нужно найти именно поверхность земли в центре чанка, раскомментируйте строку ниже:
-        double centerY = world.getHighestBlockYAt((int)centerX, (int)centerZ) + 1.0;
-
-        return new Location(world, centerX, centerY, centerZ);
-    }
 
 
     public ArmyTask() {
@@ -56,95 +31,167 @@ public class ArmyTask extends BukkitRunnable {
 
     @Override
     public void run() {
-        List<EPlayer> players = new ArrayList<>(Earth.getInstance().getServerDatabase().getPlayers());
+        Set<Army> armies = Earth.getInstance().getDatabase().getArmies();
+        Map<Long, List<Army>> armiesInChunks = new HashMap<>();
+        BattleManager bm = Earth.getInstance().getBattleManager();
+        List<Battle> battles = bm.getBattles();
 
-        // Двойной цикл для сравнения всех армий между собой
-        for (int i = 0; i < players.size(); i++) {
-            EPlayer countryA = players.get(i);
+        for (Army army : armies) {
+            long chunkKey = army.getChunkKey(); // Ваш метод получения ID чанка
+            armiesInChunks.computeIfAbsent(chunkKey, k -> new ArrayList<>()).add(army);
 
-            for (int j = i + 1; j < players.size(); j++) {
-                EPlayer countryB = players.get(j);
+            Tools.editHologram(chunkKey,"armyHoloTroops" + army.getUuid().toString(),"Армия <light_purple>" + army.getOwner().getDisplayName() + "<white>'a - <green>" + (army.getTroops()/1000) + "K");
+            Tools.editHologram(chunkKey,"armyHoloMorale" + army.getUuid().toString(),"Мораль <dark_green>" + army.getMorale() + "<white> / <dark_green>" + army.getMaxMorale());
+        }
 
-
-
-                if(countryA.getData().getLocation() != countryB.getData().getLocation()) continue;
-
-
-                if (countryA.getData().isRetreat() || countryB.getData().isRetreat()) continue;
-
-
-                if(!countryA.getData().getWar().contains(countryB.getUniqueId())) continue;
-
-
-                if(countryA.getData().armiesInHand.isEmpty() || countryB.getData().armiesInHand.isEmpty() ) continue;
+        for (long chunkKey : armiesInChunks.keySet()) {
+            List<Army> chunkArmies = armiesInChunks.get(chunkKey);
+            int size = chunkArmies.size();
+            if (size < 2) continue; // Если в чанке один юнит, сравнивать не с кем
 
 
-                Location location = getChunkCenter(Bukkit.getPlayer(countryA.getUniqueId()));
-                BattleManager bm = Earth.getInstance().getBattleManager();
-                List<Battle> battles = bm.getBattles();
-                Battle battle = null;
-                for (Battle b:battles){
-                    if(b.getLoc().getChunk().getChunkKey() == countryA.getData().getLocation()){
-                        battle = b;
-                        break;
-                    }
+            Battle existingBattle = null;
+
+            for (Battle b : battles) {
+                if (b.getLoc().getChunk().getChunkKey() == chunkKey) {
+                    existingBattle = b;
+                    break;
                 }
-                if(battle == null){
-
-                    List<Army> defender;
-                    EPlayer def;
-                    List<Army> attacker;
-                    EPlayer att;
-                    if (isOwnerOfChunk(countryA)) {
-                        defender = countryA.getArmiesInHand();
-                        def = countryA;
-                        att = countryB;
-                        attacker = countryB.getArmiesInHand();
-                    } else if (isOwnerOfChunk(countryB)) {
-                        defender = countryB.getArmiesInHand();
-                        def = countryB;
-                        att = countryA;
-                        attacker = countryA.getArmiesInHand();
-                    } else {
-                        // Если земля ничья, защищается тот, кто пришел раньше (меньше время локации)
-                        if (countryA.getData().getLocationTime() < countryB.getData().getLocationTime()) {
-                            defender = countryA.getArmiesInHand();
-                            def = countryA;
-                            att = countryB;
-                            attacker = countryB.getArmiesInHand();
-                        } else {
-                            defender = countryB.getArmiesInHand();
-                            def = countryB;
-                            att = countryA;
-                            attacker = countryA.getArmiesInHand();
-                        }
-                    }
-                    att.getData().setBattle(true);
-                    def.getData().setBattle(true);
-                    bm.newBattle(attacker,defender,location,att,def);
-                }else{
-                    if(!countryA.getData().isBattle()){
-                        if(countryA.getData().getWar().contains(battle.getAttacker().getFirst().getUniqueId())){
-                            battle.joinDef(countryA);
-                        }else{
-                            battle.joinAtt(countryA);
-                        }
-                    }
-                    if(!countryB.getData().isBattle()){
-                        if(countryB.getData().getWar().contains(battle.getAttacker().getFirst().getUniqueId())){
-                            battle.joinDef(countryB);
-                        }else{
-                            battle.joinAtt(countryB);
-                        }
-                    }
-
-                }
-
-
-
-
             }
+
+            if (existingBattle != null) {
+
+                // Берем ID лидера атакующих для проверки отношений (без тяжелых стримов)
+                UUID attackerId = existingBattle.getAttacker().getUniqueId();
+
+                boolean barbarianAtt = existingBattle.getAttList().getFirst().isBarbarian();
+                boolean barbarianDef = existingBattle.getDefList().getFirst().isBarbarian();
+
+                for (Army army : chunkArmies) {
+                    if (army.isRetreat() || army.isBattle()) continue;
+
+                    EPlayer country = army.getOwner();
+                    existingBattle.join(army, !country.getData().getEnemies().contains(attackerId));
+                    if(barbarianAtt){
+                        existingBattle.join(army,false);
+                    } else if (barbarianDef) {
+                        existingBattle.join(army,true);
+                    }
+                    army.setBattle(existingBattle);
+                }
+            }else {
+                Army armyA = null;
+                Army armyB = null;
+                boolean conflictFound = false;
+
+                for (int i = 0; i < size && !conflictFound; i++) {
+                    for (int j = i + 1; j < size; j++) {
+                        Army a = chunkArmies.get(i);
+                        Army b = chunkArmies.get(j);
+
+                        if (a.isRetreat() || b.isRetreat()) continue;
+
+                        EPlayer countryA = a.getOwner();
+                        EPlayer countryB = b.getOwner();
+
+                        if (countryA.getData().getEnemies().contains(countryB.getUniqueId())) {
+                            armyA = a;
+                            armyB = b;
+                            conflictFound = true;
+                            break;
+                        }
+                        if(countryA!=countryB && (a.isBarbarian() || b.isBarbarian())){
+                            armyA = a;
+                            armyB = b;
+                            conflictFound = true;
+                            break;
+                        }
+                    }
+                }
+
+                // Если конфликт обнаружен — инициализируем новую битву
+                if (conflictFound) {
+                    EPlayer countryA = armyA.getOwner();
+                    EPlayer countryB = armyB.getOwner();
+
+                    World world = Bukkit.getWorlds().getFirst();
+                    Location location = getGroundUnderTree(chunkKey,world);
+
+                    Set<Army> defender = new LinkedHashSet<>();
+                    Set<Army> attacker = new LinkedHashSet<>();
+                    EPlayer def, att;
+
+                    if (isOwnerOfChunk(countryA)) {
+                        defender.add(armyA); def = countryA;
+                        attacker.add(armyB); att = countryB;
+                    } else if (isOwnerOfChunk(countryB)) {
+                        defender.add(armyB); def = countryB;
+                        attacker.add(armyA); att = countryA;
+                    } else {
+                        if (armyA.getData().getLocationTime() < armyB.getData().getLocationTime()) {
+                            defender.add(armyA); def = countryA;
+                            attacker.add(armyB); att = countryB;
+                        } else {
+                            defender.add(armyB); def = countryB;
+                            attacker.add(armyA); att = countryA;
+                        }
+                    }
+
+                    for (Army army : chunkArmies) {
+                        // Пропускаем инициаторов битвы (мы их уже добавили выше)
+                        if (army.equals(armyA) || army.equals(armyB)) continue;
+                        if (army.isRetreat() || army.isBattle()) continue;
+
+                        EPlayer country = army.getOwner();
+
+
+                        if (country.getData().getEnemies().contains(att.getUniqueId())) {
+                            defender.add(army);
+                        } else if(country.getData().getEnemies().contains(def.getUniqueId())){
+                            attacker.add(army);
+                        }else{
+                            continue;
+                        } // Блокируем армию в статусе боя
+                    }
+
+
+                    bm.newBattle(attacker, defender, location);
+
+                    // Остальные армии этого чанка зайдут в эту битву уже на следующем тике/проверке,
+                    // что разгружает процессор и предотвращает каскадные баги.
+                }
+            }
+
         }
     }
+
+    private static Location getGroundUnderTree(long chunkKey, World world) {
+        Chunk chunk = world.getChunkAt(chunkKey);
+
+        int worldX = (chunk.getX() << 4) + 8;
+        int worldZ = (chunk.getZ() << 4) + 8;
+
+
+        Block current = chunk.getWorld().getHighestBlockAt(worldX, worldZ, HeightMap.WORLD_SURFACE);
+
+        while (current.getY() > chunk.getWorld().getMinHeight()) {
+            boolean isTree = Tag.LEAVES.isTagged(current.getType()) || Tag.LOGS.isTagged(current.getType());
+
+            // Игнорируем деревья, воздух, лианы и жидкости
+            if (!isTree && !current.isLiquid() && current.getType().isSolid()) {
+                Block target = current.getRelative(0, 1, 0);
+
+                // Проверяем, что для игрока есть 2 свободных блока по высоте
+                if (target.isPassable() && target.getRelative(0, 1, 0).isPassable()) {
+                    return target.getLocation();
+                }
+            }
+            current = current.getRelative(0, -1, 0);
+        }
+        return current.getLocation();
+    }
+
+
+
 
 }

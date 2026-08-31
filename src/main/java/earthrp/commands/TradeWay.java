@@ -4,7 +4,7 @@ import earthrp.Earth;
 import earthrp.tools.Tools;
 import earthrp.customObjects.Town;
 import earthrp.database.ServerDatabase;
-import earthrp.files.CustomConfig;
+import earthrp.configs.CustomConfig;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
@@ -23,7 +23,7 @@ public class TradeWay implements CommandExecutor, TabCompleter {
     ServerDatabase db;
     public TradeWay(Earth plugin) {
         this.plugin = plugin;
-        db = plugin.getServerDatabase();
+        db = plugin.getDatabase();
     }
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String s, @NotNull String[] args) {
@@ -71,7 +71,7 @@ public class TradeWay implements CommandExecutor, TabCompleter {
                 List<Town> towns = db.getPlayer(player.getUniqueId()).getTradeTowns();
                 List<String> res = new ArrayList<>();
                 for(Town t:towns){
-                    if(t.isLandHub())res.add(t.getUniqueId() + " " + t.getName());
+                    //if(t.isLandHub())res.add(t.getUniqueId() + " " + t.getName());
                 }
 
                 return res;

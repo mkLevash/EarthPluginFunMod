@@ -1,8 +1,11 @@
 package earthrp.battle;
 
+import earthrp.Earth;
+import earthrp.customEnums.UnitTech.UnitType;
 import earthrp.customObjects.Army;
 import earthrp.customObjects.EPlayer;
-import earthrp.customObjects.Unit;
+import earthrp.customObjects.ArmyUnit;
+import earthrp.database.ServerDatabase;
 import earthrp.tools.Tools;
 import lombok.Getter;
 import lombok.Setter;
@@ -27,10 +30,10 @@ public class Battle {
                 .mapToInt(Army::getCW) // Превращаем поток армий в поток чисел (double или int)
                 .max()                    // Ищем максимум
                 .orElse(15);
-        for (Unit u : attacker.getUnits()){
+        for (ArmyUnit u : attacker.getUnits()){
             attUnits.add(new BattleUnit(u));
         }
-        for (Unit u : defender.getUnits()){
+        for (ArmyUnit u : defender.getUnits()){
             defUnits.add(new BattleUnit(u));
         }
 
@@ -45,17 +48,14 @@ public class Battle {
         aRow2 = new BattleUnit[cw];
         dRow2 = new BattleUnit[cw];
 
-        attacker.setBattle(true);
-        defender.setBattle(true);
-
+        attacker.setBattle(this);
+        defender.setBattle(this);
     }
 
-    public Battle(List<Army> attacker, EPlayer attackerCountry, List<Army> defender, EPlayer defenderCountry, Location location){
+    public Battle(Set<Army> attacker, Set<Army> defender, Location location){
         this.uuid = UUID.randomUUID();
         att.addAll(attacker);
         def.addAll(defender);
-        this.attacker.add(attackerCountry);
-        this.defender.add(defenderCountry);
         prePhase = true;
         loc = location;
         cw = Stream.concat(att.stream(), def.stream())
@@ -63,12 +63,12 @@ public class Battle {
                 .max()                    // Ищем максимум
                 .orElse(15);
         for(Army a:att){
-            for (Unit u : a.getUnits()){
+            for (ArmyUnit u : a.getUnits()){
                 attUnits.add(new BattleUnit(u));
             }
         }
         for(Army a:def){
-            for (Unit u : a.getUnits()){
+            for (ArmyUnit u : a.getUnits()){
                 defUnits.add(new BattleUnit(u));
             }
         }
@@ -85,22 +85,33 @@ public class Battle {
         dRow2 = new BattleUnit[cw];
 
         for (Army a:attacker){
-            a.setBattle(true);
+            a.setBattle(this);
         }
         for (Army a:defender){
-            a.setBattle(true);
+            a.setBattle(this);
         }
 
-
-
+        Tools.spawnPreBattleHologram(location, getAttacker(), getDefender());
     }
 
-    private List<EPlayer> attacker = new ArrayList<>();
-    private List<EPlayer> defender = new ArrayList<>();
+
+    public EPlayer getAttacker(){
+        return getAttList().getFirst().getOwner();
+    }
+
+    public EPlayer getDefender(){
+        return getDefList().getFirst().getOwner();
+    }
 
     private final UUID uuid;
-    private final Set<Army> att = new HashSet<>();
-    private final Set<Army> def = new HashSet<>();
+    private final Set<Army> att = new LinkedHashSet<>();
+    private final Set<Army> def = new LinkedHashSet<>();
+
+    public List<Army> getAttList(){return new ArrayList<>(att);}
+
+    public List<Army> getDefList(){
+        return new ArrayList<>(def);
+    }
 
     private int ter;
     private final Location loc;
@@ -122,6 +133,8 @@ public class Battle {
     private boolean fire;
     private boolean prePhase;
 
+    private boolean townBattle;
+
     private BattleUnit[] aRow1;
     private BattleUnit[] dRow1;
 
@@ -132,21 +145,12 @@ public class Battle {
     private List<BattleUnit> attUnits = new ArrayList<>();
     private List<BattleUnit> defUnits = new ArrayList<>();
 
-    public static BattleUnit getUnit(String type, List<BattleUnit> units, String status, int rowStatus){
-        return units.stream()
-                .filter(u -> u.getType().equals(type)
-                        && u.getStatus().equals(status)
-                        && u.getRowIndex() == rowStatus).max(Comparator.comparingInt(BattleUnit::getLvl) // Сначала по первому параметру
-                        .thenComparingInt(BattleUnit::getHp))
-                .orElse(null);
-    }
 
-    public static BattleUnit getUnit(String type, List<BattleUnit> units, String status){
-        // Сначала по первому параметру
-        // Если равны, то по второму
-        // Переворачиваем, чтобы были по убыванию
+
+    public static BattleUnit getUnit(UnitType type, List<BattleUnit> units, String status){
+
         return units.stream()
-                .filter(u -> u.getType().equals(type)
+                .filter(u -> u.getTech().getType().equals(type)
                         && u.getStatus().equals(status)).max(Comparator.comparingInt(BattleUnit::getLvl) // Сначала по первому параметру
                         .thenComparingInt(BattleUnit::getHp))
                 .orElse(null);
@@ -180,25 +184,156 @@ public class Battle {
         return Tools.round(moraleSum/defUnits.size());
     }
 
-    public void joinDef(EPlayer player){
-        this.getDefender().add(player);
-        this.getDef().addAll(player.getArmiesInHand());
-        for(Army a:player.getArmiesInHand()){
-            for(Unit u:a.getUnits()){
-                this.getDefUnits().add(new BattleUnit(u));
-            }
-        }
-        player.getData().setBattle(true);
-    }
-
-    public void joinAtt(EPlayer player){
-        this.getAttacker().add(player);
-        this.getAtt().addAll(player.getArmiesInHand());
-        for(Army a:player.getArmiesInHand()){
-            for(Unit u:a.getUnits()){
+    public void join(Army army, boolean joinAttacker){
+        if(joinAttacker){
+            this.getAtt().add(army);
+            for(ArmyUnit u:army.getUnits()){
                 this.getAttUnits().add(new BattleUnit(u));
             }
+            army.setBattle(this);
+        }else{
+            this.getDef().add(army);
+            for(ArmyUnit u:army.getUnits()){
+                this.getDefUnits().add(new BattleUnit(u));
+            }
+            army.setBattle(this);
         }
-        player.getData().setBattle(true);
+
+    }
+
+    public int getLoses(List<BattleUnit> sideUnits){
+        int amount = 0;
+        for(BattleUnit bu:sideUnits){
+            amount += 1000 - bu.getHp();
+        }
+        return amount;
+    }
+
+    public int getDefLoses(){
+        return getLoses(defUnits);
+    }
+
+    public int getAttLoses(){
+        return getLoses(attUnits);
+    }
+
+    public int getRetreatTroops(List<BattleUnit> sideUnits){
+        int amount = 0;
+        for(BattleUnit bu:sideUnits){
+            if(bu.getStatus().equals("retreat")){
+                amount += bu.getHp();
+            }
+        }
+        return amount;
+    }
+
+    public int getDefRetreatTroops(){
+        return getRetreatTroops(defUnits);
+    }
+
+    public int getAttRetreatTroops(){
+        return getRetreatTroops(attUnits);
+    }
+
+    public int getRetreatRgt(List<BattleUnit> sideUnits){
+        int amount = 0;
+        for(BattleUnit bu:sideUnits){
+            if(bu.getStatus().equals("retreat")){
+                amount++;
+            }
+        }
+        return amount;
+    }
+
+    public int getDefRetreatRgt(){
+        return getRetreatRgt(defUnits);
+    }
+
+    public int getAttRetreatRgt(){
+        return getRetreatRgt(attUnits);
+    }
+
+
+
+    private int getInBattleTroops(List<BattleUnit> sideUnits){
+        int amount = 0;
+        for(BattleUnit bu:sideUnits){
+            if(bu.getStatus().equals("inRow")){
+                amount += bu.getHp();
+            }
+        }
+        return amount;
+    }
+
+    public int getDefInBattleTroops(){
+        return getInBattleTroops(defUnits);
+    }
+
+    public int getAttInBattleTroops(){
+        return getInBattleTroops(attUnits);
+    }
+
+
+
+    private int getInBattleRgt(List<BattleUnit> sideUnits){
+        int amount = 0;
+        for(BattleUnit bu:sideUnits){
+            if(bu.getStatus().equals("inRow")){
+                amount++;
+            }
+        }
+        return amount;
+    }
+
+    public int getDefInBattleRgt(){
+        return getInBattleRgt(defUnits);
+    }
+
+    public int getAttInBattleRgt(){
+        return getInBattleRgt(attUnits);
+    }
+
+    private int getReserves(List<BattleUnit> sideUnits){
+        int amount = 0;
+        for(BattleUnit bu:sideUnits){
+            if(bu.getStatus().equals("reserve")){
+                amount += bu.getHp();
+            }
+        }
+        return amount;
+    }
+
+    public int getDefReserves(){
+        return getReserves(defUnits);
+    }
+
+    public int getAttReserves(){
+        return getReserves(attUnits);
+    }
+
+
+
+    public void retreat(Army a){
+        ServerDatabase db = Earth.getInstance().getDatabase();
+        for(BattleUnit u:getUnits()){
+            if(u.getArmy().equals(a)){
+                ArmyUnit unit = db.getUnit(u.getUniqueId());
+                unit.setMorale(u.getMorale());
+                unit.setHp(u.getHp());
+                if (unit.getHp() == 0) {
+                    if(Earth.getInstance().getConfig().getBoolean("debug")){
+                        Earth.getInstance().getLogger().info("unit Dead -" + unit);
+                    }
+                    else{
+                        db.deleteUnit(u);
+                    }
+                }
+                u.setStatus("retreat");
+            }
+
+        }
+        a.setRetreat(true);
+
+
     }
 }

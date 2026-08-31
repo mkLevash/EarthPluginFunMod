@@ -1,10 +1,6 @@
 package earthrp.commands;
 
 import earthrp.Earth;
-import earthrp.customEnums.EPlayerTech;
-import earthrp.tools.Tools;
-import earthrp.customEnums.EPlayerAttribute;
-import earthrp.customObjects.EPlayer;
 import earthrp.database.ServerDatabase;
 import org.bukkit.*;
 import org.bukkit.command.Command;
@@ -14,7 +10,6 @@ import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.BlockDisplay;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.scoreboard.Team;
@@ -53,7 +48,7 @@ public class Colonial implements CommandExecutor, TabCompleter {
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String s, @NotNull String[] args) {
 
-        ServerDatabase db = Earth.getInstance().getServerDatabase();
+        ServerDatabase db = Earth.getInstance().getDatabase();
 
         if(sender instanceof Player player){
 

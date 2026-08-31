@@ -83,6 +83,7 @@ public class BattleMenu extends Menu {
 
     @Override
     public void setMenuItems() {
+        inventory.clear();
 
         ItemStack defender = new ItemStack(Material.PLAYER_HEAD);
         SkullMeta defenderMeta = (SkullMeta) defender.getItemMeta();

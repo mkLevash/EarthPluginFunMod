@@ -1,7 +1,6 @@
 package earthrp.placeholders;
 
 import earthrp.Earth;
-import earthrp.tools.Tools;
 import earthrp.customObjects.EPlayer;
 import earthrp.customEnums.EPlayerAttribute;
 import earthrp.customObjects.Town;
@@ -9,9 +8,6 @@ import me.clip.placeholderapi.expansion.PlaceholderExpansion;
 import org.bukkit.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.util.UUID;
-
 
 
 public class MoraExpansion extends PlaceholderExpansion {
@@ -98,11 +94,11 @@ public class MoraExpansion extends PlaceholderExpansion {
             return "";
         }
         String value = "";
-        EPlayer p = earth.getServerDatabase().getPlayer(player.getUniqueId());
+        EPlayer p = earth.getDatabase().getPlayer(player.getUniqueId());
         if (params.equalsIgnoreCase("treasury")){
             long treasury = (long) p.getAttribute(EPlayerAttribute.TREASURY);
             String sTreasury = String.valueOf(treasury);
-            if(treasury>9999) sTreasury = treasury / 10000 + "K";
+            if(treasury>999) sTreasury = treasury / 1000 + "K";
             if(treasury>999999) sTreasury = treasury / 1000000 + "M";
             value = "Ѡ&6" + sTreasury;
 //            value += "&fऄ" + (int) p.getAttribute(EPlayerAttribute.STABILITY);
@@ -118,7 +114,13 @@ public class MoraExpansion extends PlaceholderExpansion {
 
             value += "&f£" + (int) p.getAttribute(EPlayerAttribute.POLIT_BALANCE);
 
-            value += "&fऴ" + (int) p.getAttribute(EPlayerAttribute.MANPOWER);
+            value += "&fऴ";
+            double manpower = p.getAttribute(EPlayerAttribute.MANPOWER);
+            if(manpower > 999999){
+                value += (int) Math.floor(manpower / 1000000) + "M";
+            }else{
+                value += (int) Math.floor(manpower / 1000) + "K";
+            }
 
 
 
@@ -222,7 +224,7 @@ public class MoraExpansion extends PlaceholderExpansion {
             return "";
         }
         if (params.equalsIgnoreCase("main_balance")){
-            int balance = Tools.getBalance(p);
+            long balance = p.getBalance();
 
             if(balance > 0){
                 return "&fव" + "&a" + balance;
@@ -289,10 +291,10 @@ public class MoraExpansion extends PlaceholderExpansion {
         }
         if (params.equalsIgnoreCase("war_status")){
 
-            if (p.getAttribute(EPlayerAttribute.WAR_STATUS) == 0){
-                return "&3In peace";
-            }else{
+            if (p.isWar()){
                 return "&4In war";
+            }else{
+                return "&3In peace";
             }
         }
         if (params.equalsIgnoreCase("inflation")){
@@ -302,7 +304,7 @@ public class MoraExpansion extends PlaceholderExpansion {
             //return getColor(-c.getCorruption(),0,1)[0];
         }
         if (params.equalsIgnoreCase("mora")){
-            boolean mora = earth.getServerDatabase().getStatusMora();
+            boolean mora = earth.getDatabase().getStatusMora();
 
             if (mora){
                 return "&aON ";
@@ -311,7 +313,7 @@ public class MoraExpansion extends PlaceholderExpansion {
             }
         }
         if (params.equalsIgnoreCase("day")){
-            String day = String.valueOf(earth.getServerDatabase().getStatusDay());
+            String day = String.valueOf(earth.getDatabase().getStatusDay());
             long time = Bukkit.getServer().getWorld("world").getTime();
             int time_hour = (int) time /1000;
             String hour;
@@ -342,13 +344,17 @@ public class MoraExpansion extends PlaceholderExpansion {
         if(params.equalsIgnoreCase("town")){
             long chunkKey = player.getLocation().getChunk().getChunkKey();
 
-            Town town = earth.getServerDatabase().getTownAtChunk(chunkKey);
+            Town town = earth.getDatabase().getTownAtChunk(chunkKey);
             if (town==null){
                 return " ";
-            }else if(town.getOwnerId().equals(player.getUniqueId())) {
-                return "[&3"+earth.getServerDatabase().getPlayer(town.getOwnerId()).getCountryName() +"&f]&2"+town.getName();
+            }else if(town.getController().equals(p)) {
+                return "&a"+town.getName();
+            }else if(p.getData().getAlly().contains((town.getOwnerId()))){
+                return "&b"+town.getName();
+            }else if(p.getData().getEnemies().contains((town.getOwnerId()))){
+                return "&c"+town.getName();
             }else{
-                return "[&b"+earth.getServerDatabase().getPlayer(town.getOwnerId()).getCountryName() +"&f]&5"+town.getName();
+                return "&7"+town.getName();
             }
         }
         return value;

@@ -1,6 +1,6 @@
 package earthrp.menusystem.menu;
 
-import earthrp.customEnums.TownItem;
+import earthrp.customEnums.EarthItem;
 import earthrp.customObjects.Town;
 import earthrp.menusystem.MenuUtility;
 import earthrp.menusystem.PaginatedMenu;
@@ -20,7 +20,7 @@ public class TownItemsMenu extends PaginatedMenu {
     }
 
     private Town town = menuUtility.getTown();
-    private final Map<TownItem, Long> townItems = town.getData().items;
+    private final Map<EarthItem, Long> townItems = town.getData().getItems();
     @Override
     public String getMenuName() {
         return "";
@@ -40,7 +40,7 @@ public class TownItemsMenu extends PaginatedMenu {
                 p.closeInventory();
                 new TownsMenu(menuUtility).open();
             }
-            TownItem ti = TownItem.fromString(item.getType().toString());
+            EarthItem ti = EarthItem.fromString(item.getType().toString());
 
             if(!item.getType().equals(Material.ICE) && ti!=null){
 
@@ -85,8 +85,8 @@ public class TownItemsMenu extends PaginatedMenu {
                 }
 
                 if (success) {
-                    p.closeInventory();
-                    new TownItemsMenu(menuUtility).open();
+                    inventory.clear();
+                    this.setMenuItems();
                 }
             }
 
@@ -99,18 +99,25 @@ public class TownItemsMenu extends PaginatedMenu {
 
     @Override
     public void setMenuItems() {
+        inventory.clear();
 
         addMenuBorder();
-        inventory.setItem(0,Tools.createItem(Material.CHEST,"Доступное место:" + town.getItemAmount() + "/" + town.getItemMax(),null));
+        inventory.setItem(0,Tools.createItem(Material.CHEST,"Доступное место: " + town.getItemAmount() + "/" + town.getItemMax(),null));
 
         List<ItemStack> items = new ArrayList<>();
 
-        for(TownItem i :townItems.keySet()){
-            if(i.getMaterial()!=null){
-                items.add(Tools.createItem(i.getMaterial(),i.getDisplayName(),List.of(townItems.get(i).toString())));
+        for(EarthItem i :townItems.keySet()){
+            if(i==null) continue;
+            if(townItems.get(i)==0) continue;
+            List<String> lore = new ArrayList<>();
+            long amount = townItems.get(i);
+            if(i.getType()== EarthItem.ItemType.FOOD){
+                long food = i.getFood() * amount;
+                lore.add(amount + " = " + food + "इ");
             }else{
-                items.add(Tools.createItem(Material.ICE,i.getDisplayName(),List.of(townItems.get(i).toString()),i.getDisplayName()));
+                lore.add(String.valueOf(amount));
             }
+            items.add(Tools.createItem(i.getMaterial(),i.getDisplayName(),lore,i.getCustomModel()));
         }
         setItems(items);
 

@@ -57,12 +57,12 @@ public class PaginatedMarketSelectMenu extends PaginatedMenu {
                 }
             }
         } else if (e.getCurrentItem().getType().equals(Material.SOUL_TORCH)) {
-            building.setMarketId(null);
+            //building.setMarketId(null);
             
             p.closeInventory();
 
         } else if(!e.getCurrentItem().getType().equals(Material.GRAY_STAINED_GLASS_PANE)){
-            building.setItem(e.getCurrentItem().getType());
+            //building.setItem(e.getCurrentItem().getType());
             
             p.closeInventory();
         }
@@ -72,6 +72,7 @@ public class PaginatedMarketSelectMenu extends PaginatedMenu {
 
     @Override
     public void setMenuItems() {
+        inventory.clear();
         addMenuBorder();
 
 

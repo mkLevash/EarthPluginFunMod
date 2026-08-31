@@ -4,7 +4,8 @@ import earthrp.Earth;
 import earthrp.battle.BattleHandler;
 import earthrp.battle.BattlePhaseHandler;
 import earthrp.commands.*;
-import earthrp.files.CustomConfig;
+import earthrp.configs.BuildingConfig;
+import earthrp.configs.CustomConfig;
 import earthrp.listeners.*;
 import earthrp.placeholders.MoraExpansion;
 import earthrp.runnable.*;
@@ -25,12 +26,49 @@ public class LoadingManager {
             new MoraExpansion(instance).register();
         }
     }
+
+
+
+    public void start(){
+        instance.loadDb();
+        instance.connectFiles();
+        loadConfig();
+        instance.getDatabase().loadCache();
+        registerCommands();
+        runTasks();
+        registerExpansion();
+        registerListeners();
+        instance.getBlueMapManager().refreshAllTowns();
+        Crafts.enableCrafts();
+
+    }
+
+    public void reload(){
+        CustomConfig.reload();
+        BuildingConfig.reload();
+        instance.reloadConfig();
+        instance.getBlueMapManager().refreshAllTowns();
+        instance.getBattleManager().shutdownBattles();
+        instance.connectFiles();
+
+    }
     
     public void loadConfig(){
+
+
         instance.saveDefaultConfig();
         CustomConfig.setup();
         CustomConfig.get().options().copyDefaults(true);
         CustomConfig.save();
+
+        BuildingConfig.setup();
+        BuildingConfig.get().options().copyDefaults(true);
+        BuildingConfig.save();
+
+
+
+
+
     }
     
     public void registerCommands(){
@@ -39,20 +77,20 @@ public class LoadingManager {
                 new EGet(instance)
         );
 
-        // Регистрируем их все одним махом
+
         instance.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> {
             commands.forEach(cmd -> cmd.register(event.registrar()));
         });
 
 
 
-        instance.getCommand("mset").setExecutor(new Mset(instance));
+        instance.getCommand("eset").setExecutor(new Mset(instance));
         //instance.getCommand("mget").setExecutor(new Mget(instance));
         instance.getCommand("mora").setExecutor(new GiveMora(instance));
         instance.getCommand("income").setExecutor(new Income(instance));
         instance.getCommand("expense").setExecutor(new Expense(instance));
         //\\\\instance.getCommand("oi").setExecutor(new OiCommand(instance));
-        //instance.getCommand("polit").setExecutor(new PolitCommand(instance));
+        instance.getCommand("polit").setExecutor(new Polit(instance));
         //instance.getCommand("tax_mod").setExecutor(new TaxModifierCommand(instance));
         instance.getCommand("trade").setExecutor(new Trade(instance));
         instance.getCommand("roll").setExecutor(new Roll(instance));
@@ -60,7 +98,7 @@ public class LoadingManager {
         instance.getCommand("peace").setExecutor(new DeclarePeace(instance));
         instance.getCommand("villager").setExecutor(new GiveVillager(instance));
         //instance.getCommand("manpower").setExecutor(new GiveManpowerCommand(instance));
-        instance.getCommand("menu").setExecutor(new MainMenu(instance));
+        instance.getCommand("menu").setExecutor(new MenuCommand(instance));
         instance.getCommand("town").setExecutor(new GiveTown(instance));
         instance.getCommand("earth").setExecutor(new EarthCommand());
         instance.getCommand("createBot").setExecutor(new CreateBot(instance));
@@ -69,8 +107,10 @@ public class LoadingManager {
         //instance.getCommand("chunk").setExecutor(new ChunkCommand(instance));
         instance.getCommand("tradeway").setExecutor(new TradeWay(instance));
         instance.getCommand("colonial").setExecutor(new Colonial(instance));
-        instance.getCommand("diff").setExecutor(new Difficulty(instance));
-        instance.getCommand("cache").setExecutor(new ReloadCash(instance));
+        instance.getCommand("start").setExecutor(new Difficulty(instance));
+        instance.getCommand("cache").setExecutor(new Cache(instance));
+        instance.getCommand("ally").setExecutor(new AllyCommand(instance));
+        instance.getCommand("color").setExecutor(new Color());
     }
     
     public void registerListeners(){
@@ -86,6 +126,8 @@ public class LoadingManager {
         instance.getServer().getPluginManager().registerEvents(new BattlePhaseHandler(instance), instance);
         instance.getServer().getPluginManager().registerEvents(new BattleHandler(instance), instance);
         instance.getServer().getPluginManager().registerEvents(new ReceiptHandler(instance), instance);
+        instance.getServer().getPluginManager().registerEvents(new BuildingProduction(), instance);
+        instance.getServer().getPluginManager().registerEvents(new ArmyMoveHandler(instance), instance);
     }
     
     
@@ -95,10 +137,13 @@ public class LoadingManager {
         new CheckTowns().runTaskTimer(instance, 0L, 800L);
         new BattlePhase().runTaskTimer(instance, 0L, 60L);
         new ArmyTask().runTaskTimer(instance, 0L, 60L);
+        new ArmyActionBarTask().runTaskTimer(instance, 0L, 40L);
         new Meteor().runTaskTimer(instance, 0L, 168000L);
 
         new SpeedGive().runTaskTimerAsynchronously(instance,0,20);
     }
+
+
     
     
     

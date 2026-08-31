@@ -1,28 +1,29 @@
 package earthrp.menusystem;
 
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Multimap;
 import earthrp.Earth;
 import earthrp.customEnums.EPlayerAttribute;
 import earthrp.customEnums.EPlayerTech;
 import earthrp.customObjects.EPlayer;
-import earthrp.files.CustomConfig;
-import earthrp.tools.Tools;
+import earthrp.configs.CustomConfig;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.InventoryHolder;
-import org.bukkit.inventory.ItemFlag;
-import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.*;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.components.CustomModelDataComponent;
 import org.bukkit.persistence.PersistentDataType;
+import org.bukkit.scheduler.BukkitTask;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import static earthrp.tools.PDCKeys.*;
@@ -38,6 +39,8 @@ public abstract class Menu implements InventoryHolder {
     protected MenuUtility menuUtility;
     protected Inventory inventory;
     protected ItemStack FILLER_GLASS = makeItem(Material.GRAY_STAINED_GLASS_PANE, " ");
+
+    private BukkitTask updateTask;
 
     //Constructor for Menu. Pass in a PlayerMenuUtility so that
     // we have information on who's menu this is and
@@ -58,7 +61,9 @@ public abstract class Menu implements InventoryHolder {
 
 
     //let each menu decide what items are to be placed in the inventory menu
-    public abstract void setMenuItems();
+    public abstract void setMenuItems(
+
+    );
 
     //When called, an inventory is created and opened for the player
     public void open(){
@@ -72,6 +77,8 @@ public abstract class Menu implements InventoryHolder {
 
         //open the inventory for the player
         menuUtility.getOwner().openInventory(inventory);
+
+        startUpdateTask();
     }
 
     //Overridden method from the InventoryHolder interface
@@ -130,7 +137,7 @@ public abstract class Menu implements InventoryHolder {
         int enchantLvl = 0;
 
         if(techStatus) {
-            if(material.equals(Material.BOOK)) item = makeItem(Material.ENCHANTED_BOOK,techName);
+            if(material.equals(Material.BOOK)) item = makeItem(Material.ENCHANTED_BOOK,techName+" <green>✔");
             else item = makeItem(material,techName+" <green>✔");
             enchantLvl = 1;
         }
@@ -144,6 +151,21 @@ public abstract class Menu implements InventoryHolder {
         meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
         meta.addItemFlags(ItemFlag.HIDE_ADDITIONAL_TOOLTIP);
         meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
+
+
+        Multimap<Attribute, AttributeModifier> modifiers = ArrayListMultimap.create();
+
+        // 2. Добавляем фейковый модификатор (+0.0 к урону)
+        // Так как он равен 0, он не изменит стандартный урон меча (он останется 7.0)
+        modifiers.put(Attribute.ATTACK_DAMAGE, new AttributeModifier(
+                NamespacedKey.minecraft("fake_hidden_modifier"),
+                0.0,
+                AttributeModifier.Operation.ADD_NUMBER,
+                EquipmentSlotGroup.MAINHAND
+        ));
+
+        // 3. Записываем этот модификатор в мету
+        meta.setAttributeModifiers(modifiers);
 
         CustomModelDataComponent cmd = meta.getCustomModelDataComponent();
         cmd.setStrings(List.of(customModel));
@@ -184,9 +206,12 @@ public abstract class Menu implements InventoryHolder {
         ItemMeta meta = item.getItemMeta();
         meta.displayName(colorText(displayName));
         List<Component> lore = new ArrayList<>();
-        for(String s:sLore){
-            lore.add(colorText(s));
+        if(sLore!=null){
+            for(String s:sLore){
+                lore.add(colorText(s));
+            }
         }
+
 
         meta.lore(lore);
         meta.getPersistentDataContainer().set(menuIdKey, PersistentDataType.STRING, menuId);
@@ -310,7 +335,7 @@ public abstract class Menu implements InventoryHolder {
 
     public static Component colorText(String text){
 
-        return MiniMessage.miniMessage().deserialize("<!italic>" + text);
+        return MiniMessage.miniMessage().deserialize("<!italic><white>" + text);
     }
 
     public void fillIfEmpty(int slot) {
@@ -323,6 +348,29 @@ public abstract class Menu implements InventoryHolder {
         closeMeta.setDisplayName(ChatColor.RED + "Назад");
         close.setItemMeta(closeMeta);
         return close;
+    }
+
+    private void startUpdateTask() {
+        // На случай, если меню открывается повторно, отменяем старую задачу
+        stopUpdateTask();
+
+        this.updateTask = Bukkit.getScheduler().runTaskTimer(Earth.getInstance(), () -> {
+            // Проверяем, открыто ли ещё это меню у игрока
+            if (menuUtility.getOwner().getOpenInventory().getTopInventory().getHolder() == this) {
+                // Вызываем метод перерисовки предметов без переоткрытия инвентаря
+                this.setMenuItems();
+            } else {
+                stopUpdateTask();
+            }
+        }, 200L, 200L); // 200 тиков задержки перед первым запуском, 200 тиков интервал (10 сек)
+    }
+
+    // Этот метод нужно обязательно вызвать в вашем InventoryCloseEvent лисенере!
+    public void stopUpdateTask() {
+        if (updateTask != null) {
+            updateTask.cancel();
+            updateTask = null;
+        }
     }
 
 }

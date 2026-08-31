@@ -24,7 +24,7 @@ public class GiveVillager implements CommandExecutor, TabCompleter {
     ServerDatabase db;
     public GiveVillager(Earth plugin) {
         this.plugin = plugin;
-        db = plugin.getServerDatabase();
+        db = plugin.getDatabase();
     }
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String s, @NotNull String[] args) {
@@ -38,17 +38,15 @@ public class GiveVillager implements CommandExecutor, TabCompleter {
                     return true;
                 }
                 villagerMeta.setDisplayName("Villager " + player.getDisplayName());
-                villagerMeta.setLore(Collections.singletonList("Житель твой"));
-                villager.setItemMeta(villagerMeta);
 
             } else{
 
                 villagerMeta.setDisplayName("Villager " + p.getDisplayName());
-                villagerMeta.setLore(Collections.singletonList("Житель твой"));
-                villager.setItemMeta(villagerMeta);
 
 
             }
+            villagerMeta.setLore(Collections.singletonList("Житель твой"));
+            villager.setItemMeta(villagerMeta);
             p.getInventory().addItem(villager);
             sender.sendMessage(ChatColor.GREEN + "Вы выдали себе жителя");
             return true;

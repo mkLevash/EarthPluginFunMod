@@ -1,12 +1,11 @@
 package earthrp.menusystem.menu.markets;
 
-import earthrp.Earth;
 import earthrp.tools.Tools;
 import earthrp.customObjects.Building;
 import earthrp.customObjects.Town;
 import earthrp.menusystem.MenuUtility;
 import earthrp.menusystem.PaginatedMenu;
-import earthrp.menusystem.menu.buildings.MiningBuildingMenu;
+import earthrp.menusystem.menu.buildings.inGame.MiningBuildingMenu;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -67,7 +66,7 @@ public class MarketSelectMenu extends PaginatedMenu {
                 }
                 case BELL -> {
                     UUID id = UUID.fromString(item.getItemMeta().getPersistentDataContainer().get(tradeId,PersistentDataType.STRING));
-                    town.setTradeTownId(id);
+                    //town.setTradeTownId(id);
                     new TradeMenu(menuUtility).open();
                 }
             }
@@ -83,14 +82,14 @@ public class MarketSelectMenu extends PaginatedMenu {
         } else if (e.getCurrentItem().getType().equals(Material.BELL)) {
             e.getWhoClicked().closeInventory();
 
-            building.setItem(null);
+            building.getData().setItem(null);
             
             menuUtility.setBuilding(building);
             new MiningBuildingMenu(menuUtility).open();
 
         } else if(!e.getCurrentItem().getType().equals(Material.GRAY_STAINED_GLASS_PANE)){
             System.out.println("[Earth]check0");
-            building.setItem(e.getCurrentItem().getType());
+            //building.setItem(e.getCurrentItem().getType());
             
             menuUtility.setBuilding(building);
             new MiningBuildingMenu(menuUtility).open();
@@ -101,6 +100,7 @@ public class MarketSelectMenu extends PaginatedMenu {
 
     @Override
     public void setMenuItems() {
+        inventory.clear();
         addMenuBorder();
         ItemStack border = makeItem(Material.GRAY_STAINED_GLASS_PANE, " ");
         inventory.setItem(0,border);
@@ -116,7 +116,7 @@ public class MarketSelectMenu extends PaginatedMenu {
 
                 //Create an item from our collection and place it into the inventory
                 List<String> tLore = List.of(Tools.colorText("&fБонус рынка:" + market.getColorTradeMod()));
-                ItemStack item = Tools.createItem(Material.BELL, market.getName(),tLore);
+                ItemStack item = Tools.createItemLegacy(Material.BELL, market.getName(),tLore);
                 ItemMeta meta = item.getItemMeta();
                 meta.getPersistentDataContainer().set(tradeId, PersistentDataType.STRING,market.getUniqueId().toString());
                 item.setItemMeta(meta);

@@ -21,7 +21,7 @@ import java.util.Objects;
 public class GiveMora implements CommandExecutor {
     ServerDatabase db;
     public GiveMora(Earth plugin) {
-        db = plugin.getServerDatabase();
+        db = plugin.getDatabase();
     }
 
     @Override
@@ -30,11 +30,10 @@ public class GiveMora implements CommandExecutor {
             EPlayer p = db.getPlayer(player.getUniqueId());
             int amount = 0;
             if (args.length != 1){
-                sender.sendMessage(ChatColor.YELLOW + "/mora <amount>");
                 ItemStack item = player.getInventory().getItemInMainHand();
                 ItemStack air = new ItemStack(Material.AIR,1);
                 List<String> lore = Objects.requireNonNull(item.getItemMeta()).getLore();
-                assert lore != null;
+                if (lore == null) return false;
                 switch (lore.get(0)) {
                     case "1 мора" -> {
                         player.getInventory().setItemInMainHand(air);
@@ -50,6 +49,7 @@ public class GiveMora implements CommandExecutor {
                     }
                 }
                 p.addAttribute(EPlayerAttribute.TREASURY,amount);
+                sender.sendMessage(ChatColor.YELLOW + "Вы положили в казну " + amount + " моры");
 
             } else{
                 try {

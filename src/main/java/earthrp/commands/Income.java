@@ -16,7 +16,7 @@ public class Income implements CommandExecutor {
     ServerDatabase db;
     public Income(Earth earth) {
         this.earth = earth;
-        db = earth.getServerDatabase();
+        db = earth.getDatabase();
     }
 
 

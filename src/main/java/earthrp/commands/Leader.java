@@ -45,64 +45,77 @@ public class Leader implements CommandExecutor, TabCompleter {
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String s, @NotNull String[] args) {
 
-        ServerDatabase db = Earth.getInstance().getServerDatabase();
+        ServerDatabase db = Earth.getInstance().getDatabase();
+        if(sender instanceof Player player){
+            if(args.length==6 && args[0].equals("set") && player.isOp()){
 
-        if(sender instanceof Player player && args.length==6 && args[0].equals("set")){
+                int fire = Integer.parseInt(args[2]);
+                int shock = Integer.parseInt(args[3]);
+                int move = Integer.parseInt(args[4]);
+                int siege = Integer.parseInt(args[5]);
+                ItemStack item = player.getInventory().getItemInMainHand();
+                ItemStack leader = item;
+                if(!item.getType().equals(Material.PLAYER_HEAD)) leader = new ItemStack(Material.PLAYER_HEAD);
+                SkullMeta leaderMeta = (SkullMeta) leader.getItemMeta();
+                leaderMeta.setDisplayName(ChatColor.translateAlternateColorCodes('~',
+                        "~d" + args[1] + " ~4" + fire + " ~6" + shock + " ~9" + move + " ~a" + siege));
+                leaderMeta.getPersistentDataContainer().set(leaderShockKey,PersistentDataType.INTEGER,shock);
+                leaderMeta.getPersistentDataContainer().set(leaderFireKey,PersistentDataType.INTEGER,fire);
+                leaderMeta.getPersistentDataContainer().set(leaderMoveKey,PersistentDataType.INTEGER,move);
+                leaderMeta.getPersistentDataContainer().set(leaderSiegeKey,PersistentDataType.INTEGER,siege);
+                leader.setItemMeta(leaderMeta);
+                if(!item.getType().equals(Material.PLAYER_HEAD)) player.getInventory().addItem(leader);
+            }else if( args.length==2){
+                EPlayer p = db.getPlayer(player.getUniqueId());
+                int d;
+                double tradition = p.getAttribute(EPlayerAttribute.TRADITION);
+                int max = 5;
+                if(tradition<=5) max = 2;
+                if(tradition<=10) max = 3;
+                if(tradition<=20) max = 4;
 
-            int fire = Integer.parseInt(args[2]);
-            int shock = Integer.parseInt(args[3]);
-            int move = Integer.parseInt(args[4]);
-            int siege = Integer.parseInt(args[5]);
-            ItemStack item = player.getInventory().getItemInMainHand();
-            ItemStack leader = item;
-            if(!item.getType().equals(Material.PLAYER_HEAD)) leader = new ItemStack(Material.PLAYER_HEAD);
-            SkullMeta leaderMeta = (SkullMeta) leader.getItemMeta();
-            leaderMeta.setDisplayName(ChatColor.translateAlternateColorCodes('~',
-                    "~d" + args[1] + " ~4" + fire + " ~6" + shock + " ~9" + move + " ~a" + siege));
-            leaderMeta.getPersistentDataContainer().set(leaderShockKey,PersistentDataType.INTEGER,shock);
-            leaderMeta.getPersistentDataContainer().set(leaderFireKey,PersistentDataType.INTEGER,fire);
-            leaderMeta.getPersistentDataContainer().set(leaderMoveKey,PersistentDataType.INTEGER,move);
-            leaderMeta.getPersistentDataContainer().set(leaderSiegeKey,PersistentDataType.INTEGER,siege);
-            leader.setItemMeta(leaderMeta);
-            if(!item.getType().equals(Material.PLAYER_HEAD)) player.getInventory().addItem(leader);
-        }
+                try {
+                    d = parseInt(args[0]);
+                } catch (NumberFormatException e) {
+                    sender.sendMessage(ChatColor.YELLOW + "Ошибка, убедитесь что вы верно ввели число");
+                    return true;
+                }
+                if(db.getPlayer(player).getAttribute(EPlayerAttribute.POLIT_BALANCE)>=d){
+                    d = (int) Math.floor(d*1.5/5);
+                    db.getPlayer(player).addAttribute(EPlayerAttribute.POLIT_BALANCE,-d);
+                }else{
+                    sender.sendMessage(ChatColor.YELLOW + "Недостаточно полит. власти");
+                    return true;
+                }
 
-        if(sender instanceof Player player && args.length==2){
-            EPlayer p = db.getPlayer(player.getUniqueId());
-            int d;
-            double tradition = p.getAttribute(EPlayerAttribute.TRADITION);
-            int max = 5;
-            if(tradition<=5) max = 2;
-            if(tradition<=10) max = 3;
-            if(tradition<=20) max = 4;
+                //Bukkit.broadcastMessage(String.valueOf(d));
+                int shock = roll(max,1+d).stream().mapToInt(i -> i).max().orElse(0);
+                int fire = roll(max,1+d).stream().mapToInt(i -> i).max().orElse(0);
+                int move = roll(max,1+d/2).stream().mapToInt(i -> i).max().orElse(0);
+                int siege = roll(max,1+d/2).stream().mapToInt(i -> i).max().orElse(0);
+                ItemStack item = player.getInventory().getItemInMainHand();
+                ItemStack leader = item;
+                if(!item.getType().equals(Material.PLAYER_HEAD)) leader = new ItemStack(Material.PLAYER_HEAD);
+                SkullMeta leaderMeta = (SkullMeta) leader.getItemMeta();
+                leaderMeta.setDisplayName(ChatColor.translateAlternateColorCodes('~',
+                        "~d" + args[1] + " ~4" + fire + " ~6" + shock + " ~9" + move + " ~a" + siege));
+                leaderMeta.getPersistentDataContainer().set(leaderShockKey,PersistentDataType.INTEGER,shock);
+                leaderMeta.getPersistentDataContainer().set(leaderFireKey,PersistentDataType.INTEGER,fire);
+                leaderMeta.getPersistentDataContainer().set(leaderMoveKey,PersistentDataType.INTEGER,move);
+                leaderMeta.getPersistentDataContainer().set(leaderSiegeKey,PersistentDataType.INTEGER,siege);
+                leader.setItemMeta(leaderMeta);
+                if(!item.getType().equals(Material.PLAYER_HEAD)) player.getInventory().addItem(leader);
 
-            try {
-                d = parseInt(args[0]);
-            } catch (NumberFormatException e) {
-                sender.sendMessage(ChatColor.YELLOW + "Ошибка, убедитесь что вы верно ввели число");
+
+            }else if(args.length==6){
+
+                player.sendMessage(ChatColor.RED + "Ошибка прав");
+                player.sendMessage( "/leader <кол-во политки> <имя генерала>");
                 return true;
             }
-            d = (int) Math.floor(d*1.5/5);
-            //Bukkit.broadcastMessage(String.valueOf(d));
-            int shock = roll(max,d).stream().mapToInt(i -> i).max().orElse(0);
-            int fire = roll(max,d).stream().mapToInt(i -> i).max().orElse(0);
-            int move = roll(max,d).stream().mapToInt(i -> i).max().orElse(0);
-            int siege = roll(max,d).stream().mapToInt(i -> i).max().orElse(0);
-            ItemStack item = player.getInventory().getItemInMainHand();
-            ItemStack leader = item;
-            if(!item.getType().equals(Material.PLAYER_HEAD)) leader = new ItemStack(Material.PLAYER_HEAD);
-            SkullMeta leaderMeta = (SkullMeta) leader.getItemMeta();
-            leaderMeta.setDisplayName(ChatColor.translateAlternateColorCodes('~',
-                    "~d" + args[1] + " ~4" + fire + " ~6" + shock + " ~9" + move + " ~a" + siege));
-            leaderMeta.getPersistentDataContainer().set(leaderShockKey,PersistentDataType.INTEGER,shock);
-            leaderMeta.getPersistentDataContainer().set(leaderFireKey,PersistentDataType.INTEGER,fire);
-            leaderMeta.getPersistentDataContainer().set(leaderMoveKey,PersistentDataType.INTEGER,move);
-            leaderMeta.getPersistentDataContainer().set(leaderSiegeKey,PersistentDataType.INTEGER,siege);
-            leader.setItemMeta(leaderMeta);
-            if(!item.getType().equals(Material.PLAYER_HEAD)) player.getInventory().addItem(leader);
-
-
         }
+
+
         return false;
     }
 

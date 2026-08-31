@@ -1,12 +1,15 @@
 package earthrp.menusystem.menu;
 
 import earthrp.Earth;
-import earthrp.customEnums.TownItem;
+import earthrp.customEnums.EarthItem;
+import earthrp.customEnums.UnitTech.UnitType;
+import earthrp.customObjects.Army;
+import earthrp.customObjects.Building;
+import earthrp.menusystem.menu.army.SiegeMenu;
 import earthrp.tools.Tools;
 import earthrp.customEnums.EPlayerAttribute;
 import earthrp.customObjects.EPlayer;
 import earthrp.customObjects.Town;
-import earthrp.database.ServerDatabase;
 import earthrp.menusystem.Menu;
 import earthrp.menusystem.MenuUtility;
 import earthrp.menusystem.menu.markets.TradeMenu;
@@ -18,10 +21,11 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
+import org.bukkit.persistence.PersistentDataContainer;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
+
+import static earthrp.tools.PDCKeys.*;
 
 public class TownsMenu extends Menu {
 
@@ -45,9 +49,13 @@ public class TownsMenu extends Menu {
         Player p = (Player) e.getWhoClicked();
         switch (Objects.requireNonNull(e.getCurrentItem()).getType()){
 
-            case CRAFTING_TABLE -> {
+            case CHEST -> {
                 e.getWhoClicked().closeInventory();
                 new TownItemsMenu(menuUtility).open();
+            }
+
+            case EGG -> {
+                new TownBuildingsMenu(menuUtility).open();
             }
             
             case BELL -> {
@@ -63,20 +71,9 @@ public class TownsMenu extends Menu {
             }
 
             case PLAYER_HEAD -> {
-                if(!t.getOwner().getUniqueId().equals(p.getUniqueId())){
-                    if(t.isStatus()){
-                        p.closeInventory();
-                        new OccupationConfirmMenu(menuUtility).open();
-                    }else{
-                        p.closeInventory();
-                        new AnnexConfirmMenu(menuUtility).open();
-                    }
-                }
-                else if (!t.isStatus()) {
+                if(t.getOwner().getData().getEnemies().contains(menuUtility.getOwner().getUniqueId())){
                     p.closeInventory();
-                    p.sendMessage(ChatColor.GREEN+"Город успешно освобождён");
-                    t.setStatus(true);
-                    new TownsMenu(menuUtility).open();
+                    new AnnexConfirmMenu(menuUtility).open();
                 }
                 else if(!t.isCore()){
                     if(t.getOwner().getAttribute(EPlayerAttribute.POLIT_BALANCE)>=t.getCoreCost()){
@@ -90,16 +87,33 @@ public class TownsMenu extends Menu {
                     }
 
 
-                }else{
-                    if(t.getOwner().getAttribute(EPlayerAttribute.POLIT_BALANCE)>=t.getInfrastructureCost()){
-                        p.closeInventory();
-                        p.sendMessage(ChatColor.GREEN+"Инфраструктура успешно увеличена");
-                        t.getOwner().addAttribute(EPlayerAttribute.POLIT_BALANCE,-t.getInfrastructureCost());
-                        t.setInfrastructure(t.getInfrastructure()+1);
-                        new TownsMenu(menuUtility).open();
-                    }else{
-                        p.sendMessage(ChatColor.YELLOW+"У вас недостаточно полит власти");
+                }
+
+            }
+
+            case END_CRYSTAL -> {
+                if(t.isSiege()){
+                    Army army = new Army(UUID.randomUUID(),t.getController().getUniqueId(),"");
+                    for(Army a:t.getController().getArmies()){
+                        if (a.getTypeTroops(UnitType.INF) > army.getTypeTroops(UnitType.INF)) army = a;
                     }
+                    p.closeInventory();
+                    menuUtility.setArmy(army);
+                    menuUtility.setSiegeTown(t);
+                    new SiegeMenu(menuUtility).open();
+                }
+            }
+            case CRAFTING_TABLE -> {
+
+                if(t.getOwner().getAttribute(EPlayerAttribute.POLIT_BALANCE)>=t.getInfrastructureCost()){
+                    p.closeInventory();
+                    p.sendMessage(ChatColor.GREEN+"Инфраструктура успешно увеличена");
+                    t.getOwner().addAttribute(EPlayerAttribute.POLIT_BALANCE,-t.getInfrastructureCost());
+                    t.getData().infrastructure+=1;
+
+                    new TownsMenu(menuUtility).open();
+                }else{
+                    p.sendMessage(ChatColor.YELLOW+"У вас недостаточно полит власти");
                 }
 
             }
@@ -110,69 +124,85 @@ public class TownsMenu extends Menu {
 
     @Override
     public void setMenuItems() {
+        inventory.clear();
 
-        ItemStack owner = new ItemStack(Material.PLAYER_HEAD, 1);
-        SkullMeta ownerMeta = (SkullMeta) owner.getItemMeta();
+        ItemStack owner = null;
+        for(ItemStack item : menuUtility.getBuildingChest().getContents()){
+            if (item == null) continue;
+            PersistentDataContainer data = item.getItemMeta().getPersistentDataContainer();
+            if(data.has(townOwnerKey)){
+                owner = item;
+
+            }
+        }
 
         List<String> ownerLore = new ArrayList<>();
-        ownerLore.add(Tools.colorText("Владелец &d"+t.getOwnerName()));
-        ownerLore.add(Tools.colorText("&fНаселение &a" + t.getPeople()));
+
         ownerLore.add(t.getCoreStatus());
-        if(!t.getOwner().getUniqueId().equals(menuUtility.getOwner().getUniqueId())){
-            if(t.isStatus()){
-                ownerLore.add(ChatColor.YELLOW + "Нажмите для оккупации");
-            }else{
-                ownerLore.add(ChatColor.YELLOW + "Нажмите для аннексии");
-                ownerLore.add(ChatColor.DARK_RED + "ТОЛЬКО ПО МИРНОМУ ДОГОВОРУ");
+        if(t.getOwner().getUniqueId().equals(menuUtility.getOwner().getUniqueId())){
+            if(!t.isCore()){
+                ownerLore.add("Стоимость национализации " + t.getCoreCost() + "£");
+                ownerLore.add("<yellow>ЛКМ <white>- для национализации");
             }
-
-        } else if (!t.isStatus()) {
-            ownerLore.add(ChatColor.GREEN + "Нажмите для освобождения");
-        } else if(!t.isCore()){
-            ownerLore.add(Tools.colorText("&fСтоимость национализации " + t.getCoreCost()) + "£");
-            ownerLore.add(ChatColor.YELLOW + "Нажмите для национализации");
-        }else {
-            ownerLore.add(Tools.colorText("&fИнфраструктура &6" + t.getInfrastructure() + " &fур"));
-            ownerLore.add(Tools.colorText("&eНажмите чтобы расширить за &f" + t.getInfrastructureCost() + "£"));
         }
-        ownerMeta.setDisplayName(Tools.colorText("&f"+ t.getName()  ));
-        ownerMeta.setOwningPlayer(Bukkit.getOfflinePlayer(t.getOwnerId()));
-        ownerMeta.setLore(ownerLore);
-        owner.setItemMeta(ownerMeta);
-
-
-        ItemStack trade = new ItemStack(Material.BELL);
-        ItemMeta tradeMeta = trade.getItemMeta();
-        tradeMeta.setDisplayName(ChatColor.WHITE + "Меню торговли");
-        Town tradeTown = t.getTradeTown();
-        List<String> tradeLore = new ArrayList<>();
-        if(t.getTradeTown()!=null){
-            tradeLore.add(Tools.colorText("&fТовары перенаправляются в &d") + tradeTown.getName());
-            tradeLore.add(Tools.colorText("&fБонус рынка: " + tradeTown.getColorTradeMod()));
-            tradeLore.add(Tools.colorText("&dДоход: &a" + (int) Math.round(t.getTradeIncome())));
-            tradeLore.add(Tools.colorText("&dИздержки за расстояние: &a" + Tools.getColorMod(t.getTradeCost())));
-
-
-        }else if (!t.isLandHub()){
-            tradeLore.add(ChatColor.RED + "Отсутствует рынок, разрешено только перенаправление товаров");
-        }else {
-            tradeLore.add(Tools.colorText("&fБонус рынка:" + t.getColorTradeMod()));
-            tradeLore.add(Tools.colorText("&fКоличество товаров: " + t.getMarketGoods()));
-            tradeLore.add(Tools.colorText("&dДоход: &a" + (int) Math.round(t.getTradeIncome())));
+        if(!t.getData().getController().equals(t.getOwnerId())){
+            ownerLore.add("Оккупирован <red>"+ Earth.getInstance().getDatabase().getPlayer(t.getData().getController()).getCountryName());
         }
-        tradeMeta.setLore(tradeLore);
-        trade.setItemMeta(tradeMeta);
+        if(t.getOwner().getData().getEnemies().contains(menuUtility.getOwner().getUniqueId())){
+            ownerLore.add("<yellow>ЛКМ <white>- для аннексии");
+            ownerLore.add("<red>ТОЛЬКО ПО МИРНОМУ ДОГОВОРУ");
+        }
+        ItemStack ownerLegacy = Tools.createItem(Material.PLAYER_HEAD,"Владелец - <light_purple>"+t.getOwner().getCountryName(),ownerLore);
+        SkullMeta skullMeta = (SkullMeta) ownerLegacy.getItemMeta();
+        skullMeta.setOwningPlayer(Bukkit.getOfflinePlayer(t.getOwnerId()));
+        ownerLegacy.setItemMeta(skullMeta);
+        if(owner == null){
+            owner = ownerLegacy;
+        }else{
+            ItemMeta ownerMeta = owner.getItemMeta();
+            ownerMeta.displayName(skullMeta.displayName());
+            ownerMeta.lore(skullMeta.lore());
+            owner.setItemMeta(ownerMeta);
+        }
+
+
+
+
+
+        Set<EarthItem> world = new HashSet<>();
+        for (Building b:Earth.getInstance().getDatabase().getBuildings()){
+
+            if(b.getData().getItem()!=null && b.getOwner()!=t.getOwner() && !t.getOwner().getTraders().contains(b.getOwner())  ) world.add(b.getData().getItem());
+        }
+
         EPlayer player = t.getOwner();
         List<String> statsLore = List.of(
-
-                Tools.colorText("&fНалоги &a" + t.getTaxIncome()),
-                Tools.colorText("&fПроизводство &a" +  (int) Math.round( t.getProdIncome()*player.getAttribute(EPlayerAttribute.PROD_MOD))),
-                Tools.colorText("&fЗдания = &d" + t.getBuildings().size()+"&f/&e"+t.getBuildSite()),
-                Tools.colorText("&fЗерна = " + t.getItem(TownItem.WHEAT)),
-                Tools.colorText("&fГолод - " + t.getFamine())
-
+                "Крестьяне <green>" + t.getPeasant(),
+                "Дворяне <green>" + t.getData().noble + "<white>/<yellow>" + t.getNobleSites(),
+                "Налоги ("+ t.getTaxModColor() +")<green>" + t.getTaxIncome(),
+                "Торговля <green>" + t.getTradeIncome(world),
+                "Спец Здания = <light_purple>" + t.getSpecialBuildingsAmount() + "<white>/<yellow>" + t.getBuildSite(),
+                "Инфраструктура <gold>" + t.getData().infrastructure + " <white>ур",
+                "<yellow>ЛКМ <white> для повышения инфр. за <green>" + t.getInfrastructureCost() + "<white>£"
         );
         ItemStack stats = Tools.createItem(Material.CRAFTING_TABLE,"Основная информация о городе",statsLore);
+
+
+        List<String> chestLore = List.of(
+                Tools.colorText("&eЛКМ &f- для подробностей")
+
+        );
+        ItemStack chest = Tools.createItemLegacy(Material.CHEST,Tools.colorText("Склад &e" + t.getItemsColor()),chestLore);
+
+        List<String> wheatLore = new ArrayList<>();
+        wheatLore.add(Tools.colorText("&fПродовольствие: " + t.getFoodColor() + "&fइ"));
+        wheatLore.add(Tools.colorText("&fПотребление пищи:" ));
+        wheatLore.add(Tools.colorText("&fНаселением: " + t.getHungerColor() + "&fइ" ));
+        if(t.isCapital()) wheatLore.add(Tools.colorText("&fАрмия = " + player.getUnits().size() * 5 + "&fइ"));
+
+
+        ItemStack wheat = Tools.createItemLegacy(Material.WHEAT,Tools.colorText("&fСытость - " + t.getFamineColor()),wheatLore);
+
 
 //        ItemStack owner = new ItemStack(Material.END_CRYSTAL, 1);
 //        ItemMeta townMeta = town.getItemMeta();
@@ -203,18 +233,39 @@ public class TownsMenu extends Menu {
 
         ItemStack delete = new ItemStack(Material.BARRIER,1);
         ItemMeta deleteMeta = delete.getItemMeta();
-        deleteMeta.setDisplayName(ChatColor.RED + "Удалить здание");
-        deleteMeta.setLore(List.of(ChatColor.WHITE + "Безвозвратно удаляет здание"));
+        deleteMeta.setDisplayName(ChatColor.RED + "Удалить город");
+        deleteMeta.setLore(List.of(ChatColor.WHITE + "Безвозвратно удаляет город"));
         delete.setItemMeta(deleteMeta);
 
 
+        List<String> fortLore = new ArrayList<>();
+        if(t.isFort()){
+
+            fortLore.add("Воентех крепости: <green>" + (int) t.getController().getAttribute(EPlayerAttribute.FORT_LVL));
+
+
+        }else{
+            fortLore.add("<red>Крепость отсутствует!");
+        }
+        if(t.isSiege()){
+            fortLore.add("<red>Город находится в осаде!");
+            fortLore.add("Шанс захвата: " + t.getSiegeChanceColor(true));
+            fortLore.add("<yellow>ЛКМ<white> - чтобы открыть меню осады");
+        }
+        ItemStack fort = Tools.createItem(Material.ICE,"<aqua>"+t.getName(),fortLore,"fort");
 
 
 
 
-        inventory.setItem(3, owner);
-        inventory.setItem(4, trade);
-        inventory.setItem(5, stats);
+
+
+        inventory.setItem(0, owner);
+        inventory.setItem(1, fort);
+        inventory.setItem(4,makeItem("<gold>Здания","buildings","buildings"));
+
+        inventory.setItem(3, stats);
+        inventory.setItem(5, chest);
+        inventory.setItem(6, wheat);
 
         inventory.setItem(8, delete);
 

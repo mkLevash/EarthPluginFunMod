@@ -22,7 +22,7 @@ public class BuildMenu extends PaginatedMenu {
 
     public BuildMenu(MenuUtility menuUtility) {
         super(menuUtility);
-        db = Earth.getInstance().getServerDatabase();
+        db = Earth.getInstance().getDatabase();
         player = db.getPlayer(p.getUniqueId());
     }
     private final ServerDatabase db;
@@ -71,11 +71,10 @@ public class BuildMenu extends PaginatedMenu {
                     UUID townId = UUID.fromString(Objects.requireNonNull(Objects.requireNonNull(item.getItemMeta()).getPersistentDataContainer().get(townIdKey, PersistentDataType.STRING)));
                     Town town = db.getTown(townId);
                     String type = bItem.getItemMeta().getPersistentDataContainer().get(buildingTypeKey,PersistentDataType.STRING);
-                    if(town.canNewBuild() || Objects.equals(type, "port") || Objects.equals(type, "landHub") || type.equals("fort")){
+                    if(town.canNewBuild(type) ){
                         e.getWhoClicked().closeInventory();
                         menuUtility.setTown(town);
                         new BuildConfirmMenu(menuUtility).open();
-
                     }
                 }
             }
@@ -87,6 +86,7 @@ public class BuildMenu extends PaginatedMenu {
 
     @Override
     public void setMenuItems() {
+        inventory.clear();
         addMenuBorder();
         List<Town> towns;
         if(bItem.getItemMeta().hasLore() && bItem.getItemMeta().getLore().get(0).contains("debug")){

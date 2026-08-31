@@ -53,6 +53,7 @@ public class CraftTechMenu extends Menu {
 
     @Override
     public void setMenuItems() {
+        inventory.clear();
 
         // Эпоха 3: Мануфактуры
         ItemStack manufacture = makeTech(Material.CRAFTING_TABLE, "manufacture", player);

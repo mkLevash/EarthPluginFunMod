@@ -3,7 +3,7 @@ package earthrp.commands;
 import earthrp.Earth;
 import earthrp.customObjects.EPlayer;
 import earthrp.database.ServerDatabase;
-import earthrp.files.CustomConfig;
+import earthrp.configs.CustomConfig;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -21,7 +21,7 @@ public class Trade implements CommandExecutor, TabCompleter {
     ServerDatabase db;
     public Trade(Earth earth) {
         this.earth= earth;
-        db = earth.getServerDatabase();
+        db = earth.getDatabase();
     }
 
     @Override

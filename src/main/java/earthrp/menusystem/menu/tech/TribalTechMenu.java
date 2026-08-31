@@ -1,7 +1,7 @@
 package earthrp.menusystem.menu.tech;
 
 import earthrp.customObjects.EPlayer;
-import earthrp.files.CustomConfig;
+import earthrp.configs.CustomConfig;
 import earthrp.menusystem.Menu;
 import earthrp.menusystem.MenuUtility;
 import earthrp.menusystem.menu.TechnologyMenu;
@@ -54,6 +54,7 @@ public class TribalTechMenu extends Menu {
 
     @Override
     public void setMenuItems() {
+        inventory.clear();
         // Эпоха 0: Племя
         List<String> tribalLore = CustomConfig.get().getStringList("tech.lore.tribal");
         ItemStack tribal = makeItem("<red>Племенной строй","","tribal", tribalLore);
@@ -65,29 +66,28 @@ public class TribalTechMenu extends Menu {
         ItemStack lumber = makeTech("lumber",player,"lumber");
 
         inventory.setItem(20, mining);
-        inventory.setItem(21, fort);
-        inventory.setItem(29, lumber); // Центр
+        inventory.setItem(32, fort);
+        inventory.setItem(21, lumber); // Центр
         inventory.setItem(33, building);
         
         // === ЭКОНОМИКА (слева) ===
         ItemStack baseMilitary = makeTech("baseMilitary", player,"military1");
-        inventory.setItem(13, baseMilitary);
+        inventory.setItem(22, baseMilitary);
         ItemStack livestock = makeTech(Material.LEATHER,"livestock",player);
         ItemStack irrigation = makeTech(Material.WHEAT,"irrigation",player);
-        ItemStack horseRidding = makeTech(Material.SADDLE, "horseRidding", player);
-        inventory.setItem(22, horseRidding);
+
         inventory.setItem(23, livestock);
         inventory.setItem(24, irrigation);
         
         // === ТОРГОВЛЯ И МОРСКОЕ ДЕЛО (справа) ===
         ItemStack shipping = makeTech(Material.OAK_BOAT,"shipping",player);
-        inventory.setItem(30, shipping);
+        inventory.setItem(29, shipping);
         
         // === НАУКА (низ) ===
         ItemStack writing = makeTech(Material.BOOK,"writing",player);
-        inventory.setItem(31, writing);
+        inventory.setItem(30, writing);
         ItemStack trade = makeTech(Material.EMERALD, "trade", player);
-        inventory.setItem(32, trade);
+        inventory.setItem(31, trade);
 
         for (int i = 0; i <= 9; i++) {
             fillIfEmpty(i);
